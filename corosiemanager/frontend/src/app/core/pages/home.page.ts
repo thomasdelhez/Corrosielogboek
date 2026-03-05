@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
-import { RoutingService } from '../services/routing.service';
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-home-page',
+  imports: [RouterLink],
   template: `
     <main class="page">
       <section class="hero-card">
@@ -14,25 +15,25 @@ import { RoutingService } from '../services/routing.service';
           <article class="menu-card">
             <h3>Aircraft & Panels</h3>
             <p>Selecteer aircraft, panel en beheer holes.</p>
-            <button class="btn-primary" (click)="openCorrosion()">Open workflow</button>
+            <a class="btn-primary linkbtn" routerLink="/menu/aircraft-panels">Open workflow</a>
           </article>
 
           <article class="menu-card">
             <h3>Hole Repairs</h3>
             <p>Bekijk en bewerk hole details, steps en parts.</p>
-            <button class="btn-primary" (click)="openCorrosion()">Open hole overzicht</button>
+            <a class="btn-primary linkbtn" routerLink="/menu/hole-repairs">Open hole overzicht</a>
           </article>
 
           <article class="menu-card">
             <h3>MDR Management</h3>
             <p>MDR status, cases en request details.</p>
-            <button class="btn-secondary" (click)="openCorrosion()">Open MDR sectie</button>
+            <a class="btn-secondary linkbtn" routerLink="/menu/mdr-management">Open MDR sectie</a>
           </article>
 
           <article class="menu-card">
             <h3>NDI Reports</h3>
             <p>NDI reports bekijken, toevoegen en verwijderen.</p>
-            <button class="btn-secondary" (click)="openCorrosion()">Open NDI sectie</button>
+            <a class="btn-secondary linkbtn" routerLink="/menu/ndi-reports">Open NDI sectie</a>
           </article>
 
           <article class="menu-card">
@@ -123,6 +124,8 @@ import { RoutingService } from '../services/routing.service';
       font-weight: 700;
       cursor: pointer;
       border: 0;
+      text-decoration: none;
+      display: inline-block;
     }
 
     .btn-primary { background: #2563eb; color: #fff; }
@@ -135,12 +138,6 @@ import { RoutingService } from '../services/routing.service';
   `,
 })
 export class HomePage {
-  private readonly routing = inject(RoutingService);
-
-  openCorrosion(): void {
-    void this.routing.goToCorrosionList();
-  }
-
   comingSoon(feature: string): void {
     alert(`${feature} volgt in een volgende stap.`);
   }
