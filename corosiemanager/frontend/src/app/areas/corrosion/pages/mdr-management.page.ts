@@ -42,7 +42,15 @@ import { CorrosionService } from '../services/corrosion.service';
           <div class="grid">
             <label class="field"><span>MDR Number</span><input [(ngModel)]="form.mdrNumber" name="mdrNumber" /></label>
             <label class="field"><span>Versie</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" /></label>
-            <label class="field"><span>Status</span><input [(ngModel)]="form.status" name="status" /></label>
+            <label class="field">
+              <span>Status</span>
+              <select [(ngModel)]="form.status" name="status">
+                <option [ngValue]="null">-- Selecteer status --</option>
+                @for (opt of mdrStatusOptions; track opt) {
+                  <option [value]="opt">{{ opt }}</option>
+                }
+              </select>
+            </label>
             <label class="field"><span>Submitted by</span><input [(ngModel)]="form.submittedBy" name="submittedBy" /></label>
             <label class="field full"><span>Subject</span><input [(ngModel)]="form.subject" name="subject" /></label>
           </div>
@@ -110,6 +118,7 @@ export class MdrManagementPage implements OnInit {
   protected readonly loading = signal<boolean>(true);
   protected readonly editingId = signal<number | null>(null);
   protected readonly message = signal<string>('');
+  protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
 
   protected form: CreateMdrCaseInput = {
     panelId: null,
