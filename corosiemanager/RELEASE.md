@@ -34,3 +34,22 @@
 - [ ] Use process manager (systemd/pm2/docker)
 - [ ] Enable HTTPS and reverse proxy limits/timeouts
 - [ ] Enable centralized logging
+
+## 6) Suggested production run commands
+
+Backend (example):
+```bash
+cd corosiemanager/backend
+source .venv/bin/activate
+export DATABASE_URL="postgresql+psycopg://<user>:<pass>@<host>:5432/corrosie"
+export ALLOWED_ORIGINS="https://<frontend-domain>"
+uvicorn app.main:app --host 0.0.0.0 --port 8002
+```
+
+Frontend build/serve (example static deploy):
+```bash
+cd corosiemanager/frontend
+npm ci
+npm run build
+# serve dist/frontend via nginx/caddy/apache
+```

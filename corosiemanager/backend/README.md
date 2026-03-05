@@ -40,6 +40,15 @@ If a hole references a panel ID not present in `PanelNrT`, the importer creates 
 python scripts/verify_import.py --accdb "../Tier 2 MDR Tool V3.0 - kopie.accdb"
 ```
 
+## Smoke test script
+
+Quick API sanity check:
+
+```bash
+cd corosiemanager/backend
+bash scripts/smoke_api.sh http://127.0.0.1:8002
+```
+
 ## First implemented endpoints
 
 - `POST /api/v1/panels/{panel_id}/holes`
