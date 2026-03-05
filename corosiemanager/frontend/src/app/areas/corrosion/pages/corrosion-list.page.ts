@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { RoutingService } from '../../../core/services/routing.service';
@@ -40,7 +40,16 @@ import { CorrosionService } from '../services/corrosion.service';
         } @else if (holes().length === 0) {
           <p class="empty">Nog geen holes gevonden voor dit panel.</p>
         } @else {
-          <app-hole-list [holes]="holes()" (open)="openHole($event)" />
+          <div style="margin-bottom:10px;">
+            <input
+              type="text"
+              placeholder="Zoek op hole/status/MDR..."
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+              style="width:100%;max-width:380px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;"
+            />
+          </div>
+          <app-hole-list [holes]="filteredHoles()" (open)="openHole($event)" />
         }
       </section>
     </main>
@@ -65,8 +74,20 @@ export class CorrosionListPage implements OnInit {
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly holes = signal<Hole[]>([]);
   protected readonly loading = signal<boolean>(true);
+  protected readonly search = signal<string>('');
 
   protected selectedPanel = () => this.panels().find((p) => p.id === this.selectedPanelId()) ?? null;
+  protected readonly filteredHoles = computed(() => {
+    const q = this.search().trim().toLowerCase();
+    if (!q) return this.holes();
+    return this.holes().filter((h) => {
+      return (
+        String(h.holeNumber).includes(q) ||
+        (h.inspectionStatus ?? '').toLowerCase().includes(q) ||
+        (h.mdrCode ?? '').toLowerCase().includes(q)
+      );
+    });
+  });
 
   async ngOnInit(): Promise<void> {
     this.loading.set(true);

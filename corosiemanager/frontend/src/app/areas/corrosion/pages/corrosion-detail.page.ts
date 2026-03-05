@@ -110,9 +110,61 @@ export class CorrosionDetailPage implements OnInit {
     await this.reloadMdrAndNdi();
   }
 
-  async saveCore(): Promise<void> { const h = this.hole(); if (!h) return; const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form)); this.applyHole(updated); this.coreMessage.set('Opgeslagen ✅'); }
-  async saveSteps(): Promise<void> { const h = this.hole(); if (!h) return; const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs)); this.applyHole(updated); this.stepsMessage.set('Steps opgeslagen ✅'); }
-  async saveParts(): Promise<void> { const h = this.hole(); if (!h) return; const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs)); this.applyHole(updated); this.partsMessage.set('Parts opgeslagen ✅'); }
+  async saveCore(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+
+    if (this.form.ndiFinished && !this.form.ndiNameInitials) {
+      this.coreMessage.set('NDI initials zijn verplicht als NDI finished aan staat.');
+      return;
+    }
+
+    try {
+      const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form));
+      this.applyHole(updated);
+      this.coreMessage.set('Opgeslagen ✅');
+    } catch {
+      this.coreMessage.set('Opslaan mislukt ❌');
+    }
+  }
+
+  async saveSteps(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+
+    const ids = this.stepInputs.map((s) => s.stepNo);
+    if (new Set(ids).size !== ids.length) {
+      this.stepsMessage.set('Dubbele step nummers zijn niet toegestaan.');
+      return;
+    }
+
+    try {
+      const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs));
+      this.applyHole(updated);
+      this.stepsMessage.set('Steps opgeslagen ✅');
+    } catch {
+      this.stepsMessage.set('Opslaan mislukt ❌');
+    }
+  }
+
+  async saveParts(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+
+    const ids = this.partInputs.map((p) => p.slotNo);
+    if (new Set(ids).size !== ids.length) {
+      this.partsMessage.set('Dubbele slot nummers zijn niet toegestaan.');
+      return;
+    }
+
+    try {
+      const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs));
+      this.applyHole(updated);
+      this.partsMessage.set('Parts opgeslagen ✅');
+    } catch {
+      this.partsMessage.set('Opslaan mislukt ❌');
+    }
+  }
 
   async createMdrCase(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createMdrCase({ ...this.newMdr, panelId: h.panelId })); this.mdrMessage.set('MDR case toegevoegd ✅'); await this.reloadMdrAndNdi(); }
   async createNdiReport(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createNdiReport(h.id, { ...this.newNdi, panelId: h.panelId })); this.ndiMessage.set('NDI report toegevoegd ✅'); await this.reloadMdrAndNdi(); }
