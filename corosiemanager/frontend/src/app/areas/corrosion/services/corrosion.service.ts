@@ -89,6 +89,22 @@ export class CorrosionService {
       .pipe(map((row) => this.toMdrCase(row)));
   }
 
+  updateMdrCase(mdrCaseId: number, input: CreateMdrCaseInput): Observable<MdrCase> {
+    return this.http
+      .put<MdrCaseDto>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}`, {
+        panel_id: input.panelId,
+        mdr_number: input.mdrNumber,
+        mdr_version: input.mdrVersion,
+        subject: input.subject,
+        status: input.status,
+        submitted_by: input.submittedBy,
+        request_date: input.requestDate ? input.requestDate.toISOString() : null,
+        need_date: input.needDate ? input.needDate.toISOString() : null,
+        approved: input.approved,
+      })
+      .pipe(map((row) => this.toMdrCase(row)));
+  }
+
   deleteMdrCase(mdrCaseId: number): Observable<{ deleted: boolean }> {
     return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}`);
   }
