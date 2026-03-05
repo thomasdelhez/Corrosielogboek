@@ -112,19 +112,30 @@ def to_dt(value: str | None) -> datetime | None:
 def import_aircraft(session: Session, db_path: str) -> dict[int, int]:
     rows = mdb_export_rows(db_path, "AircraftNrT")
     id_map: dict[int, int] = {}
+    canonical_by_an: dict[str, int] = {}
 
     for row in rows:
         old_id = to_int(row.get("UAircraftID"))
         if old_id is None:
             continue
 
+        an = to_text(row.get("AN")) or f"AN-{old_id}"
+        serial_number = to_text(row.get("SerialNumber"))
+        arrival_date = to_dt(row.get("ArrivalDate"))
+
+        if an in canonical_by_an:
+            # Duplicate AN in Access source: map this old aircraft id to canonical record.
+            id_map[old_id] = canonical_by_an[an]
+            continue
+
         aircraft = Aircraft(
             id=old_id,
-            an=to_text(row.get("AN")) or f"AN-{old_id}",
-            serial_number=to_text(row.get("SerialNumber")),
-            arrival_date=to_dt(row.get("ArrivalDate")),
+            an=an,
+            serial_number=serial_number,
+            arrival_date=arrival_date,
         )
         session.merge(aircraft)
+        canonical_by_an[an] = old_id
         id_map[old_id] = old_id
 
     return id_map

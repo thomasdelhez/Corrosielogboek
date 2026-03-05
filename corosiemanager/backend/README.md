@@ -28,6 +28,8 @@ python scripts/import_access.py --accdb "../Tier 2 MDR Tool V3.0 - kopie.accdb"
 
 By default the script truncates core tables first. Use `--append` to keep existing rows.
 
+Note: the importer deduplicates `AircraftNrT` records by `AN` (Access source can contain duplicates).
+
 ## First implemented endpoints
 
 - `POST /api/v1/panels/{panel_id}/holes`
