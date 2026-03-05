@@ -43,7 +43,7 @@ import { CorrosionService } from '../services/corrosion.service';
               </label>
               <label class="field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
             </div>
-            <div class="actions"><button class="btn-primary" type="submit">Opslaan kern</button><span class="message">{{ coreMessage() }}</span></div>
+            <div class="actions"><button class="btn-primary" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan kern' }}</button><span class="message">{{ coreMessage() }}</span></div>
           </form>
 
           <section class="subcard">
@@ -65,7 +65,7 @@ import { CorrosionService } from '../services/corrosion.service';
             }
             <div class="actions">
               <button class="btn-secondary" type="button" (click)="addStep()">+ Step</button>
-              <button class="btn-primary" type="button" (click)="saveSteps()">Opslaan steps</button>
+              <button class="btn-primary" type="button" (click)="saveSteps()" [disabled]="savingSteps()">{{ savingSteps() ? 'Opslaan...' : 'Opslaan steps' }}</button>
               <span class="message">{{ stepsMessage() }}</span>
             </div>
           </section>
@@ -100,7 +100,7 @@ import { CorrosionService } from '../services/corrosion.service';
             }
             <div class="actions">
               <button class="btn-secondary" type="button" (click)="addPart()">+ Part</button>
-              <button class="btn-primary" type="button" (click)="saveParts()">Opslaan parts</button>
+              <button class="btn-primary" type="button" (click)="saveParts()" [disabled]="savingParts()">{{ savingParts() ? 'Opslaan...' : 'Opslaan parts' }}</button>
               <span class="message">{{ partsMessage() }}</span>
             </div>
           </section>
@@ -125,7 +125,7 @@ import { CorrosionService } from '../services/corrosion.service';
                 </select>
               </label>
             </div>
-            <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()">+ MDR case</button><span class="message">{{ mdrMessage() }}</span></div>
+            <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()" [disabled]="savingMdr()">{{ savingMdr() ? 'Bezig...' : '+ MDR case' }}</button><span class="message">{{ mdrMessage() }}</span></div>
 
             <h4 style="margin-top:12px;">MDR request details (uit Access MDRListT)</h4>
             @if (mdrRequestDetails().length === 0) {
@@ -166,7 +166,7 @@ import { CorrosionService } from '../services/corrosion.service';
                 </select>
               </label>
             </div>
-            <div class="actions"><button class="btn-primary" type="button" (click)="createNdiReport()">+ NDI report</button><span class="message">{{ ndiMessage() }}</span></div>
+            <div class="actions"><button class="btn-primary" type="button" (click)="createNdiReport()" [disabled]="savingNdi()">{{ savingNdi() ? 'Bezig...' : '+ NDI report' }}</button><span class="message">{{ ndiMessage() }}</span></div>
           </section>
         } @else {
           <p>Laden...</p>
@@ -212,6 +212,12 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly mdrMessage = signal('');
   protected readonly ndiMessage = signal('');
 
+  protected readonly savingCore = signal(false);
+  protected readonly savingSteps = signal(false);
+  protected readonly savingParts = signal(false);
+  protected readonly savingMdr = signal(false);
+  protected readonly savingNdi = signal(false);
+
   protected readonly inspectionStatusOptions = ['Clean', 'Rifled', 'Open', 'In Progress', 'Closed'];
   protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
   protected readonly partStatusOptions = ['Open', 'In progress @EST', 'Ordered @981', 'Received @LSE', 'Delivered @Floor', 'Closed'];
@@ -233,11 +239,90 @@ export class CorrosionDetailPage implements OnInit {
     await this.reloadMdrAndNdi();
   }
 
-  async saveCore(): Promise<void> { const h = this.hole(); if (!h) return; try { const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form)); this.applyHole(updated); this.coreMessage.set('Opgeslagen ✅'); } catch { this.coreMessage.set('Opslaan mislukt ❌'); } }
-  async saveSteps(): Promise<void> { const h = this.hole(); if (!h) return; const ids = this.stepInputs.map((s) => s.stepNo); if (new Set(ids).size !== ids.length) { this.stepsMessage.set('Dubbele step nummers'); return; } try { const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs)); this.applyHole(updated); this.stepsMessage.set('Steps opgeslagen ✅'); } catch { this.stepsMessage.set('Opslaan mislukt ❌'); } }
-  async saveParts(): Promise<void> { const h = this.hole(); if (!h) return; const ids = this.partInputs.map((p) => p.slotNo); if (new Set(ids).size !== ids.length) { this.partsMessage.set('Dubbele slot nummers'); return; } try { const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs)); this.applyHole(updated); this.partsMessage.set('Parts opgeslagen ✅'); } catch { this.partsMessage.set('Opslaan mislukt ❌'); } }
-  async createMdrCase(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createMdrCase({ ...this.newMdr, panelId: h.panelId })); this.mdrMessage.set('MDR case toegevoegd ✅'); await this.reloadMdrAndNdi(); }
-  async createNdiReport(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createNdiReport(h.id, { ...this.newNdi, panelId: h.panelId })); this.ndiMessage.set('NDI report toegevoegd ✅'); await this.reloadMdrAndNdi(); }
+  async saveCore(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+    this.savingCore.set(true);
+    try {
+      const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form));
+      this.applyHole(updated);
+      this.coreMessage.set('Opgeslagen ✅');
+    } catch {
+      this.coreMessage.set('Opslaan mislukt ❌');
+    } finally {
+      this.savingCore.set(false);
+    }
+  }
+
+  async saveSteps(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+    const ids = this.stepInputs.map((s) => s.stepNo);
+    if (new Set(ids).size !== ids.length) {
+      this.stepsMessage.set('Dubbele step nummers');
+      return;
+    }
+    this.savingSteps.set(true);
+    try {
+      const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs));
+      this.applyHole(updated);
+      this.stepsMessage.set('Steps opgeslagen ✅');
+    } catch {
+      this.stepsMessage.set('Opslaan mislukt ❌');
+    } finally {
+      this.savingSteps.set(false);
+    }
+  }
+
+  async saveParts(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+    const ids = this.partInputs.map((p) => p.slotNo);
+    if (new Set(ids).size !== ids.length) {
+      this.partsMessage.set('Dubbele slot nummers');
+      return;
+    }
+    this.savingParts.set(true);
+    try {
+      const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs));
+      this.applyHole(updated);
+      this.partsMessage.set('Parts opgeslagen ✅');
+    } catch {
+      this.partsMessage.set('Opslaan mislukt ❌');
+    } finally {
+      this.savingParts.set(false);
+    }
+  }
+
+  async createMdrCase(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+    this.savingMdr.set(true);
+    try {
+      await firstValueFrom(this.corrosionService.createMdrCase({ ...this.newMdr, panelId: h.panelId }));
+      this.mdrMessage.set('MDR case toegevoegd ✅');
+      await this.reloadMdrAndNdi();
+    } catch {
+      this.mdrMessage.set('Aanmaken mislukt ❌');
+    } finally {
+      this.savingMdr.set(false);
+    }
+  }
+
+  async createNdiReport(): Promise<void> {
+    const h = this.hole();
+    if (!h) return;
+    this.savingNdi.set(true);
+    try {
+      await firstValueFrom(this.corrosionService.createNdiReport(h.id, { ...this.newNdi, panelId: h.panelId }));
+      this.ndiMessage.set('NDI report toegevoegd ✅');
+      await this.reloadMdrAndNdi();
+    } catch {
+      this.ndiMessage.set('Aanmaken mislukt ❌');
+    } finally {
+      this.savingNdi.set(false);
+    }
+  }
 
   addStep(): void { this.stepInputs = [...this.stepInputs, { stepNo: this.stepInputs.length + 1, sizeValue: null, visualDamageCheck: null, reamFlag: null, mdrFlag: null, ndiFlag: null }]; }
   removeStep(index: number): void { this.stepInputs = this.stepInputs.filter((_, i) => i !== index); }
@@ -246,12 +331,14 @@ export class CorrosionDetailPage implements OnInit {
   removePart(index: number): void { this.partInputs = this.partInputs.filter((_, i) => i !== index); }
 
   async deleteMdrCase(mdrCaseId: number): Promise<void> {
+    if (!confirm('Weet je zeker dat je deze MDR case wilt verwijderen?')) return;
     await firstValueFrom(this.corrosionService.deleteMdrCase(mdrCaseId));
     this.mdrMessage.set('MDR case verwijderd ✅');
     await this.reloadMdrAndNdi();
   }
 
   async deleteNdiReport(reportId: number): Promise<void> {
+    if (!confirm('Weet je zeker dat je dit NDI report wilt verwijderen?')) return;
     await firstValueFrom(this.corrosionService.deleteNdiReport(reportId));
     this.ndiMessage.set('NDI report verwijderd ✅');
     await this.reloadMdrAndNdi();
