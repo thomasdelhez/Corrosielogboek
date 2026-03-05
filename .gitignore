@@ -1,11 +1,5 @@
-.DS_Store
-**/.DS_Store
-.openclaw/workspace-state.json
-
-# Large/raw source files
-*.accdb
-*.mdb
-
-# Python caches
-**/__pycache__/
-*.pyc
+# Keep GitHub repo focused on project code only
+*
+!corosiemanager/
+!corosiemanager/**
+!.gitignore
