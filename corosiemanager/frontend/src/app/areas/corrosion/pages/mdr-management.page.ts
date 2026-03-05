@@ -185,11 +185,12 @@ export class MdrManagementPage implements OnInit {
 
   resetForm(): void {
     this.editingId.set(null);
+    const panel = this.panels().find((p) => p.id === this.selectedPanelId());
     this.form = {
       panelId: this.selectedPanelId(),
       mdrNumber: null,
       mdrVersion: null,
-      subject: null,
+      subject: panel ? `Panel ${panel.panelNumber}` : null,
       status: null,
       submittedBy: null,
       requestDate: null,
