@@ -18,5 +18,9 @@ Environment variables:
 
 - `POST /api/v1/panels/{panel_id}/holes`
 - `GET /api/v1/panels/{panel_id}/holes`
+  - supports `inspection_status`, `mdr_code`, `q`, `limit`, `offset`
 - `GET /api/v1/holes/{hole_id}`
+- `PUT /api/v1/holes/{hole_id}`
+- `PUT /api/v1/holes/{hole_id}/steps`
+- `PUT /api/v1/holes/{hole_id}/parts`
 - `GET /health`

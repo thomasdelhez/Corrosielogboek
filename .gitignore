@@ -1,0 +1,11 @@
+.DS_Store
+**/.DS_Store
+.openclaw/workspace-state.json
+
+# Large/raw source files
+*.accdb
+*.mdb
+
+# Python caches
+**/__pycache__/
+*.pyc
