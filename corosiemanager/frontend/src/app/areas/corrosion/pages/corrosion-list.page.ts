@@ -16,6 +16,11 @@ import { CorrosionService } from '../services/corrosion.service';
           <div>
             <p class="eyebrow">Corrosiemanager</p>
             <h2>Corrosie overzicht</h2>
+            <div class="flow-steps">
+              <span class="step" [class.active]="!!selectedAircraft()">1. Aircraft</span>
+              <span class="step" [class.active]="!!selectedPanel()">2. Panel</span>
+              <span class="step" [class.active]="filteredHoles().length > 0">3. Hole</span>
+            </div>
             <p class="subtitle">
               @if (selectedAircraft()) {
                 {{ selectedAircraft()!.an }}
@@ -40,7 +45,7 @@ import { CorrosionService } from '../services/corrosion.service';
 
             <label class="panel-picker">
               <span>Panel</span>
-              <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+              <select [disabled]="panels().length === 0" [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
                 @for (panel of panels(); track panel.id) {
                   <option [ngValue]="panel.id">Panel {{ panel.panelNumber }} ({{ panel.holeCount }})</option>
                 }
@@ -74,9 +79,13 @@ import { CorrosionService } from '../services/corrosion.service';
     .header { margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; align-items: end; flex-wrap: wrap; }
     .eyebrow { margin: 0 0 6px; color: #2563eb; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
     h2 { margin: 0; font-size: 1.4rem; color: #0f172a; }
+    .flow-steps{display:flex;gap:8px;margin:8px 0}
+    .step{font-size:.78rem;color:#64748b;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px;background:#f8fafc}
+    .step.active{color:#1d4ed8;border-color:#bfdbfe;background:#eff6ff}
     .subtitle { margin: 6px 0 0; color: #64748b; }
     .panel-picker { display: grid; gap: 6px; color: #334155; font-weight: 600; }
     .panel-picker select { min-width: 290px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 10px; }
+    .panel-picker select:disabled{opacity:.6;background:#f1f5f9}
     .loading, .empty { margin: 0; color: #475569; padding: 10px 0; }
   `,
 })
