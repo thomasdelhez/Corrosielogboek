@@ -15,25 +15,25 @@ import { RouterLink } from '@angular/router';
           <article class="menu-card">
             <h3>Aircraft & Panels</h3>
             <p>Selecteer aircraft, panel en beheer holes.</p>
-            <a class="btn-primary linkbtn" routerLink="/menu/aircraft-panels">Open workflow</a>
+            <a class="btn-primary linkbtn" routerLink="/corrosion">Open workflow</a>
           </article>
 
           <article class="menu-card">
             <h3>Hole Repairs</h3>
             <p>Bekijk en bewerk hole details, steps en parts.</p>
-            <a class="btn-primary linkbtn" routerLink="/menu/hole-repairs">Open hole overzicht</a>
+            <a class="btn-primary linkbtn" routerLink="/corrosion">Open hole overzicht</a>
           </article>
 
           <article class="menu-card">
             <h3>MDR Management</h3>
             <p>MDR status, cases en request details.</p>
-            <a class="btn-secondary linkbtn" routerLink="/menu/mdr-management">Open MDR sectie</a>
+            <a class="btn-secondary linkbtn" routerLink="/mdr">Open MDR sectie</a>
           </article>
 
           <article class="menu-card">
             <h3>NDI Reports</h3>
             <p>NDI reports bekijken, toevoegen en verwijderen.</p>
-            <a class="btn-secondary linkbtn" routerLink="/menu/ndi-reports">Open NDI sectie</a>
+            <a class="btn-secondary linkbtn" routerLink="/ndi">Open NDI sectie</a>
           </article>
 
           <article class="menu-card">
