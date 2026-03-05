@@ -1,4 +1,7 @@
+import os
+
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import String, cast, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -6,7 +9,21 @@ from .db import Base, engine, get_db
 from .models import Hole, HolePart, HoleStep, Panel
 from .schemas import HoleCreate, HoleOut, HolePartIn, HoleStepIn, HoleUpdate
 
-app = FastAPI(title="F35 Corrosie Logboek API", version="0.2.0")
+app = FastAPI(title="F35 Corrosie Logboek API", version="0.2.1")
+
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:4200,http://localhost:4200").split(",")
+    if origin.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")

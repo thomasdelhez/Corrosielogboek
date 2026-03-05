@@ -13,6 +13,7 @@ uvicorn app.main:app --reload --port 8001
 Environment variables:
 
 - `DATABASE_URL` (default: `postgresql+psycopg://corrosie:corrosie@localhost:5432/corrosie`)
+- `ALLOWED_ORIGINS` (default: `http://127.0.0.1:4200,http://localhost:4200`)
 
 ## First implemented endpoints
 
