@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { RoutingService } from '../../../core/services/routing.service';
 import { HoleListComponent } from '../components/hole-list.component';
@@ -8,13 +9,13 @@ import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
   selector: 'app-corrosion-list-page',
-  imports: [HoleListComponent, FormsModule],
+  imports: [HoleListComponent, FormsModule, RouterLink],
   template: `
     <main class="page">
+      <a class="back-link" routerLink="/">← Hoofdmenu</a>
       <section class="card">
         <header class="header">
           <div>
-            <p class="eyebrow">Corrosiemanager</p>
             <h2>Corrosie overzicht</h2>
             <div class="flow-steps">
               <span class="step" [class.active]="!!selectedAircraft()">1. Aircraft</span>
@@ -77,7 +78,8 @@ import { CorrosionService } from '../services/corrosion.service';
     .page { max-width: 1000px; margin: 0 auto; padding: 24px; }
     .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); padding: 20px; }
     .header { margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; align-items: end; flex-wrap: wrap; }
-    .eyebrow { margin: 0 0 6px; color: #2563eb; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .back-link { display:inline-block; margin-bottom:10px; color:#334155; text-decoration:none; font-weight:600; }
+    .back-link:hover { text-decoration:underline; }
     h2 { margin: 0; font-size: 1.4rem; color: #0f172a; }
     .flow-steps{display:flex;gap:8px;margin:8px 0}
     .step{font-size:.78rem;color:#64748b;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px;background:#f8fafc}
