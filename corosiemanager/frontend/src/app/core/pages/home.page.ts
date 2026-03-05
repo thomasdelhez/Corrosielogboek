@@ -7,13 +7,45 @@ import { RoutingService } from '../services/routing.service';
     <main class="page">
       <section class="hero-card">
         <p class="eyebrow">F35 Corrosie Logboek</p>
-        <h1>Welkom bij Corrosiemanager</h1>
-        <p class="subtitle">
-          Moderne vervanging van de Access-tool, met focus op snelle en correcte engineer invoer.
-        </p>
+        <h1>Main Menu</h1>
+        <p class="subtitle">Kies een optie om te starten. Bestaande functionaliteit blijft volledig beschikbaar.</p>
 
-        <div class="actions">
-          <button class="btn-primary" (click)="openCorrosion()">Open corrosie overzicht</button>
+        <div class="menu-grid">
+          <article class="menu-card">
+            <h3>Aircraft & Panels</h3>
+            <p>Selecteer aircraft, panel en beheer holes.</p>
+            <button class="btn-primary" (click)="openCorrosion()">Open workflow</button>
+          </article>
+
+          <article class="menu-card">
+            <h3>Hole Repairs</h3>
+            <p>Bekijk en bewerk hole details, steps en parts.</p>
+            <button class="btn-primary" (click)="openCorrosion()">Open hole overzicht</button>
+          </article>
+
+          <article class="menu-card">
+            <h3>MDR Management</h3>
+            <p>MDR status, cases en request details.</p>
+            <button class="btn-secondary" (click)="openCorrosion()">Open MDR sectie</button>
+          </article>
+
+          <article class="menu-card">
+            <h3>NDI Reports</h3>
+            <p>NDI reports bekijken, toevoegen en verwijderen.</p>
+            <button class="btn-secondary" (click)="openCorrosion()">Open NDI sectie</button>
+          </article>
+
+          <article class="menu-card">
+            <h3>Ordering Tracker</h3>
+            <p>Overzicht van onderdelen en leverstatus.</p>
+            <button class="btn-ghost" (click)="comingSoon('Ordering Tracker')">Open</button>
+          </article>
+
+          <article class="menu-card">
+            <h3>Data Export</h3>
+            <p>Exporteer data voor review en rapportage.</p>
+            <button class="btn-ghost" (click)="comingSoon('Data Export')">Open</button>
+          </article>
         </div>
       </section>
     </main>
@@ -29,7 +61,7 @@ import { RoutingService } from '../services/routing.service';
 
     .hero-card {
       width: 100%;
-      max-width: 900px;
+      max-width: 1100px;
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
@@ -59,22 +91,46 @@ import { RoutingService } from '../services/routing.service';
       line-height: 1.5;
     }
 
-    .actions {
-      margin-top: 20px;
+    .menu-grid {
+      margin-top: 22px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .btn-primary {
-      border: 0;
-      border-radius: 10px;
-      padding: 11px 16px;
-      background: #2563eb;
-      color: #fff;
+    .menu-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .menu-card h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+      color: #0f172a;
+    }
+
+    .menu-card p {
+      margin: 0 0 12px;
+      color: #64748b;
+      font-size: 0.94rem;
+    }
+
+    .btn-primary,.btn-secondary,.btn-ghost {
+      border-radius: 9px;
+      padding: 9px 12px;
       font-weight: 700;
       cursor: pointer;
+      border: 0;
     }
 
-    .btn-primary:hover {
-      background: #1d4ed8;
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-secondary { background: #e0e7ff; color: #3730a3; }
+    .btn-ghost { background: #f1f5f9; color: #334155; }
+
+    @media (max-width: 820px) {
+      .menu-grid { grid-template-columns: 1fr; }
     }
   `,
 })
@@ -83,5 +139,9 @@ export class HomePage {
 
   openCorrosion(): void {
     void this.routing.goToCorrosionList();
+  }
+
+  comingSoon(feature: string): void {
+    alert(`${feature} volgt in een volgende stap.`);
   }
 }
