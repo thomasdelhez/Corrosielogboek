@@ -18,11 +18,18 @@ import csv
 import io
 import os
 import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+
+# Ensure backend root is importable when running as: python scripts/import_access.py
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db import SessionLocal
 from app.models import Aircraft, Hole, HolePart, HoleStep, Panel
