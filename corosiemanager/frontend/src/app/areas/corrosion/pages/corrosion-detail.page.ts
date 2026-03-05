@@ -32,7 +32,15 @@ import { CorrosionService } from '../services/corrosion.service';
               <label class="field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
               <label class="field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
               <label class="field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
-              <label class="field"><span>Inspection status</span><input [(ngModel)]="form.inspectionStatus" name="inspectionStatus" type="text" /></label>
+              <label class="field">
+                <span>Inspection status</span>
+                <select [(ngModel)]="form.inspectionStatus" name="inspectionStatus">
+                  <option [ngValue]="null">-- Selecteer status --</option>
+                  @for (opt of inspectionStatusOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              </label>
               <label class="field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
             </div>
             <div class="actions"><button class="btn-primary" type="submit">Opslaan kern</button><span class="message">{{ coreMessage() }}</span></div>
@@ -64,7 +72,12 @@ import { CorrosionService } from '../services/corrosion.service';
                 <input [(ngModel)]="p.slotNo" [name]="'slot'+i" type="number" placeholder="Slot" />
                 <input [(ngModel)]="p.partNumber" [name]="'partNo'+i" type="text" placeholder="Part number" />
                 <input [(ngModel)]="p.partLength" [name]="'partLength'+i" type="number" placeholder="Length" />
-                <input [(ngModel)]="p.status" [name]="'status'+i" type="text" placeholder="Status" />
+                <select [(ngModel)]="p.status" [name]="'status'+i">
+                  <option [ngValue]="null">-- Status --</option>
+                  @for (opt of partStatusOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
                 <button class="btn-danger" type="button" (click)="removePart(i)">Verwijder</button>
               </div>
             }
@@ -85,7 +98,15 @@ import { CorrosionService } from '../services/corrosion.service';
             }
             <div class="grid">
               <label class="field"><span>MDR number</span><input [(ngModel)]="newMdr.mdrNumber" name="newMdrNumber" type="text" /></label>
-              <label class="field"><span>Status</span><input [(ngModel)]="newMdr.status" name="newMdrStatus" type="text" /></label>
+              <label class="field">
+                <span>Status</span>
+                <select [(ngModel)]="newMdr.status" name="newMdrStatus">
+                  <option [ngValue]="null">-- Selecteer status --</option>
+                  @for (opt of mdrStatusOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              </label>
             </div>
             <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()">+ MDR case</button><span class="message">{{ mdrMessage() }}</span></div>
 
@@ -136,7 +157,7 @@ import { CorrosionService } from '../services/corrosion.service';
     .card-header{display:flex;justify-content:space-between;align-items:center}
     .grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}
     .field{display:grid;gap:6px;font-weight:600;color:#334155}
-    input{border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff}
+    input,select{border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff}
     .row-grid{display:grid;grid-template-columns:80px 120px 1fr 90px 90px 110px;gap:8px;margin-bottom:8px;align-items:center}
     .row-grid.parts{grid-template-columns:80px 1fr 120px 1fr 110px}
     .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
@@ -165,6 +186,10 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly partsMessage = signal('');
   protected readonly mdrMessage = signal('');
   protected readonly ndiMessage = signal('');
+
+  protected readonly inspectionStatusOptions = ['Clean', 'Rifled', 'Open', 'In Progress', 'Closed'];
+  protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
+  protected readonly partStatusOptions = ['Open', 'In progress @EST', 'Ordered @981', 'Received @LSE', 'Delivered @Floor', 'Closed'];
 
   protected form: UpdateHoleInput = { maxBpDiameter: null, finalHoleSize: null, fit: null, mdrCode: null, mdrVersion: null, ndiNameInitials: null, ndiInspectionDate: null, ndiFinished: false, inspectionStatus: null };
   protected stepInputs: UpdateHoleStepInput[] = [];
