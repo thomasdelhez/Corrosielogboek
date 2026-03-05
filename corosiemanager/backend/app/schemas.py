@@ -56,8 +56,8 @@ class HoleUpdate(BaseModel):
 
     @model_validator(mode="after")
     def validate_ndi(self):
-        if self.ndi_finished and (not self.ndi_name_initials or not self.ndi_inspection_date):
-            raise ValueError("ndi_name_initials and ndi_inspection_date are required when ndi_finished is true")
+        # Keep updates permissive for legacy imported records.
+        # Strict NDI validation is enforced on create flows.
         return self
 
 
