@@ -169,18 +169,16 @@ def import_panels(session: Session, db_path: str, aircraft_ids: dict[int, int]) 
 def import_holes(session: Session, db_path: str, panel_ids: dict[int, int]) -> None:
     rows = mdb_export_rows(db_path, "HoleRepairT")
 
+    # Pass 1: guarantee that every referenced panel exists.
+    referenced_panel_keys: set[int] = set()
     for row in rows:
-        hole_id = to_int(row.get("UHoleID"))
         panel_key = to_int(row.get("PanelID"))
-        hole_no = to_int(row.get("HoleID"))
+        if panel_key is not None:
+            referenced_panel_keys.add(panel_key)
 
-        if hole_id is None or panel_key is None or hole_no is None:
-            continue
-
+    for panel_key in sorted(referenced_panel_keys):
         panel_id = panel_ids.get(panel_key)
         if panel_id is None:
-            # Source inconsistency: hole references panel not present in PanelNrT.
-            # Create a placeholder panel to keep referential integrity.
             panel_id = panel_key
             existing_panel = session.get(Panel, panel_id)
             if existing_panel is None:
@@ -193,8 +191,22 @@ def import_holes(session: Session, db_path: str, panel_ids: dict[int, int]) -> N
                         start_inspection_date=None,
                     )
                 )
-                session.flush()
             panel_ids[panel_key] = panel_id
+
+    session.flush()
+
+    # Pass 2: insert holes and child data.
+    for row in rows:
+        hole_id = to_int(row.get("UHoleID"))
+        panel_key = to_int(row.get("PanelID"))
+        hole_no = to_int(row.get("HoleID"))
+
+        if hole_id is None or panel_key is None or hole_no is None:
+            continue
+
+        panel_id = panel_ids.get(panel_key)
+        if panel_id is None:
+            continue
 
         hole = Hole(
             id=hole_id,
@@ -298,6 +310,8 @@ def main() -> None:
 
         aircraft_ids = import_aircraft(session, args.accdb)
         panel_ids = import_panels(session, args.accdb, aircraft_ids)
+        session.commit()  # persist parent tables first
+
         import_holes(session, args.accdb, panel_ids)
         session.commit()
 
