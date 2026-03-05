@@ -179,7 +179,11 @@ def import_holes(session: Session, db_path: str, panel_ids: dict[int, int]) -> N
 
         panel_id = panel_ids.get(panel_key)
         if panel_id is None:
-            continue
+            # Source inconsistency: hole references panel not present in PanelNrT.
+            # Create a placeholder panel to keep referential integrity.
+            panel_id = panel_key
+            session.merge(Panel(id=panel_id, aircraft_id=None, panel_number=panel_id, surface=None, start_inspection_date=None))
+            panel_ids[panel_key] = panel_id
 
         hole = Hole(
             id=hole_id,
