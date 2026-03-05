@@ -37,31 +37,37 @@ import { CorrosionService } from '../services/corrosion.service';
           </label>
         </div>
 
-        <form class="editor" (ngSubmit)="save()">
-          <h3>{{ editingId() ? 'MDR case wijzigen' : 'Nieuwe MDR case' }}</h3>
-          <div class="grid">
-            <label class="field"><span>MDR Number</span><input [(ngModel)]="form.mdrNumber" name="mdrNumber" /></label>
-            <label class="field"><span>Versie</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" /></label>
-            <label class="field">
-              <span>Status</span>
-              <select [(ngModel)]="form.status" name="status">
-                <option [ngValue]="null">-- Selecteer status --</option>
-                @for (opt of mdrStatusOptions; track opt) {
-                  <option [value]="opt">{{ opt }}</option>
-                }
-              </select>
-            </label>
-            <label class="field"><span>Submitted by</span><input [(ngModel)]="form.submittedBy" name="submittedBy" /></label>
-            <label class="field full"><span>Subject</span><input [(ngModel)]="form.subject" name="subject" /></label>
-          </div>
-          <div class="actions">
-            <button class="btn-primary" type="submit">{{ editingId() ? 'Opslaan wijzigingen' : 'Aanmaken' }}</button>
-            @if (editingId()) {
+        <div class="actions" style="margin-top:12px;">
+          @if (!creatingMode() && !editingId()) {
+            <button class="btn-primary" type="button" (click)="startCreate()">+ Nieuwe MDR case</button>
+          }
+          <span class="msg">{{ message() }}</span>
+        </div>
+
+        @if (creatingMode() || editingId()) {
+          <form class="editor" (ngSubmit)="save()">
+            <h3>{{ editingId() ? 'MDR case wijzigen' : 'Nieuwe MDR case' }}</h3>
+            <div class="grid">
+              <label class="field"><span>MDR Number</span><input [(ngModel)]="form.mdrNumber" name="mdrNumber" /></label>
+              <label class="field"><span>Versie</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" /></label>
+              <label class="field">
+                <span>Status</span>
+                <select [(ngModel)]="form.status" name="status">
+                  <option [ngValue]="null">-- Selecteer status --</option>
+                  @for (opt of mdrStatusOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field"><span>Submitted by</span><input [(ngModel)]="form.submittedBy" name="submittedBy" /></label>
+              <label class="field full"><span>Subject</span><input [(ngModel)]="form.subject" name="subject" /></label>
+            </div>
+            <div class="actions">
+              <button class="btn-primary" type="submit">{{ editingId() ? 'Opslaan wijzigingen' : 'Aanmaken' }}</button>
               <button class="btn-secondary" type="button" (click)="resetForm()">Annuleren</button>
-            }
-            <span class="msg">{{ message() }}</span>
-          </div>
-        </form>
+            </div>
+          </form>
+        }
 
         @if (loading()) {
           <p class="state">Laden...</p>
@@ -116,6 +122,7 @@ export class MdrManagementPage implements OnInit {
   protected readonly selectedAircraftId = signal<number | null>(null);
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly loading = signal<boolean>(true);
+  protected readonly creatingMode = signal<boolean>(false);
   protected readonly editingId = signal<number | null>(null);
   protected readonly message = signal<string>('');
   protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
@@ -167,7 +174,13 @@ export class MdrManagementPage implements OnInit {
     this.loading.set(false);
   }
 
+  startCreate(): void {
+    this.resetForm();
+    this.creatingMode.set(true);
+  }
+
   startEdit(row: MdrCase): void {
+    this.creatingMode.set(false);
     this.editingId.set(row.id);
     this.form = {
       panelId: row.panelId,
@@ -184,6 +197,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   resetForm(): void {
+    this.creatingMode.set(false);
     this.editingId.set(null);
     const panel = this.panels().find((p) => p.id === this.selectedPanelId());
     this.form = {
@@ -215,6 +229,8 @@ export class MdrManagementPage implements OnInit {
         this.message.set('MDR case aangemaakt ✅');
       }
       await this.onPanelChange(panelId);
+      this.creatingMode.set(false);
+      this.editingId.set(null);
     } catch {
       this.message.set('Opslaan mislukt ❌');
     }
