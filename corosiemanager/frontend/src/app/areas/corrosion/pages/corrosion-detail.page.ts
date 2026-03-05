@@ -2,14 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import {
-  CreateMdrCaseInput,
-  CreateNdiReportInput,
-  UpdateHoleInput,
-  UpdateHolePartInput,
-  UpdateHoleStepInput,
-} from '../models/corrosion.inputs';
-import { Hole, MdrCase, MdrRequestDetail, NdiReport } from '../models/corrosion.models';
+import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../models/corrosion.inputs';
+import { Hole } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
@@ -106,67 +100,12 @@ import { CorrosionService } from '../services/corrosion.service';
           </section>
 
           <section class="subcard">
-            <h3>MDR cases (panel)</h3>
-            @for (m of mdrCases(); track m.id) {
-              <p>
-                #{{ m.id }} · {{ m.mdrNumber ?? '-' }} · {{ m.status ?? '-' }}
-                <button class="btn-danger inline" type="button" (click)="deleteMdrCase(m.id)">Verwijder</button>
-              </p>
-            }
-            <div class="grid">
-              <label class="field"><span>MDR number</span><input [(ngModel)]="newMdr.mdrNumber" name="newMdrNumber" type="text" /></label>
-              <label class="field">
-                <span>Status</span>
-                <select [(ngModel)]="newMdr.status" name="newMdrStatus">
-                  <option [ngValue]="null">-- Selecteer status --</option>
-                  @for (opt of mdrStatusOptions; track opt) {
-                    <option [value]="opt">{{ opt }}</option>
-                  }
-                </select>
-              </label>
+            <h3>Extra modules</h3>
+            <p>MDR cases en NDI reports zijn verplaatst naar de aparte menu-pagina’s.</p>
+            <div class="actions">
+              <a class="btn-secondary" routerLink="/mdr">Ga naar MDR</a>
+              <a class="btn-secondary" routerLink="/ndi">Ga naar NDI</a>
             </div>
-            <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()" [disabled]="savingMdr()">{{ savingMdr() ? 'Bezig...' : '+ MDR case' }}</button><span class="message">{{ mdrMessage() }}</span></div>
-
-            <h4 style="margin-top:12px;">MDR request details (uit Access MDRListT)</h4>
-            @if (mdrRequestDetails().length === 0) {
-              <p>Geen MDR request details voor dit panel.</p>
-            } @else {
-              <div class="details-grid">
-                @for (d of mdrRequestDetails(); track d.id) {
-                  <article class="detail-card">
-                    <h5>#{{ d.id }} · {{ d.defectCode ?? 'No defect code' }}</h5>
-                    <p><strong>TVE:</strong> {{ d.tve ?? '-' }}</p>
-                    <p><strong>MDR type:</strong> {{ d.mdrType ?? '-' }}</p>
-                    <p><strong>Discovered by:</strong> {{ d.discoveredBy ?? '-' }}</p>
-                    <p><strong>Part/Serial:</strong> {{ d.partNumber ?? '-' }} / {{ d.serialNumber ?? '-' }}</p>
-                    <p><strong>Problem:</strong> {{ d.problemStatement ?? '-' }}</p>
-                  </article>
-                }
-              </div>
-            }
-          </section>
-
-          <section class="subcard">
-            <h3>NDI reports (hole)</h3>
-            @for (r of ndiReports(); track r.id) {
-              <p>
-                #{{ r.id }} · {{ r.method ?? '-' }} · {{ r.corrosionPosition ?? '-' }}
-                <button class="btn-danger inline" type="button" (click)="deleteNdiReport(r.id)">Verwijder</button>
-              </p>
-            }
-            <div class="grid">
-              <label class="field"><span>Initials</span><input [(ngModel)]="newNdi.nameInitials" name="newNdiInitials" type="text" /></label>
-              <label class="field">
-                <span>Method</span>
-                <select [(ngModel)]="newNdi.method" name="newNdiMethod">
-                  <option [ngValue]="null">-- Selecteer method --</option>
-                  @for (opt of ndiMethodOptions; track opt) {
-                    <option [value]="opt">{{ opt }}</option>
-                  }
-                </select>
-              </label>
-            </div>
-            <div class="actions"><button class="btn-primary" type="button" (click)="createNdiReport()" [disabled]="savingNdi()">{{ savingNdi() ? 'Bezig...' : '+ NDI report' }}</button><span class="message">{{ ndiMessage() }}</span></div>
           </section>
         } @else {
           <p>Laden...</p>
@@ -203,40 +142,27 @@ export class CorrosionDetailPage implements OnInit {
   private readonly corrosionService = inject(CorrosionService);
 
   protected readonly hole = signal<Hole | null>(null);
-  protected readonly mdrCases = signal<MdrCase[]>([]);
-  protected readonly mdrRequestDetails = signal<MdrRequestDetail[]>([]);
-  protected readonly ndiReports = signal<NdiReport[]>([]);
   protected readonly coreMessage = signal('');
   protected readonly stepsMessage = signal('');
   protected readonly partsMessage = signal('');
-  protected readonly mdrMessage = signal('');
-  protected readonly ndiMessage = signal('');
 
   protected readonly savingCore = signal(false);
   protected readonly savingSteps = signal(false);
   protected readonly savingParts = signal(false);
-  protected readonly savingMdr = signal(false);
-  protected readonly savingNdi = signal(false);
 
   protected readonly inspectionStatusOptions = ['Clean', 'Rifled', 'Open', 'In Progress', 'Closed'];
-  protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
   protected readonly partStatusOptions = ['Open', 'In progress @EST', 'Ordered @981', 'Received @LSE', 'Delivered @Floor', 'Closed'];
   protected readonly dmgCleanOptions = ['CLEAN', 'DMG'];
   protected readonly bushingTypeOptions = ['SB', 'CS'];
   protected readonly stdCstOptions = ['STD', 'CST'];
-  protected readonly ndiMethodOptions = ['Visual', 'Eddy Current', 'Ultrasonic', 'Borescope', 'Other'];
 
   protected form: UpdateHoleInput = { maxBpDiameter: null, finalHoleSize: null, fit: null, mdrCode: null, mdrVersion: null, ndiNameInitials: null, ndiInspectionDate: null, ndiFinished: false, inspectionStatus: null };
   protected stepInputs: UpdateHoleStepInput[] = [];
   protected partInputs: UpdateHolePartInput[] = [];
-  protected newMdr: CreateMdrCaseInput = { panelId: null, mdrNumber: null, mdrVersion: null, subject: null, status: null, submittedBy: null, requestDate: null, needDate: null, approved: false };
-  protected newNdi: CreateNdiReportInput = { panelId: null, nameInitials: null, inspectionDate: null, method: null, tools: null, corrosionPosition: null };
-
   async ngOnInit(): Promise<void> {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     const hole = await firstValueFrom(this.corrosionService.getHole(id));
     this.applyHole(hole);
-    await this.reloadMdrAndNdi();
   }
 
   async saveCore(): Promise<void> {
@@ -294,63 +220,11 @@ export class CorrosionDetailPage implements OnInit {
     }
   }
 
-  async createMdrCase(): Promise<void> {
-    const h = this.hole();
-    if (!h) return;
-    this.savingMdr.set(true);
-    try {
-      await firstValueFrom(this.corrosionService.createMdrCase({ ...this.newMdr, panelId: h.panelId }));
-      this.mdrMessage.set('MDR case toegevoegd ✅');
-      await this.reloadMdrAndNdi();
-    } catch {
-      this.mdrMessage.set('Aanmaken mislukt ❌');
-    } finally {
-      this.savingMdr.set(false);
-    }
-  }
-
-  async createNdiReport(): Promise<void> {
-    const h = this.hole();
-    if (!h) return;
-    this.savingNdi.set(true);
-    try {
-      await firstValueFrom(this.corrosionService.createNdiReport(h.id, { ...this.newNdi, panelId: h.panelId }));
-      this.ndiMessage.set('NDI report toegevoegd ✅');
-      await this.reloadMdrAndNdi();
-    } catch {
-      this.ndiMessage.set('Aanmaken mislukt ❌');
-    } finally {
-      this.savingNdi.set(false);
-    }
-  }
-
   addStep(): void { this.stepInputs = [...this.stepInputs, { stepNo: this.stepInputs.length + 1, sizeValue: null, visualDamageCheck: null, reamFlag: null, mdrFlag: null, ndiFlag: null }]; }
   removeStep(index: number): void { this.stepInputs = this.stepInputs.filter((_, i) => i !== index); }
 
   addPart(): void { this.partInputs = [...this.partInputs, { slotNo: this.partInputs.length + 1, partNumber: null, partLength: null, bushingType: null, standardCustom: null, orderedFlag: null, deliveredFlag: null, status: null }]; }
   removePart(index: number): void { this.partInputs = this.partInputs.filter((_, i) => i !== index); }
-
-  async deleteMdrCase(mdrCaseId: number): Promise<void> {
-    if (!confirm('Weet je zeker dat je deze MDR case wilt verwijderen?')) return;
-    await firstValueFrom(this.corrosionService.deleteMdrCase(mdrCaseId));
-    this.mdrMessage.set('MDR case verwijderd ✅');
-    await this.reloadMdrAndNdi();
-  }
-
-  async deleteNdiReport(reportId: number): Promise<void> {
-    if (!confirm('Weet je zeker dat je dit NDI report wilt verwijderen?')) return;
-    await firstValueFrom(this.corrosionService.deleteNdiReport(reportId));
-    this.ndiMessage.set('NDI report verwijderd ✅');
-    await this.reloadMdrAndNdi();
-  }
-
-  private async reloadMdrAndNdi(): Promise<void> {
-    const h = this.hole();
-    if (!h) return;
-    this.mdrCases.set(await firstValueFrom(this.corrosionService.listMdrCases(h.panelId ?? undefined)));
-    this.mdrRequestDetails.set(h.panelId ? await firstValueFrom(this.corrosionService.listMdrRequestDetails(h.panelId)) : []);
-    this.ndiReports.set(await firstValueFrom(this.corrosionService.listNdiReports(h.id)));
-  }
 
   private applyHole(hole: Hole): void {
     this.hole.set(hole);
