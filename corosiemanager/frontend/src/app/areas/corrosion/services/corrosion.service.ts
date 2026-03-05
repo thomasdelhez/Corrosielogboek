@@ -4,13 +4,21 @@ import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 import {
   HoleDto,
+  MdrCaseDto,
+  NdiReportDto,
   PanelSummaryDto,
   UpdateHoleInputDto,
   UpdateHolePartInputDto,
   UpdateHoleStepInputDto,
 } from '../models/corrosion.dtos';
-import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../models/corrosion.inputs';
-import { Hole, HolePart, HoleStep, PanelSummary } from '../models/corrosion.models';
+import {
+  CreateMdrCaseInput,
+  CreateNdiReportInput,
+  UpdateHoleInput,
+  UpdateHolePartInput,
+  UpdateHoleStepInput,
+} from '../models/corrosion.inputs';
+import { Hole, HolePart, HoleStep, MdrCase, NdiReport, PanelSummary } from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
 export class CorrosionService {
@@ -49,6 +57,48 @@ export class CorrosionService {
     return this.http
       .put<HoleDto>(`${this.config.apiBaseUrl}/holes/${holeId}/parts`, input.map((p) => this.toUpdatePartDto(p)))
       .pipe(map((row) => this.toHole(row)));
+  }
+
+  listMdrCases(panelId?: number): Observable<MdrCase[]> {
+    return this.http
+      .get<MdrCaseDto[]>(`${this.config.apiBaseUrl}/mdr-cases`, { panel_id: panelId })
+      .pipe(map((rows) => rows.map((row) => this.toMdrCase(row))));
+  }
+
+  createMdrCase(input: CreateMdrCaseInput): Observable<MdrCase> {
+    return this.http
+      .post<MdrCaseDto>(`${this.config.apiBaseUrl}/mdr-cases`, {
+        panel_id: input.panelId,
+        mdr_number: input.mdrNumber,
+        mdr_version: input.mdrVersion,
+        subject: input.subject,
+        status: input.status,
+        submitted_by: input.submittedBy,
+        request_date: input.requestDate ? input.requestDate.toISOString() : null,
+        need_date: input.needDate ? input.needDate.toISOString() : null,
+        approved: input.approved,
+      })
+      .pipe(map((row) => this.toMdrCase(row)));
+  }
+
+  listNdiReports(holeId: number): Observable<NdiReport[]> {
+    return this.http
+      .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
+      .pipe(map((rows) => rows.map((row) => this.toNdiReport(row))));
+  }
+
+  createNdiReport(holeId: number, input: CreateNdiReportInput): Observable<NdiReport> {
+    return this.http
+      .post<NdiReportDto>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`, {
+        panel_id: input.panelId,
+        hole_id: holeId,
+        name_initials: input.nameInitials,
+        inspection_date: input.inspectionDate ? input.inspectionDate.toISOString() : null,
+        method: input.method,
+        tools: input.tools,
+        corrosion_position: input.corrosionPosition,
+      })
+      .pipe(map((row) => this.toNdiReport(row)));
   }
 
   private toUpdateDto(input: UpdateHoleInput): UpdateHoleInputDto {
@@ -140,6 +190,34 @@ export class CorrosionService {
       id: dto.id,
       panelNumber: dto.panel_number,
       holeCount: dto.hole_count,
+    };
+  }
+
+  private toMdrCase(dto: MdrCaseDto): MdrCase {
+    return {
+      id: dto.id,
+      panelId: dto.panel_id,
+      mdrNumber: dto.mdr_number,
+      mdrVersion: dto.mdr_version,
+      subject: dto.subject,
+      status: dto.status,
+      submittedBy: dto.submitted_by,
+      requestDate: dto.request_date ? new Date(dto.request_date) : null,
+      needDate: dto.need_date ? new Date(dto.need_date) : null,
+      approved: dto.approved,
+    };
+  }
+
+  private toNdiReport(dto: NdiReportDto): NdiReport {
+    return {
+      id: dto.id,
+      panelId: dto.panel_id,
+      holeId: dto.hole_id,
+      nameInitials: dto.name_initials,
+      inspectionDate: dto.inspection_date ? new Date(dto.inspection_date) : null,
+      method: dto.method,
+      tools: dto.tools,
+      corrosionPosition: dto.corrosion_position,
     };
   }
 }

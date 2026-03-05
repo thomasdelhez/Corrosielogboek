@@ -32,7 +32,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db import SessionLocal
-from app.models import Aircraft, Hole, HolePart, HoleStep, Panel
+from app.models import Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRemark, NdiReport, Panel
 
 
 def mdb_export_rows(db_path: str, table: str) -> list[dict[str, str]]:
@@ -286,7 +286,83 @@ def import_holes(session: Session, db_path: str, panel_ids: dict[int, int]) -> N
             )
 
 
+def import_mdr(session: Session, db_path: str, panel_ids: dict[int, int]) -> None:
+    rows = mdb_export_rows(db_path, "MDRStatusT")
+    for row in rows:
+        mdr_id = to_int(row.get("MDRID"))
+        if mdr_id is None:
+            continue
+
+        panel_key = to_int(row.get("UPanelID"))
+        panel_id = panel_ids.get(panel_key) if panel_key is not None else None
+
+        if panel_id is None and panel_key is not None:
+            panel_id = panel_key
+            if session.get(Panel, panel_id) is None:
+                session.add(Panel(id=panel_id, aircraft_id=None, panel_number=panel_id, surface=None, start_inspection_date=None))
+            panel_ids[panel_key] = panel_id
+
+        case = MdrCase(
+            id=mdr_id,
+            panel_id=panel_id,
+            mdr_number=to_text(row.get("MDRNumber")),
+            mdr_version=to_text(row.get("MDRVersion")),
+            subject=to_text(row.get("Subject")),
+            status=to_text(row.get("Status")),
+            submitted_by=to_text(row.get("SubmittedBy")),
+            request_date=to_dt(row.get("RequestDate")),
+            need_date=to_dt(row.get("NeedDate")),
+            approved=to_bool(row.get("Approved")) or False,
+        )
+        session.merge(case)
+
+        for i in range(1, 6):
+            text_v = to_text(row.get(f"RemarksV{i}"))
+            if not text_v:
+                continue
+            dt_v = to_dt(row.get(f"RemarkDateV{i}")) or to_dt(row.get(f"RemarkTimeV{i}"))
+            session.merge(
+                MdrRemark(
+                    mdr_case_id=mdr_id,
+                    remark_index=i,
+                    remark_text=text_v,
+                    remark_datetime=dt_v,
+                )
+            )
+
+
+def import_ndi_reports(session: Session, db_path: str, panel_ids: dict[int, int]) -> None:
+    rows = mdb_export_rows(db_path, "NDIReportT")
+    for row in rows:
+        report_id = to_int(row.get("KeyNDIReport"))
+        if report_id is None:
+            continue
+
+        panel_key = to_int(row.get("KeyPanelID"))
+        panel_id = panel_ids.get(panel_key) if panel_key is not None else None
+        if panel_id is None and panel_key is not None:
+            panel_id = panel_key
+            if session.get(Panel, panel_id) is None:
+                session.add(Panel(id=panel_id, aircraft_id=None, panel_number=panel_id, surface=None, start_inspection_date=None))
+            panel_ids[panel_key] = panel_id
+
+        row_obj = NdiReport(
+            id=report_id,
+            panel_id=panel_id,
+            hole_id=to_int(row.get("UHoleID")),
+            name_initials=to_text(row.get("NameInitials")),
+            inspection_date=to_dt(row.get("InspectionDate")),
+            method=to_text(row.get("Method")),
+            tools=to_text(row.get("Tools")),
+            corrosion_position=to_text(row.get("CorroPos")),
+        )
+        session.merge(row_obj)
+
+
 def truncate_core(session: Session) -> None:
+    session.execute(delete(MdrRemark))
+    session.execute(delete(MdrCase))
+    session.execute(delete(NdiReport))
     session.execute(delete(HoleStep))
     session.execute(delete(HolePart))
     session.execute(delete(Hole))
@@ -313,6 +389,8 @@ def main() -> None:
         session.commit()  # persist parent tables first
 
         import_holes(session, args.accdb, panel_ids)
+        import_mdr(session, args.accdb, panel_ids)
+        import_ndi_reports(session, args.accdb, panel_ids)
         session.commit()
 
         aircraft_count = session.scalar(select(func.count()).select_from(Aircraft))
@@ -320,13 +398,19 @@ def main() -> None:
         hole_count = session.scalar(select(func.count()).select_from(Hole))
         step_count = session.scalar(select(func.count()).select_from(HoleStep))
         part_count = session.scalar(select(func.count()).select_from(HolePart))
+        mdr_count = session.scalar(select(func.count()).select_from(MdrCase))
+        remark_count = session.scalar(select(func.count()).select_from(MdrRemark))
+        ndi_count = session.scalar(select(func.count()).select_from(NdiReport))
 
         print("Import complete")
-        print(f"Aircraft: {aircraft_count}")
-        print(f"Panels:   {panel_count}")
-        print(f"Holes:    {hole_count}")
-        print(f"Steps:    {step_count}")
-        print(f"Parts:    {part_count}")
+        print(f"Aircraft:   {aircraft_count}")
+        print(f"Panels:     {panel_count}")
+        print(f"Holes:      {hole_count}")
+        print(f"Steps:      {step_count}")
+        print(f"Parts:      {part_count}")
+        print(f"MDR cases:  {mdr_count}")
+        print(f"MDR remarks:{remark_count}")
+        print(f"NDI reports:{ndi_count}")
 
 
 if __name__ == "__main__":

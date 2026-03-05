@@ -43,3 +43,27 @@ export interface PanelSummary {
   panelNumber: number;
   holeCount: number;
 }
+
+export interface MdrCase {
+  id: number;
+  panelId: number | null;
+  mdrNumber: string | null;
+  mdrVersion: string | null;
+  subject: string | null;
+  status: string | null;
+  submittedBy: string | null;
+  requestDate: Date | null;
+  needDate: Date | null;
+  approved: boolean;
+}
+
+export interface NdiReport {
+  id: number;
+  panelId: number | null;
+  holeId: number | null;
+  nameInitials: string | null;
+  inspectionDate: Date | null;
+  method: string | null;
+  tools: string | null;
+  corrosionPosition: string | null;
+}

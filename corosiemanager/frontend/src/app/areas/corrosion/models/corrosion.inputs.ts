@@ -29,3 +29,24 @@ export interface UpdateHolePartInput {
   deliveredFlag: boolean | null;
   status: string | null;
 }
+
+export interface CreateMdrCaseInput {
+  panelId: number | null;
+  mdrNumber: string | null;
+  mdrVersion: string | null;
+  subject: string | null;
+  status: string | null;
+  submittedBy: string | null;
+  requestDate: Date | null;
+  needDate: Date | null;
+  approved: boolean;
+}
+
+export interface CreateNdiReportInput {
+  panelId: number | null;
+  nameInitials: string | null;
+  inspectionDate: Date | null;
+  method: string | null;
+  tools: string | null;
+  corrosionPosition: string | null;
+}

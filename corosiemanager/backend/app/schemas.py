@@ -94,3 +94,53 @@ class HoleOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MdrCaseIn(BaseModel):
+    panel_id: int | None = None
+    mdr_number: str | None = None
+    mdr_version: str | None = None
+    subject: str | None = None
+    status: str | None = None
+    submitted_by: str | None = None
+    request_date: datetime | None = None
+    need_date: datetime | None = None
+    approved: bool = False
+
+
+class MdrCaseOut(MdrCaseIn):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class MdrRemarkIn(BaseModel):
+    remark_index: int = Field(ge=1, le=5)
+    remark_text: str
+    remark_datetime: datetime | None = None
+
+
+class MdrRemarkOut(MdrRemarkIn):
+    id: int
+    mdr_case_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class NdiReportIn(BaseModel):
+    panel_id: int | None = None
+    hole_id: int | None = None
+    name_initials: str | None = None
+    inspection_date: datetime | None = None
+    method: str | None = None
+    tools: str | None = None
+    corrosion_position: str | None = None
+
+
+class NdiReportOut(NdiReportIn):
+    id: int
+
+    class Config:
+        from_attributes = True

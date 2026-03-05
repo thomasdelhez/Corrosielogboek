@@ -6,8 +6,20 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
-from .models import Hole, HolePart, HoleStep, Panel
-from .schemas import HoleCreate, HoleOut, HolePartIn, HoleStepIn, HoleUpdate
+from .models import Hole, HolePart, HoleStep, MdrCase, MdrRemark, NdiReport, Panel
+from .schemas import (
+    HoleCreate,
+    HoleOut,
+    HolePartIn,
+    HoleStepIn,
+    HoleUpdate,
+    MdrCaseIn,
+    MdrCaseOut,
+    MdrRemarkIn,
+    MdrRemarkOut,
+    NdiReportIn,
+    NdiReportOut,
+)
 
 app = FastAPI(title="F35 Corrosie Logboek API", version="0.2.1")
 
@@ -247,3 +259,61 @@ def replace_hole_parts(hole_id: int, payload: list[HolePartIn], db: Session = De
 
     db.commit()
     return _get_hole_or_404(db, hole_id)
+
+
+@app.get("/api/v1/mdr-cases", response_model=list[MdrCaseOut])
+def list_mdr_cases(db: Session = Depends(get_db), panel_id: int | None = None, limit: int = 200):
+    stmt = select(MdrCase).order_by(MdrCase.id.desc()).limit(limit)
+    if panel_id is not None:
+        stmt = stmt.where(MdrCase.panel_id == panel_id)
+    return db.execute(stmt).scalars().all()
+
+
+@app.post("/api/v1/mdr-cases", response_model=MdrCaseOut, status_code=201)
+def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db)):
+    row = MdrCase(**payload.model_dump())
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.put("/api/v1/mdr-cases/{mdr_case_id}", response_model=MdrCaseOut)
+def update_mdr_case(mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(get_db)):
+    row = db.get(MdrCase, mdr_case_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="MDR case not found")
+    for key, value in payload.model_dump().items():
+        setattr(row, key, value)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.post("/api/v1/mdr-cases/{mdr_case_id}/remarks", response_model=MdrRemarkOut, status_code=201)
+def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends(get_db)):
+    if not db.get(MdrCase, mdr_case_id):
+        raise HTTPException(status_code=404, detail="MDR case not found")
+    row = MdrRemark(mdr_case_id=mdr_case_id, **payload.model_dump())
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.get("/api/v1/holes/{hole_id}/ndi-reports", response_model=list[NdiReportOut])
+def list_ndi_reports(hole_id: int, db: Session = Depends(get_db)):
+    return db.execute(select(NdiReport).where(NdiReport.hole_id == hole_id).order_by(NdiReport.id.desc())).scalars().all()
+
+
+@app.post("/api/v1/holes/{hole_id}/ndi-reports", response_model=NdiReportOut, status_code=201)
+def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(get_db)):
+    _get_hole_or_404(db, hole_id)
+    row = NdiReport(**payload.model_dump(), hole_id=hole_id)
+    if row.panel_id is None:
+        hole = db.get(Hole, hole_id)
+        row.panel_id = hole.panel_id if hole else None
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row

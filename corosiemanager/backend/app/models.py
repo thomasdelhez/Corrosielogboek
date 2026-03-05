@@ -81,3 +81,41 @@ class HolePart(Base):
     status: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     hole: Mapped[Hole] = relationship(back_populates="parts")
+
+
+class MdrCase(Base):
+    __tablename__ = "mdr_case"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    panel_id: Mapped[int | None] = mapped_column(ForeignKey("panel.id", ondelete="SET NULL"), nullable=True, index=True)
+    mdr_number: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    mdr_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    submitted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    request_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    need_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    approved: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class MdrRemark(Base):
+    __tablename__ = "mdr_remark"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    mdr_case_id: Mapped[int] = mapped_column(ForeignKey("mdr_case.id", ondelete="CASCADE"), index=True)
+    remark_index: Mapped[int] = mapped_column(Integer)
+    remark_text: Mapped[str] = mapped_column(Text)
+    remark_datetime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class NdiReport(Base):
+    __tablename__ = "ndi_report"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    panel_id: Mapped[int | None] = mapped_column(ForeignKey("panel.id", ondelete="SET NULL"), nullable=True, index=True)
+    hole_id: Mapped[int | None] = mapped_column(ForeignKey("hole.id", ondelete="SET NULL"), nullable=True, index=True)
+    name_initials: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    inspection_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    method: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tools: Mapped[str | None] = mapped_column(Text, nullable=True)
+    corrosion_position: Mapped[str | None] = mapped_column(String(255), nullable=True)

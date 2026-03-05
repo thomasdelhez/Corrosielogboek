@@ -75,3 +75,27 @@ export interface PanelSummaryDto {
   panel_number: number;
   hole_count: number;
 }
+
+export interface MdrCaseDto {
+  id: number;
+  panel_id: number | null;
+  mdr_number: string | null;
+  mdr_version: string | null;
+  subject: string | null;
+  status: string | null;
+  submitted_by: string | null;
+  request_date: string | null;
+  need_date: string | null;
+  approved: boolean;
+}
+
+export interface NdiReportDto {
+  id: number;
+  panel_id: number | null;
+  hole_id: number | null;
+  name_initials: string | null;
+  inspection_date: string | null;
+  method: string | null;
+  tools: string | null;
+  corrosion_position: string | null;
+}
