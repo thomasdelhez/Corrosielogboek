@@ -70,8 +70,15 @@ export interface UpdateHolePartInputDto {
   status: string | null;
 }
 
+export interface AircraftDto {
+  id: number;
+  an: string;
+  serial_number: string | null;
+}
+
 export interface PanelSummaryDto {
   id: number;
+  aircraft_id: number | null;
   panel_number: number;
   hole_count: number;
 }

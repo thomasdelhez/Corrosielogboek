@@ -38,8 +38,15 @@ export interface Hole {
   parts: HolePart[];
 }
 
+export interface Aircraft {
+  id: number;
+  an: string;
+  serialNumber: string | null;
+}
+
 export interface PanelSummary {
   id: number;
+  aircraftId: number | null;
   panelNumber: number;
   holeCount: number;
 }

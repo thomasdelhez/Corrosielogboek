@@ -6,7 +6,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
-from .models import Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
+from .models import Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
     HoleCreate,
     HoleOut,
@@ -49,22 +49,33 @@ def health():
     return {"ok": True}
 
 
+@app.get("/api/v1/aircraft")
+def list_aircraft(db: Session = Depends(get_db)):
+    rows = db.execute(select(Aircraft).order_by(Aircraft.an.asc())).scalars().all()
+    return [{"id": a.id, "an": a.an, "serial_number": a.serial_number} for a in rows]
+
+
 @app.get("/api/v1/panels")
-def list_panels(db: Session = Depends(get_db)):
-    rows = db.execute(
+def list_panels(db: Session = Depends(get_db), aircraft_id: int | None = None):
+    stmt = (
         select(
             Panel.id.label("id"),
+            Panel.aircraft_id.label("aircraft_id"),
             Panel.panel_number.label("panel_number"),
             func.count(Hole.id).label("hole_count"),
         )
         .outerjoin(Hole, Hole.panel_id == Panel.id)
-        .group_by(Panel.id, Panel.panel_number)
-        .order_by(Panel.id.asc())
-    ).all()
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+
+    rows = db.execute(stmt.group_by(Panel.id, Panel.aircraft_id, Panel.panel_number).order_by(Panel.id.asc())).all()
 
     return [
         {
             "id": r.id,
+            "aircraft_id": r.aircraft_id,
             "panel_number": r.panel_number,
             "hole_count": int(r.hole_count or 0),
         }

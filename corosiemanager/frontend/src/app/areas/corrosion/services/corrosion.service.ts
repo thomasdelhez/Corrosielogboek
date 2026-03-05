@@ -3,6 +3,7 @@ import { map, Observable } from 'rxjs';
 import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 import {
+  AircraftDto,
   HoleDto,
   MdrCaseDto,
   MdrRequestDetailDto,
@@ -19,16 +20,22 @@ import {
   UpdateHolePartInput,
   UpdateHoleStepInput,
 } from '../models/corrosion.inputs';
-import { Hole, HolePart, HoleStep, MdrCase, MdrRequestDetail, NdiReport, PanelSummary } from '../models/corrosion.models';
+import { Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRequestDetail, NdiReport, PanelSummary } from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
 export class CorrosionService {
   private readonly http = inject(HttpService);
   private readonly config = inject(AppConfigService);
 
-  listPanels(): Observable<PanelSummary[]> {
+  listAircraft(): Observable<Aircraft[]> {
     return this.http
-      .get<PanelSummaryDto[]>(`${this.config.apiBaseUrl}/panels`)
+      .get<AircraftDto[]>(`${this.config.apiBaseUrl}/aircraft`)
+      .pipe(map((rows) => rows.map((row) => this.toAircraft(row))));
+  }
+
+  listPanels(aircraftId?: number): Observable<PanelSummary[]> {
+    return this.http
+      .get<PanelSummaryDto[]>(`${this.config.apiBaseUrl}/panels`, { aircraft_id: aircraftId })
       .pipe(map((rows) => rows.map((row) => this.toPanelSummary(row))));
   }
 
@@ -200,9 +207,18 @@ export class CorrosionService {
     };
   }
 
+  private toAircraft(dto: AircraftDto): Aircraft {
+    return {
+      id: dto.id,
+      an: dto.an,
+      serialNumber: dto.serial_number,
+    };
+  }
+
   private toPanelSummary(dto: PanelSummaryDto): PanelSummary {
     return {
       id: dto.id,
+      aircraftId: dto.aircraft_id,
       panelNumber: dto.panel_number,
       holeCount: dto.hole_count,
     };
