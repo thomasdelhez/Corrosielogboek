@@ -308,11 +308,14 @@ def list_ndi_reports(hole_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/v1/holes/{hole_id}/ndi-reports", response_model=NdiReportOut, status_code=201)
 def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(get_db)):
-    _get_hole_or_404(db, hole_id)
-    row = NdiReport(**payload.model_dump(), hole_id=hole_id)
+    hole = _get_hole_or_404(db, hole_id)
+
+    data = payload.model_dump(exclude={"hole_id"})
+    row = NdiReport(**data)
+    row.hole_id = hole_id
     if row.panel_id is None:
-        hole = db.get(Hole, hole_id)
-        row.panel_id = hole.panel_id if hole else None
+        row.panel_id = hole.panel_id
+
     db.add(row)
     db.commit()
     db.refresh(row)
