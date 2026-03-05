@@ -9,7 +9,7 @@ import { RouterLink } from '@angular/router';
       <section class="hero-card">
         <p class="eyebrow">F35 Corrosie Logboek</p>
         <h1>Main Menu</h1>
-        <p class="subtitle">Kies een optie om te starten. Bestaande functionaliteit blijft volledig beschikbaar.</p>
+        <p class="subtitle">Kies een optie om te starten.</p>
 
         <div class="menu-grid">
           <article class="menu-card">
