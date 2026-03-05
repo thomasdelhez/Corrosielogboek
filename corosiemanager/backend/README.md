@@ -15,9 +15,12 @@ Environment variables:
 - `DATABASE_URL` (default: `postgresql+psycopg://corrosie:corrosie@localhost:5432/corrosie`)
 - `ALLOWED_ORIGINS` (default: `http://127.0.0.1:4200,http://localhost:4200`)
 
-## Access import script (v1)
+## Access import script (v1+)
 
-Imports Access data into core MVP tables (`aircraft`, `panel`, `hole`, `hole_step`, `hole_part`).
+Imports Access data into MVP tables:
+- core: `aircraft`, `panel`, `hole`, `hole_step`, `hole_part`
+- MDR/NDI: `mdr_case`, `mdr_remark`, `ndi_report`
+- MDR request details: `mdr_request_detail`
 
 ```bash
 cd corosiemanager/backend
@@ -30,6 +33,12 @@ By default the script truncates core tables first. Use `--append` to keep existi
 
 Note: the importer deduplicates `AircraftNrT` records by `AN` (Access source can contain duplicates).
 If a hole references a panel ID not present in `PanelNrT`, the importer creates a placeholder panel row.
+
+## Verification script
+
+```bash
+python scripts/verify_import.py --accdb "../Tier 2 MDR Tool V3.0 - kopie.accdb"
+```
 
 ## First implemented endpoints
 

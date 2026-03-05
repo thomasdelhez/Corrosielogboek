@@ -48,8 +48,21 @@ import { CorrosionService } from '../services/corrosion.service';
             <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()">+ MDR case</button><span class="message">{{ mdrMessage() }}</span></div>
 
             <h4 style="margin-top:12px;">MDR request details (uit Access MDRListT)</h4>
-            @for (d of mdrRequestDetails(); track d.id) {
-              <p>#{{ d.id }} · {{ d.defectCode ?? '-' }} · {{ d.discoveredBy ?? '-' }} · {{ d.problemStatement ?? '-' }}</p>
+            @if (mdrRequestDetails().length === 0) {
+              <p>Geen MDR request details voor dit panel.</p>
+            } @else {
+              <div class="details-grid">
+                @for (d of mdrRequestDetails(); track d.id) {
+                  <article class="detail-card">
+                    <h5>#{{ d.id }} · {{ d.defectCode ?? 'No defect code' }}</h5>
+                    <p><strong>TVE:</strong> {{ d.tve ?? '-' }}</p>
+                    <p><strong>MDR type:</strong> {{ d.mdrType ?? '-' }}</p>
+                    <p><strong>Discovered by:</strong> {{ d.discoveredBy ?? '-' }}</p>
+                    <p><strong>Part/Serial:</strong> {{ d.partNumber ?? '-' }} / {{ d.serialNumber ?? '-' }}</p>
+                    <p><strong>Problem:</strong> {{ d.problemStatement ?? '-' }}</p>
+                  </article>
+                }
+              </div>
             }
           </section>
 
@@ -68,7 +81,7 @@ import { CorrosionService } from '../services/corrosion.service';
       </section>
     </main>
   `,
-  styles: `.page{max-width:980px;margin:0 auto;padding:24px}.card,.subcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px}.subcard{margin-top:14px}.card-header{display:flex;justify-content:space-between}.grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}.field{display:grid;gap:6px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.btn-primary{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px}.btn-secondary{background:#e2e8f0;border:0;border-radius:8px;padding:8px 12px}.badge{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:4px 10px}.message{color:#15803d;font-weight:600}`,
+  styles: `.page{max-width:980px;margin:0 auto;padding:24px}.card,.subcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px}.subcard{margin-top:14px}.card-header{display:flex;justify-content:space-between}.grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}.field{display:grid;gap:6px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.btn-primary{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px}.btn-secondary{background:#e2e8f0;border:0;border-radius:8px;padding:8px 12px}.badge{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:4px 10px}.message{color:#15803d;font-weight:600}.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}.detail-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc}.detail-card h5{margin:0 0 6px 0}.detail-card p{margin:2px 0}`,
 })
 export class CorrosionDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
