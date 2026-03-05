@@ -49,3 +49,23 @@ export interface UpdateHoleInputDto {
   ndi_finished: boolean;
   inspection_status: string | null;
 }
+
+export interface UpdateHoleStepInputDto {
+  step_no: number;
+  size_value: number | null;
+  visual_damage_check: string | null;
+  ream_flag: boolean | null;
+  mdr_flag: boolean | null;
+  ndi_flag: boolean | null;
+}
+
+export interface UpdateHolePartInputDto {
+  slot_no: number;
+  part_number: string | null;
+  part_length: number | null;
+  bushing_type: string | null;
+  standard_custom: string | null;
+  ordered_flag: boolean | null;
+  delivered_flag: boolean | null;
+  status: string | null;
+}

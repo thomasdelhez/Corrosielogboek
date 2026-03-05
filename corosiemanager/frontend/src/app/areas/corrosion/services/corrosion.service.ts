@@ -2,8 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
-import { HoleDto, UpdateHoleInputDto } from '../models/corrosion.dtos';
-import { UpdateHoleInput } from '../models/corrosion.inputs';
+import {
+  HoleDto,
+  UpdateHoleInputDto,
+  UpdateHolePartInputDto,
+  UpdateHoleStepInputDto,
+} from '../models/corrosion.dtos';
+import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../models/corrosion.inputs';
 import { Hole, HolePart, HoleStep } from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +32,18 @@ export class CorrosionService {
       .pipe(map((row) => this.toHole(row)));
   }
 
+  updateHoleSteps(holeId: number, input: UpdateHoleStepInput[]): Observable<Hole> {
+    return this.http
+      .put<HoleDto>(`${this.config.apiBaseUrl}/holes/${holeId}/steps`, input.map((s) => this.toUpdateStepDto(s)))
+      .pipe(map((row) => this.toHole(row)));
+  }
+
+  updateHoleParts(holeId: number, input: UpdateHolePartInput[]): Observable<Hole> {
+    return this.http
+      .put<HoleDto>(`${this.config.apiBaseUrl}/holes/${holeId}/parts`, input.map((p) => this.toUpdatePartDto(p)))
+      .pipe(map((row) => this.toHole(row)));
+  }
+
   private toUpdateDto(input: UpdateHoleInput): UpdateHoleInputDto {
     return {
       max_bp_diameter: input.maxBpDiameter,
@@ -38,6 +55,30 @@ export class CorrosionService {
       ndi_inspection_date: input.ndiInspectionDate ? input.ndiInspectionDate.toISOString() : null,
       ndi_finished: input.ndiFinished,
       inspection_status: input.inspectionStatus,
+    };
+  }
+
+  private toUpdateStepDto(input: UpdateHoleStepInput): UpdateHoleStepInputDto {
+    return {
+      step_no: input.stepNo,
+      size_value: input.sizeValue,
+      visual_damage_check: input.visualDamageCheck,
+      ream_flag: input.reamFlag,
+      mdr_flag: input.mdrFlag,
+      ndi_flag: input.ndiFlag,
+    };
+  }
+
+  private toUpdatePartDto(input: UpdateHolePartInput): UpdateHolePartInputDto {
+    return {
+      slot_no: input.slotNo,
+      part_number: input.partNumber,
+      part_length: input.partLength,
+      bushing_type: input.bushingType,
+      standard_custom: input.standardCustom,
+      ordered_flag: input.orderedFlag,
+      delivered_flag: input.deliveredFlag,
+      status: input.status,
     };
   }
 
