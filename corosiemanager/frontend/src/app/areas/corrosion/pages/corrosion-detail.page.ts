@@ -52,7 +52,12 @@ import { CorrosionService } from '../services/corrosion.service';
               <div class="row-grid">
                 <input [(ngModel)]="s.stepNo" [name]="'stepNo'+i" type="number" placeholder="Step" />
                 <input [(ngModel)]="s.sizeValue" [name]="'sizeValue'+i" type="number" placeholder="Size" />
-                <input [(ngModel)]="s.visualDamageCheck" [name]="'visual'+i" type="text" placeholder="Visual damage check" />
+                <select [(ngModel)]="s.visualDamageCheck" [name]="'visual'+i">
+                  <option [ngValue]="null">-- DMG/CLEAN --</option>
+                  @for (opt of dmgCleanOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
                 <label><input [(ngModel)]="s.mdrFlag" [name]="'mdr'+i" type="checkbox" /> MDR</label>
                 <label><input [(ngModel)]="s.ndiFlag" [name]="'ndi'+i" type="checkbox" /> NDI</label>
                 <button class="btn-danger" type="button" (click)="removeStep(i)">Verwijder</button>
@@ -72,6 +77,18 @@ import { CorrosionService } from '../services/corrosion.service';
                 <input [(ngModel)]="p.slotNo" [name]="'slot'+i" type="number" placeholder="Slot" />
                 <input [(ngModel)]="p.partNumber" [name]="'partNo'+i" type="text" placeholder="Part number" />
                 <input [(ngModel)]="p.partLength" [name]="'partLength'+i" type="number" placeholder="Length" />
+                <select [(ngModel)]="p.bushingType" [name]="'bushing'+i">
+                  <option [ngValue]="null">-- SB/CS --</option>
+                  @for (opt of bushingTypeOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+                <select [(ngModel)]="p.standardCustom" [name]="'stdcst'+i">
+                  <option [ngValue]="null">-- STD/CST --</option>
+                  @for (opt of stdCstOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
                 <select [(ngModel)]="p.status" [name]="'status'+i">
                   <option [ngValue]="null">-- Status --</option>
                   @for (opt of partStatusOptions; track opt) {
@@ -139,7 +156,15 @@ import { CorrosionService } from '../services/corrosion.service';
             }
             <div class="grid">
               <label class="field"><span>Initials</span><input [(ngModel)]="newNdi.nameInitials" name="newNdiInitials" type="text" /></label>
-              <label class="field"><span>Method</span><input [(ngModel)]="newNdi.method" name="newNdiMethod" type="text" /></label>
+              <label class="field">
+                <span>Method</span>
+                <select [(ngModel)]="newNdi.method" name="newNdiMethod">
+                  <option [ngValue]="null">-- Selecteer method --</option>
+                  @for (opt of ndiMethodOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              </label>
             </div>
             <div class="actions"><button class="btn-primary" type="button" (click)="createNdiReport()">+ NDI report</button><span class="message">{{ ndiMessage() }}</span></div>
           </section>
@@ -159,7 +184,7 @@ import { CorrosionService } from '../services/corrosion.service';
     .field{display:grid;gap:6px;font-weight:600;color:#334155}
     input,select{border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff}
     .row-grid{display:grid;grid-template-columns:80px 120px 1fr 90px 90px 110px;gap:8px;margin-bottom:8px;align-items:center}
-    .row-grid.parts{grid-template-columns:80px 1fr 120px 1fr 110px}
+    .row-grid.parts{grid-template-columns:80px 1fr 110px 110px 1fr 1fr 110px}
     .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
     .btn-primary{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px}
     .btn-secondary{background:#e2e8f0;border:0;border-radius:8px;padding:8px 12px}
@@ -190,6 +215,10 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly inspectionStatusOptions = ['Clean', 'Rifled', 'Open', 'In Progress', 'Closed'];
   protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
   protected readonly partStatusOptions = ['Open', 'In progress @EST', 'Ordered @981', 'Received @LSE', 'Delivered @Floor', 'Closed'];
+  protected readonly dmgCleanOptions = ['CLEAN', 'DMG'];
+  protected readonly bushingTypeOptions = ['SB', 'CS'];
+  protected readonly stdCstOptions = ['STD', 'CST'];
+  protected readonly ndiMethodOptions = ['Visual', 'Eddy Current', 'Ultrasonic', 'Borescope', 'Other'];
 
   protected form: UpdateHoleInput = { maxBpDiameter: null, finalHoleSize: null, fit: null, mdrCode: null, mdrVersion: null, ndiNameInitials: null, ndiInspectionDate: null, ndiFinished: false, inspectionStatus: null };
   protected stepInputs: UpdateHoleStepInput[] = [];
