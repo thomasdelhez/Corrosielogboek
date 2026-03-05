@@ -25,6 +25,15 @@ def mdb_count(accdb: str, table: str) -> int:
     return int(out)
 
 
+def mdb_export_count(accdb: str, table: str) -> int:
+    """Count rows via mdb-export (header excluded). More reliable for some Access files."""
+    out = subprocess.check_output(["mdb-export", accdb, table], text=True)
+    lines = [line for line in out.splitlines() if line.strip() != ""]
+    if not lines:
+        return 0
+    return max(0, len(lines) - 1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--accdb", required=True)
@@ -33,7 +42,7 @@ def main() -> None:
     src = {
         "AircraftNrT": mdb_count(args.accdb, "AircraftNrT"),
         "PanelNrT": mdb_count(args.accdb, "PanelNrT"),
-        "HoleRepairT": mdb_count(args.accdb, "HoleRepairT"),
+        "HoleRepairT": mdb_export_count(args.accdb, "HoleRepairT"),
         "MDRStatusT": mdb_count(args.accdb, "MDRStatusT"),
         "NDIReportT": mdb_count(args.accdb, "NDIReportT"),
         "MDRListT": mdb_count(args.accdb, "MDRListT"),
@@ -62,6 +71,7 @@ def main() -> None:
     print("\nNotes:")
     print("- aircraft can be lower in target due to AN deduplication")
     print("- panel can differ due to placeholder panel creation")
+    print("- HoleRepairT is counted via mdb-export rows (header excluded)")
     print("- hole_step/hole_part are normalized expansions of HoleRepairT")
 
 
