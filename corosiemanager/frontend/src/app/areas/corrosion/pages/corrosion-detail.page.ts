@@ -99,14 +99,6 @@ import { CorrosionService } from '../services/corrosion.service';
             </div>
           </section>
 
-          <section class="subcard">
-            <h3>Extra modules</h3>
-            <p>MDR cases en NDI reports zijn verplaatst naar de aparte menu-pagina’s.</p>
-            <div class="actions">
-              <a class="btn-secondary" routerLink="/mdr">Ga naar MDR</a>
-              <a class="btn-secondary" routerLink="/ndi">Ga naar NDI</a>
-            </div>
-          </section>
         } @else {
           <p>Laden...</p>
         }
