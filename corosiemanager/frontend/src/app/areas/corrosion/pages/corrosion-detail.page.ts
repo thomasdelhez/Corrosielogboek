@@ -19,31 +19,66 @@ import { CorrosionService } from '../services/corrosion.service';
     <main class="page">
       <a class="back-link" routerLink="/corrosion">← Terug naar overzicht</a>
       <section class="card">
-        <header class="card-header"><h2>Hole detail</h2>@if (hole(); as h) {<span class="badge">Hole #{{ h.holeNumber }}</span>}</header>
+        <header class="card-header">
+          <h2>Hole detail</h2>
+          @if (hole(); as h) {<span class="badge">Hole #{{ h.holeNumber }}</span>}
+        </header>
 
         @if (hole()) {
           <form class="form" (ngSubmit)="saveCore()">
             <h3>Kerngegevens</h3>
             <div class="grid">
-              <label class="field"><span>Final hole size</span><input type="number" [(ngModel)]="form.finalHoleSize" name="finalHoleSize" /></label>
-              <label class="field"><span>Fit</span><input type="text" [(ngModel)]="form.fit" name="fit" /></label>
-              <label class="field"><span>MDR code</span><input type="text" [(ngModel)]="form.mdrCode" name="mdrCode" /></label>
-              <label class="field"><span>MDR version</span><input type="text" [(ngModel)]="form.mdrVersion" name="mdrVersion" /></label>
-              <label class="field"><span>Inspection status</span><input type="text" [(ngModel)]="form.inspectionStatus" name="inspectionStatus" /></label>
-              <label class="field"><span>NDI initials</span><input type="text" [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" /></label>
+              <label class="field"><span>Final hole size</span><input [(ngModel)]="form.finalHoleSize" name="finalHoleSize" type="number" /></label>
+              <label class="field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
+              <label class="field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
+              <label class="field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
+              <label class="field"><span>Inspection status</span><input [(ngModel)]="form.inspectionStatus" name="inspectionStatus" type="text" /></label>
+              <label class="field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
             </div>
             <div class="actions"><button class="btn-primary" type="submit">Opslaan kern</button><span class="message">{{ coreMessage() }}</span></div>
           </form>
 
-          <section class="subcard"><h3>Steps</h3><div class="actions"><button class="btn-secondary" type="button" (click)="addStep()">+ Step</button><button class="btn-primary" type="button" (click)="saveSteps()">Opslaan steps</button><span class="message">{{ stepsMessage() }}</span></div></section>
-          <section class="subcard"><h3>Parts</h3><div class="actions"><button class="btn-secondary" type="button" (click)="addPart()">+ Part</button><button class="btn-primary" type="button" (click)="saveParts()">Opslaan parts</button><span class="message">{{ partsMessage() }}</span></div></section>
+          <section class="subcard">
+            <h3>Steps</h3>
+            @for (s of stepInputs; track $index; let i = $index) {
+              <div class="row-grid">
+                <input [(ngModel)]="s.stepNo" [name]="'stepNo'+i" type="number" placeholder="Step" />
+                <input [(ngModel)]="s.sizeValue" [name]="'sizeValue'+i" type="number" placeholder="Size" />
+                <input [(ngModel)]="s.visualDamageCheck" [name]="'visual'+i" type="text" placeholder="Visual damage check" />
+                <label><input [(ngModel)]="s.mdrFlag" [name]="'mdr'+i" type="checkbox" /> MDR</label>
+                <label><input [(ngModel)]="s.ndiFlag" [name]="'ndi'+i" type="checkbox" /> NDI</label>
+              </div>
+            }
+            <div class="actions">
+              <button class="btn-secondary" type="button" (click)="addStep()">+ Step</button>
+              <button class="btn-primary" type="button" (click)="saveSteps()">Opslaan steps</button>
+              <span class="message">{{ stepsMessage() }}</span>
+            </div>
+          </section>
+
+          <section class="subcard">
+            <h3>Parts</h3>
+            @for (p of partInputs; track $index; let i = $index) {
+              <div class="row-grid parts">
+                <input [(ngModel)]="p.slotNo" [name]="'slot'+i" type="number" placeholder="Slot" />
+                <input [(ngModel)]="p.partNumber" [name]="'partNo'+i" type="text" placeholder="Part number" />
+                <input [(ngModel)]="p.partLength" [name]="'partLength'+i" type="number" placeholder="Length" />
+                <input [(ngModel)]="p.status" [name]="'status'+i" type="text" placeholder="Status" />
+              </div>
+            }
+            <div class="actions">
+              <button class="btn-secondary" type="button" (click)="addPart()">+ Part</button>
+              <button class="btn-primary" type="button" (click)="saveParts()">Opslaan parts</button>
+              <span class="message">{{ partsMessage() }}</span>
+            </div>
+          </section>
 
           <section class="subcard">
             <h3>MDR cases (panel)</h3>
             @for (m of mdrCases(); track m.id) {<p>#{{ m.id }} · {{ m.mdrNumber ?? '-' }} · {{ m.status ?? '-' }}</p>}
             <div class="grid">
-              <label class="field"><span>MDR number</span><input type="text" [(ngModel)]="newMdr.mdrNumber" name="newMdrNumber" /></label>
-              <label class="field"><span>Status</span><input type="text" [(ngModel)]="newMdr.status" name="newMdrStatus" /></label>
+              <label class="field"><span>MDR number</span><input [(ngModel)]="newMdr.mdrNumber" name="newMdrNumber" type="text" /></label>
+              <label class="field"><span>Status</span><input [(ngModel)]="newMdr.status" name="newMdrStatus" type="text" /></label>
             </div>
             <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()">+ MDR case</button><span class="message">{{ mdrMessage() }}</span></div>
 
@@ -70,8 +105,8 @@ import { CorrosionService } from '../services/corrosion.service';
             <h3>NDI reports (hole)</h3>
             @for (r of ndiReports(); track r.id) {<p>#{{ r.id }} · {{ r.method ?? '-' }} · {{ r.corrosionPosition ?? '-' }}</p>}
             <div class="grid">
-              <label class="field"><span>Initials</span><input type="text" [(ngModel)]="newNdi.nameInitials" name="newNdiInitials" /></label>
-              <label class="field"><span>Method</span><input type="text" [(ngModel)]="newNdi.method" name="newNdiMethod" /></label>
+              <label class="field"><span>Initials</span><input [(ngModel)]="newNdi.nameInitials" name="newNdiInitials" type="text" /></label>
+              <label class="field"><span>Method</span><input [(ngModel)]="newNdi.method" name="newNdiMethod" type="text" /></label>
             </div>
             <div class="actions"><button class="btn-primary" type="button" (click)="createNdiReport()">+ NDI report</button><span class="message">{{ ndiMessage() }}</span></div>
           </section>
@@ -81,7 +116,27 @@ import { CorrosionService } from '../services/corrosion.service';
       </section>
     </main>
   `,
-  styles: `.page{max-width:980px;margin:0 auto;padding:24px}.card,.subcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px}.subcard{margin-top:14px}.card-header{display:flex;justify-content:space-between}.grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}.field{display:grid;gap:6px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.btn-primary{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px}.btn-secondary{background:#e2e8f0;border:0;border-radius:8px;padding:8px 12px}.badge{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:4px 10px}.message{color:#15803d;font-weight:600}.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}.detail-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc}.detail-card h5{margin:0 0 6px 0}.detail-card p{margin:2px 0}`,
+  styles: `
+    .page{max-width:980px;margin:0 auto;padding:24px}
+    .back-link{display:inline-block;margin-bottom:10px;color:#334155;text-decoration:none;font-weight:600}
+    .card,.subcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px}
+    .subcard{margin-top:14px}
+    .card-header{display:flex;justify-content:space-between;align-items:center}
+    .grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .field{display:grid;gap:6px;font-weight:600;color:#334155}
+    input{border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff}
+    .row-grid{display:grid;grid-template-columns:80px 120px 1fr 90px 90px;gap:8px;margin-bottom:8px;align-items:center}
+    .row-grid.parts{grid-template-columns:80px 1fr 120px 1fr}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .btn-primary{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px}
+    .btn-secondary{background:#e2e8f0;border:0;border-radius:8px;padding:8px 12px}
+    .badge{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:4px 10px}
+    .message{color:#15803d;font-weight:600}
+    .details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .detail-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc}
+    .detail-card h5{margin:0 0 6px 0}.detail-card p{margin:2px 0}
+    @media(max-width:900px){.grid,.row-grid,.row-grid.parts,.details-grid{grid-template-columns:1fr}}
+  `,
 })
 export class CorrosionDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -110,77 +165,20 @@ export class CorrosionDetailPage implements OnInit {
     await this.reloadMdrAndNdi();
   }
 
-  async saveCore(): Promise<void> {
-    const h = this.hole();
-    if (!h) return;
-
-    if (this.form.ndiFinished && !this.form.ndiNameInitials) {
-      this.coreMessage.set('NDI initials zijn verplicht als NDI finished aan staat.');
-      return;
-    }
-
-    try {
-      const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form));
-      this.applyHole(updated);
-      this.coreMessage.set('Opgeslagen ✅');
-    } catch {
-      this.coreMessage.set('Opslaan mislukt ❌');
-    }
-  }
-
-  async saveSteps(): Promise<void> {
-    const h = this.hole();
-    if (!h) return;
-
-    const ids = this.stepInputs.map((s) => s.stepNo);
-    if (new Set(ids).size !== ids.length) {
-      this.stepsMessage.set('Dubbele step nummers zijn niet toegestaan.');
-      return;
-    }
-
-    try {
-      const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs));
-      this.applyHole(updated);
-      this.stepsMessage.set('Steps opgeslagen ✅');
-    } catch {
-      this.stepsMessage.set('Opslaan mislukt ❌');
-    }
-  }
-
-  async saveParts(): Promise<void> {
-    const h = this.hole();
-    if (!h) return;
-
-    const ids = this.partInputs.map((p) => p.slotNo);
-    if (new Set(ids).size !== ids.length) {
-      this.partsMessage.set('Dubbele slot nummers zijn niet toegestaan.');
-      return;
-    }
-
-    try {
-      const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs));
-      this.applyHole(updated);
-      this.partsMessage.set('Parts opgeslagen ✅');
-    } catch {
-      this.partsMessage.set('Opslaan mislukt ❌');
-    }
-  }
-
+  async saveCore(): Promise<void> { const h = this.hole(); if (!h) return; try { const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form)); this.applyHole(updated); this.coreMessage.set('Opgeslagen ✅'); } catch { this.coreMessage.set('Opslaan mislukt ❌'); } }
+  async saveSteps(): Promise<void> { const h = this.hole(); if (!h) return; const ids = this.stepInputs.map((s) => s.stepNo); if (new Set(ids).size !== ids.length) { this.stepsMessage.set('Dubbele step nummers'); return; } try { const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs)); this.applyHole(updated); this.stepsMessage.set('Steps opgeslagen ✅'); } catch { this.stepsMessage.set('Opslaan mislukt ❌'); } }
+  async saveParts(): Promise<void> { const h = this.hole(); if (!h) return; const ids = this.partInputs.map((p) => p.slotNo); if (new Set(ids).size !== ids.length) { this.partsMessage.set('Dubbele slot nummers'); return; } try { const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs)); this.applyHole(updated); this.partsMessage.set('Parts opgeslagen ✅'); } catch { this.partsMessage.set('Opslaan mislukt ❌'); } }
   async createMdrCase(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createMdrCase({ ...this.newMdr, panelId: h.panelId })); this.mdrMessage.set('MDR case toegevoegd ✅'); await this.reloadMdrAndNdi(); }
   async createNdiReport(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createNdiReport(h.id, { ...this.newNdi, panelId: h.panelId })); this.ndiMessage.set('NDI report toegevoegd ✅'); await this.reloadMdrAndNdi(); }
 
-  addStep(): void { this.stepInputs = [...this.stepInputs, { stepNo: 0, sizeValue: null, visualDamageCheck: null, reamFlag: null, mdrFlag: null, ndiFlag: null }]; }
-  addPart(): void { this.partInputs = [...this.partInputs, { slotNo: 1, partNumber: null, partLength: null, bushingType: null, standardCustom: null, orderedFlag: null, deliveredFlag: null, status: null }]; }
+  addStep(): void { this.stepInputs = [...this.stepInputs, { stepNo: this.stepInputs.length + 1, sizeValue: null, visualDamageCheck: null, reamFlag: null, mdrFlag: null, ndiFlag: null }]; }
+  addPart(): void { this.partInputs = [...this.partInputs, { slotNo: this.partInputs.length + 1, partNumber: null, partLength: null, bushingType: null, standardCustom: null, orderedFlag: null, deliveredFlag: null, status: null }]; }
 
   private async reloadMdrAndNdi(): Promise<void> {
     const h = this.hole();
     if (!h) return;
     this.mdrCases.set(await firstValueFrom(this.corrosionService.listMdrCases(h.panelId ?? undefined)));
-    if (h.panelId) {
-      this.mdrRequestDetails.set(await firstValueFrom(this.corrosionService.listMdrRequestDetails(h.panelId)));
-    } else {
-      this.mdrRequestDetails.set([]);
-    }
+    this.mdrRequestDetails.set(h.panelId ? await firstValueFrom(this.corrosionService.listMdrRequestDetails(h.panelId)) : []);
     this.ndiReports.set(await firstValueFrom(this.corrosionService.listNdiReports(h.id)));
   }
 
