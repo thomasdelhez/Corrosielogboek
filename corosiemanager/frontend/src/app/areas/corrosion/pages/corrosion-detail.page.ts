@@ -9,7 +9,7 @@ import {
   UpdateHolePartInput,
   UpdateHoleStepInput,
 } from '../models/corrosion.inputs';
-import { Hole, MdrCase, NdiReport } from '../models/corrosion.models';
+import { Hole, MdrCase, MdrRequestDetail, NdiReport } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
@@ -46,6 +46,11 @@ import { CorrosionService } from '../services/corrosion.service';
               <label class="field"><span>Status</span><input type="text" [(ngModel)]="newMdr.status" name="newMdrStatus" /></label>
             </div>
             <div class="actions"><button class="btn-primary" type="button" (click)="createMdrCase()">+ MDR case</button><span class="message">{{ mdrMessage() }}</span></div>
+
+            <h4 style="margin-top:12px;">MDR request details (uit Access MDRListT)</h4>
+            @for (d of mdrRequestDetails(); track d.id) {
+              <p>#{{ d.id }} · {{ d.defectCode ?? '-' }} · {{ d.discoveredBy ?? '-' }} · {{ d.problemStatement ?? '-' }}</p>
+            }
           </section>
 
           <section class="subcard">
@@ -71,6 +76,7 @@ export class CorrosionDetailPage implements OnInit {
 
   protected readonly hole = signal<Hole | null>(null);
   protected readonly mdrCases = signal<MdrCase[]>([]);
+  protected readonly mdrRequestDetails = signal<MdrRequestDetail[]>([]);
   protected readonly ndiReports = signal<NdiReport[]>([]);
   protected readonly coreMessage = signal('');
   protected readonly stepsMessage = signal('');
@@ -105,6 +111,11 @@ export class CorrosionDetailPage implements OnInit {
     const h = this.hole();
     if (!h) return;
     this.mdrCases.set(await firstValueFrom(this.corrosionService.listMdrCases(h.panelId ?? undefined)));
+    if (h.panelId) {
+      this.mdrRequestDetails.set(await firstValueFrom(this.corrosionService.listMdrRequestDetails(h.panelId)));
+    } else {
+      this.mdrRequestDetails.set([]);
+    }
     this.ndiReports.set(await firstValueFrom(this.corrosionService.listNdiReports(h.id)));
   }
 

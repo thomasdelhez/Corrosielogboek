@@ -67,3 +67,16 @@ export interface NdiReport {
   tools: string | null;
   corrosionPosition: string | null;
 }
+
+export interface MdrRequestDetail {
+  id: number;
+  panelId: number | null;
+  tve: string | null;
+  mdrType: string | null;
+  serialNumber: string | null;
+  partNumber: string | null;
+  defectCode: string | null;
+  problemStatement: string | null;
+  discoveredBy: string | null;
+  dateDiscovered: Date | null;
+}

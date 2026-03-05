@@ -99,3 +99,16 @@ export interface NdiReportDto {
   tools: string | null;
   corrosion_position: string | null;
 }
+
+export interface MdrRequestDetailDto {
+  id: number;
+  panel_id: number | null;
+  tve: string | null;
+  mdr_type: string | null;
+  serial_number: string | null;
+  part_number: string | null;
+  defect_code: string | null;
+  problem_statement: string | null;
+  discovered_by: string | null;
+  date_discovered: string | null;
+}

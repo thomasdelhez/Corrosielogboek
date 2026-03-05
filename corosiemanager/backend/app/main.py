@@ -6,7 +6,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
-from .models import Hole, HolePart, HoleStep, MdrCase, MdrRemark, NdiReport, Panel
+from .models import Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
     HoleCreate,
     HoleOut,
@@ -17,6 +17,7 @@ from .schemas import (
     MdrCaseOut,
     MdrRemarkIn,
     MdrRemarkOut,
+    MdrRequestDetailOut,
     NdiReportIn,
     NdiReportOut,
 )
@@ -320,3 +321,17 @@ def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(
     db.commit()
     db.refresh(row)
     return row
+
+
+@app.get("/api/v1/panels/{panel_id}/mdr-request-details", response_model=list[MdrRequestDetailOut])
+def list_mdr_request_details(panel_id: int, db: Session = Depends(get_db), limit: int = 200):
+    return (
+        db.execute(
+            select(MdrRequestDetail)
+            .where(MdrRequestDetail.panel_id == panel_id)
+            .order_by(MdrRequestDetail.id.desc())
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )

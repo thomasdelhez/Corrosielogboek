@@ -32,7 +32,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db import SessionLocal
-from app.models import Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRemark, NdiReport, Panel
+from app.models import Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 
 
 def mdb_export_rows(db_path: str, table: str) -> list[dict[str, str]]:
@@ -359,9 +359,35 @@ def import_ndi_reports(session: Session, db_path: str, panel_ids: dict[int, int]
         session.merge(row_obj)
 
 
+def import_mdr_list(session: Session, db_path: str, panel_ids: dict[int, int]) -> None:
+    rows = mdb_export_rows(db_path, "MDRListT")
+    for row in rows:
+        detail_id = to_int(row.get("KeyMDRID"))
+        if detail_id is None:
+            continue
+
+        panel_key = to_int(row.get("UPanelID"))
+        panel_id = panel_ids.get(panel_key) if panel_key is not None else None
+
+        row_obj = MdrRequestDetail(
+            id=detail_id,
+            panel_id=panel_id,
+            tve=to_text(row.get("TVE")),
+            mdr_type=to_text(row.get("MDR Type")),
+            serial_number=to_text(row.get("Serial Number")),
+            part_number=to_text(row.get("Part Number")),
+            defect_code=to_text(row.get("Defect Code")),
+            problem_statement=to_text(row.get("Problem Statement")),
+            discovered_by=to_text(row.get("Discovered By")),
+            date_discovered=to_dt(row.get("Date Discovered")),
+        )
+        session.merge(row_obj)
+
+
 def truncate_core(session: Session) -> None:
     session.execute(delete(MdrRemark))
     session.execute(delete(MdrCase))
+    session.execute(delete(MdrRequestDetail))
     session.execute(delete(NdiReport))
     session.execute(delete(HoleStep))
     session.execute(delete(HolePart))
@@ -391,6 +417,7 @@ def main() -> None:
         import_holes(session, args.accdb, panel_ids)
         import_mdr(session, args.accdb, panel_ids)
         import_ndi_reports(session, args.accdb, panel_ids)
+        import_mdr_list(session, args.accdb, panel_ids)
         session.commit()
 
         aircraft_count = session.scalar(select(func.count()).select_from(Aircraft))
@@ -401,16 +428,18 @@ def main() -> None:
         mdr_count = session.scalar(select(func.count()).select_from(MdrCase))
         remark_count = session.scalar(select(func.count()).select_from(MdrRemark))
         ndi_count = session.scalar(select(func.count()).select_from(NdiReport))
+        mdr_detail_count = session.scalar(select(func.count()).select_from(MdrRequestDetail))
 
         print("Import complete")
-        print(f"Aircraft:   {aircraft_count}")
-        print(f"Panels:     {panel_count}")
-        print(f"Holes:      {hole_count}")
-        print(f"Steps:      {step_count}")
-        print(f"Parts:      {part_count}")
-        print(f"MDR cases:  {mdr_count}")
-        print(f"MDR remarks:{remark_count}")
-        print(f"NDI reports:{ndi_count}")
+        print(f"Aircraft:     {aircraft_count}")
+        print(f"Panels:       {panel_count}")
+        print(f"Holes:        {hole_count}")
+        print(f"Steps:        {step_count}")
+        print(f"Parts:        {part_count}")
+        print(f"MDR cases:    {mdr_count}")
+        print(f"MDR remarks:  {remark_count}")
+        print(f"NDI reports:  {ndi_count}")
+        print(f"MDR details:  {mdr_detail_count}")
 
 
 if __name__ == "__main__":

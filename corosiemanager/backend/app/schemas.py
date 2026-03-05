@@ -144,3 +144,19 @@ class NdiReportOut(NdiReportIn):
 
     class Config:
         from_attributes = True
+
+
+class MdrRequestDetailOut(BaseModel):
+    id: int
+    panel_id: int | None
+    tve: str | None
+    mdr_type: str | None
+    serial_number: str | None
+    part_number: str | None
+    defect_code: str | None
+    problem_statement: str | None
+    discovered_by: str | None
+    date_discovered: datetime | None
+
+    class Config:
+        from_attributes = True

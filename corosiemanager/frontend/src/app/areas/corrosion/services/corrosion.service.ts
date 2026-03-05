@@ -5,6 +5,7 @@ import { HttpService } from '../../../shared/services/http.service';
 import {
   HoleDto,
   MdrCaseDto,
+  MdrRequestDetailDto,
   NdiReportDto,
   PanelSummaryDto,
   UpdateHoleInputDto,
@@ -18,7 +19,7 @@ import {
   UpdateHolePartInput,
   UpdateHoleStepInput,
 } from '../models/corrosion.inputs';
-import { Hole, HolePart, HoleStep, MdrCase, NdiReport, PanelSummary } from '../models/corrosion.models';
+import { Hole, HolePart, HoleStep, MdrCase, MdrRequestDetail, NdiReport, PanelSummary } from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
 export class CorrosionService {
@@ -85,6 +86,12 @@ export class CorrosionService {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
       .pipe(map((rows) => rows.map((row) => this.toNdiReport(row))));
+  }
+
+  listMdrRequestDetails(panelId: number): Observable<MdrRequestDetail[]> {
+    return this.http
+      .get<MdrRequestDetailDto[]>(`${this.config.apiBaseUrl}/panels/${panelId}/mdr-request-details`)
+      .pipe(map((rows) => rows.map((row) => this.toMdrRequestDetail(row))));
   }
 
   createNdiReport(holeId: number, input: CreateNdiReportInput): Observable<NdiReport> {
@@ -218,6 +225,21 @@ export class CorrosionService {
       method: dto.method,
       tools: dto.tools,
       corrosionPosition: dto.corrosion_position,
+    };
+  }
+
+  private toMdrRequestDetail(dto: MdrRequestDetailDto): MdrRequestDetail {
+    return {
+      id: dto.id,
+      panelId: dto.panel_id,
+      tve: dto.tve,
+      mdrType: dto.mdr_type,
+      serialNumber: dto.serial_number,
+      partNumber: dto.part_number,
+      defectCode: dto.defect_code,
+      problemStatement: dto.problem_statement,
+      discoveredBy: dto.discovered_by,
+      dateDiscovered: dto.date_discovered ? new Date(dto.date_discovered) : null,
     };
   }
 }

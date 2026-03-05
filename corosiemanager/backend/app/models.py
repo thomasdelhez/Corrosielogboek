@@ -119,3 +119,18 @@ class NdiReport(Base):
     method: Mapped[str | None] = mapped_column(String(255), nullable=True)
     tools: Mapped[str | None] = mapped_column(Text, nullable=True)
     corrosion_position: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class MdrRequestDetail(Base):
+    __tablename__ = "mdr_request_detail"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    panel_id: Mapped[int | None] = mapped_column(ForeignKey("panel.id", ondelete="SET NULL"), nullable=True, index=True)
+    tve: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mdr_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    part_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    defect_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    problem_statement: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discovered_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    date_discovered: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
