@@ -47,6 +47,7 @@ import { CorrosionService } from '../services/corrosion.service';
                 <input [(ngModel)]="s.visualDamageCheck" [name]="'visual'+i" type="text" placeholder="Visual damage check" />
                 <label><input [(ngModel)]="s.mdrFlag" [name]="'mdr'+i" type="checkbox" /> MDR</label>
                 <label><input [(ngModel)]="s.ndiFlag" [name]="'ndi'+i" type="checkbox" /> NDI</label>
+                <button class="btn-danger" type="button" (click)="removeStep(i)">Verwijder</button>
               </div>
             }
             <div class="actions">
@@ -64,6 +65,7 @@ import { CorrosionService } from '../services/corrosion.service';
                 <input [(ngModel)]="p.partNumber" [name]="'partNo'+i" type="text" placeholder="Part number" />
                 <input [(ngModel)]="p.partLength" [name]="'partLength'+i" type="number" placeholder="Length" />
                 <input [(ngModel)]="p.status" [name]="'status'+i" type="text" placeholder="Status" />
+                <button class="btn-danger" type="button" (click)="removePart(i)">Verwijder</button>
               </div>
             }
             <div class="actions">
@@ -75,7 +77,12 @@ import { CorrosionService } from '../services/corrosion.service';
 
           <section class="subcard">
             <h3>MDR cases (panel)</h3>
-            @for (m of mdrCases(); track m.id) {<p>#{{ m.id }} · {{ m.mdrNumber ?? '-' }} · {{ m.status ?? '-' }}</p>}
+            @for (m of mdrCases(); track m.id) {
+              <p>
+                #{{ m.id }} · {{ m.mdrNumber ?? '-' }} · {{ m.status ?? '-' }}
+                <button class="btn-danger inline" type="button" (click)="deleteMdrCase(m.id)">Verwijder</button>
+              </p>
+            }
             <div class="grid">
               <label class="field"><span>MDR number</span><input [(ngModel)]="newMdr.mdrNumber" name="newMdrNumber" type="text" /></label>
               <label class="field"><span>Status</span><input [(ngModel)]="newMdr.status" name="newMdrStatus" type="text" /></label>
@@ -103,7 +110,12 @@ import { CorrosionService } from '../services/corrosion.service';
 
           <section class="subcard">
             <h3>NDI reports (hole)</h3>
-            @for (r of ndiReports(); track r.id) {<p>#{{ r.id }} · {{ r.method ?? '-' }} · {{ r.corrosionPosition ?? '-' }}</p>}
+            @for (r of ndiReports(); track r.id) {
+              <p>
+                #{{ r.id }} · {{ r.method ?? '-' }} · {{ r.corrosionPosition ?? '-' }}
+                <button class="btn-danger inline" type="button" (click)="deleteNdiReport(r.id)">Verwijder</button>
+              </p>
+            }
             <div class="grid">
               <label class="field"><span>Initials</span><input [(ngModel)]="newNdi.nameInitials" name="newNdiInitials" type="text" /></label>
               <label class="field"><span>Method</span><input [(ngModel)]="newNdi.method" name="newNdiMethod" type="text" /></label>
@@ -125,11 +137,13 @@ import { CorrosionService } from '../services/corrosion.service';
     .grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}
     .field{display:grid;gap:6px;font-weight:600;color:#334155}
     input{border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff}
-    .row-grid{display:grid;grid-template-columns:80px 120px 1fr 90px 90px;gap:8px;margin-bottom:8px;align-items:center}
-    .row-grid.parts{grid-template-columns:80px 1fr 120px 1fr}
+    .row-grid{display:grid;grid-template-columns:80px 120px 1fr 90px 90px 110px;gap:8px;margin-bottom:8px;align-items:center}
+    .row-grid.parts{grid-template-columns:80px 1fr 120px 1fr 110px}
     .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
     .btn-primary{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px}
     .btn-secondary{background:#e2e8f0;border:0;border-radius:8px;padding:8px 12px}
+    .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:7px 10px}
+    .btn-danger.inline{margin-left:8px;padding:4px 8px}
     .badge{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:4px 10px}
     .message{color:#15803d;font-weight:600}
     .details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
@@ -172,7 +186,22 @@ export class CorrosionDetailPage implements OnInit {
   async createNdiReport(): Promise<void> { const h = this.hole(); if (!h) return; await firstValueFrom(this.corrosionService.createNdiReport(h.id, { ...this.newNdi, panelId: h.panelId })); this.ndiMessage.set('NDI report toegevoegd ✅'); await this.reloadMdrAndNdi(); }
 
   addStep(): void { this.stepInputs = [...this.stepInputs, { stepNo: this.stepInputs.length + 1, sizeValue: null, visualDamageCheck: null, reamFlag: null, mdrFlag: null, ndiFlag: null }]; }
+  removeStep(index: number): void { this.stepInputs = this.stepInputs.filter((_, i) => i !== index); }
+
   addPart(): void { this.partInputs = [...this.partInputs, { slotNo: this.partInputs.length + 1, partNumber: null, partLength: null, bushingType: null, standardCustom: null, orderedFlag: null, deliveredFlag: null, status: null }]; }
+  removePart(index: number): void { this.partInputs = this.partInputs.filter((_, i) => i !== index); }
+
+  async deleteMdrCase(mdrCaseId: number): Promise<void> {
+    await firstValueFrom(this.corrosionService.deleteMdrCase(mdrCaseId));
+    this.mdrMessage.set('MDR case verwijderd ✅');
+    await this.reloadMdrAndNdi();
+  }
+
+  async deleteNdiReport(reportId: number): Promise<void> {
+    await firstValueFrom(this.corrosionService.deleteNdiReport(reportId));
+    this.ndiMessage.set('NDI report verwijderd ✅');
+    await this.reloadMdrAndNdi();
+  }
 
   private async reloadMdrAndNdi(): Promise<void> {
     const h = this.hole();

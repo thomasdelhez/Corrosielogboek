@@ -18,6 +18,10 @@ export class HttpService {
     return this.http.put<T>(url, body, { headers: this.defaultHeaders() });
   }
 
+  delete<T>(url: string): Observable<T> {
+    return this.http.delete<T>(url);
+  }
+
   private defaultHeaders(): HttpHeaders {
     return new HttpHeaders({ 'Content-Type': 'application/json' });
   }

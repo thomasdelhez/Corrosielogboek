@@ -82,6 +82,10 @@ export class CorrosionService {
       .pipe(map((row) => this.toMdrCase(row)));
   }
 
+  deleteMdrCase(mdrCaseId: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}`);
+  }
+
   listNdiReports(holeId: number): Observable<NdiReport[]> {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
@@ -106,6 +110,10 @@ export class CorrosionService {
         corrosion_position: input.corrosionPosition,
       })
       .pipe(map((row) => this.toNdiReport(row)));
+  }
+
+  deleteNdiReport(reportId: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/ndi-reports/${reportId}`);
   }
 
   private toUpdateDto(input: UpdateHoleInput): UpdateHoleInputDto {

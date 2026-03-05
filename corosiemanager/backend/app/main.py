@@ -302,6 +302,16 @@ def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends
     return row
 
 
+@app.delete("/api/v1/mdr-cases/{mdr_case_id}")
+def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db)):
+    row = db.get(MdrCase, mdr_case_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="MDR case not found")
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}
+
+
 @app.get("/api/v1/holes/{hole_id}/ndi-reports", response_model=list[NdiReportOut])
 def list_ndi_reports(hole_id: int, db: Session = Depends(get_db)):
     return db.execute(select(NdiReport).where(NdiReport.hole_id == hole_id).order_by(NdiReport.id.desc())).scalars().all()
@@ -321,6 +331,16 @@ def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(
     db.commit()
     db.refresh(row)
     return row
+
+
+@app.delete("/api/v1/ndi-reports/{report_id}")
+def delete_ndi_report(report_id: int, db: Session = Depends(get_db)):
+    row = db.get(NdiReport, report_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="NDI report not found")
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}
 
 
 @app.get("/api/v1/panels/{panel_id}/mdr-request-details", response_model=list[MdrRequestDetailOut])
