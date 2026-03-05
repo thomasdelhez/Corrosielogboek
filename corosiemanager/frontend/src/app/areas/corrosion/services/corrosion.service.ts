@@ -4,17 +4,24 @@ import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 import {
   HoleDto,
+  PanelSummaryDto,
   UpdateHoleInputDto,
   UpdateHolePartInputDto,
   UpdateHoleStepInputDto,
 } from '../models/corrosion.dtos';
 import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../models/corrosion.inputs';
-import { Hole, HolePart, HoleStep } from '../models/corrosion.models';
+import { Hole, HolePart, HoleStep, PanelSummary } from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
 export class CorrosionService {
   private readonly http = inject(HttpService);
   private readonly config = inject(AppConfigService);
+
+  listPanels(): Observable<PanelSummary[]> {
+    return this.http
+      .get<PanelSummaryDto[]>(`${this.config.apiBaseUrl}/panels`)
+      .pipe(map((rows) => rows.map((row) => this.toPanelSummary(row))));
+  }
 
   listPanelHoles(panelId: number): Observable<Hole[]> {
     return this.http
@@ -125,6 +132,14 @@ export class CorrosionService {
       orderedFlag: part.ordered_flag,
       deliveredFlag: part.delivered_flag,
       status: part.status,
+    };
+  }
+
+  private toPanelSummary(dto: PanelSummaryDto): PanelSummary {
+    return {
+      id: dto.id,
+      panelNumber: dto.panel_number,
+      holeCount: dto.hole_count,
     };
   }
 }

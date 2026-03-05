@@ -37,3 +37,9 @@ export interface Hole {
   steps: HoleStep[];
   parts: HolePart[];
 }
+
+export interface PanelSummary {
+  id: number;
+  panelNumber: number;
+  holeCount: number;
+}

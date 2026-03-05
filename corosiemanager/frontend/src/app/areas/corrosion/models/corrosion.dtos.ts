@@ -69,3 +69,9 @@ export interface UpdateHolePartInputDto {
   delivered_flag: boolean | null;
   status: string | null;
 }
+
+export interface PanelSummaryDto {
+  id: number;
+  panel_number: number;
+  hole_count: number;
+}

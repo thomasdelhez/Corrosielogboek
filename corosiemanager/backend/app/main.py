@@ -2,7 +2,7 @@ import os
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import String, cast, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
@@ -34,6 +34,29 @@ def startup():
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/api/v1/panels")
+def list_panels(db: Session = Depends(get_db)):
+    rows = db.execute(
+        select(
+            Panel.id.label("id"),
+            Panel.panel_number.label("panel_number"),
+            func.count(Hole.id).label("hole_count"),
+        )
+        .outerjoin(Hole, Hole.panel_id == Panel.id)
+        .group_by(Panel.id, Panel.panel_number)
+        .order_by(Panel.id.asc())
+    ).all()
+
+    return [
+        {
+            "id": r.id,
+            "panel_number": r.panel_number,
+            "hole_count": int(r.hole_count or 0),
+        }
+        for r in rows
+    ]
 
 
 def _get_hole_or_404(db: Session, hole_id: int) -> Hole:
