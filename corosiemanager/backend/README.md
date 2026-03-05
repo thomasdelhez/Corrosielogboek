@@ -15,6 +15,19 @@ Environment variables:
 - `DATABASE_URL` (default: `postgresql+psycopg://corrosie:corrosie@localhost:5432/corrosie`)
 - `ALLOWED_ORIGINS` (default: `http://127.0.0.1:4200,http://localhost:4200`)
 
+## Access import script (v1)
+
+Imports Access data into core MVP tables (`aircraft`, `panel`, `hole`, `hole_step`, `hole_part`).
+
+```bash
+cd corosiemanager/backend
+source .venv/bin/activate
+export DATABASE_URL="postgresql+psycopg://thomasdelhez@localhost:5432/corrosie"
+python scripts/import_access.py --accdb "../Tier 2 MDR Tool V3.0 - kopie.accdb"
+```
+
+By default the script truncates core tables first. Use `--append` to keep existing rows.
+
 ## First implemented endpoints
 
 - `POST /api/v1/panels/{panel_id}/holes`

@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+"""Import core corrosion data from Access (.accdb) into PostgreSQL MVP schema.
+
+Scope v1:
+- AircraftNrT -> aircraft
+- PanelNrT -> panel
+- HoleRepairT -> hole + hole_step + hole_part
+
+Requires:
+- mdbtools installed (`mdb-export` available in PATH)
+- DATABASE_URL env var set (or defaults from app.db)
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import io
+import os
+import subprocess
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
+
+from app.db import SessionLocal
+from app.models import Aircraft, Hole, HolePart, HoleStep, Panel
+
+
+def mdb_export_rows(db_path: str, table: str) -> list[dict[str, str]]:
+    result = subprocess.run(
+        ["mdb-export", db_path, table],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    reader = csv.DictReader(io.StringIO(result.stdout))
+    return list(reader)
+
+
+def to_int(value: str | None) -> int | None:
+    if value is None:
+        return None
+    v = value.strip()
+    if not v:
+        return None
+    try:
+        return int(float(v))
+    except ValueError:
+        return None
+
+
+def to_bool(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    v = value.strip().lower()
+    if v in {"", "null"}:
+        return None
+    if v in {"1", "true", "yes", "y"}:
+        return True
+    if v in {"0", "false", "no", "n"}:
+        return False
+    return None
+
+
+def to_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    v = value.strip()
+    return v if v else None
+
+
+def to_dt(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    v = value.strip()
+    if not v:
+        return None
+
+    patterns = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%Y",
+    ]
+
+    for pattern in patterns:
+        try:
+            return datetime.strptime(v, pattern)
+        except ValueError:
+            pass
+
+    try:
+        return datetime.fromisoformat(v)
+    except ValueError:
+        return None
+
+
+def import_aircraft(session: Session, db_path: str) -> dict[int, int]:
+    rows = mdb_export_rows(db_path, "AircraftNrT")
+    id_map: dict[int, int] = {}
+
+    for row in rows:
+        old_id = to_int(row.get("UAircraftID"))
+        if old_id is None:
+            continue
+
+        aircraft = Aircraft(
+            id=old_id,
+            an=to_text(row.get("AN")) or f"AN-{old_id}",
+            serial_number=to_text(row.get("SerialNumber")),
+            arrival_date=to_dt(row.get("ArrivalDate")),
+        )
+        session.merge(aircraft)
+        id_map[old_id] = old_id
+
+    return id_map
+
+
+def import_panels(session: Session, db_path: str, aircraft_ids: dict[int, int]) -> dict[int, int]:
+    rows = mdb_export_rows(db_path, "PanelNrT")
+    id_map: dict[int, int] = {}
+
+    for row in rows:
+        panel_id = to_int(row.get("UPanelID"))
+        if panel_id is None:
+            continue
+
+        aircraft_fk = to_int(row.get("AN"))
+        aircraft_id = aircraft_ids.get(aircraft_fk) if aircraft_fk is not None else None
+
+        panel = Panel(
+            id=panel_id,
+            aircraft_id=aircraft_id,
+            panel_number=to_int(row.get("Panel Number")) or panel_id,
+            surface=to_text(row.get("Upper/Lower")),
+            start_inspection_date=to_dt(row.get("Start Inspection Date")),
+        )
+        session.merge(panel)
+        id_map[panel_id] = panel_id
+
+    return id_map
+
+
+def import_holes(session: Session, db_path: str, panel_ids: dict[int, int]) -> None:
+    rows = mdb_export_rows(db_path, "HoleRepairT")
+
+    for row in rows:
+        hole_id = to_int(row.get("UHoleID"))
+        panel_key = to_int(row.get("PanelID"))
+        hole_no = to_int(row.get("HoleID"))
+
+        if hole_id is None or panel_key is None or hole_no is None:
+            continue
+
+        panel_id = panel_ids.get(panel_key)
+        if panel_id is None:
+            continue
+
+        hole = Hole(
+            id=hole_id,
+            panel_id=panel_id,
+            hole_number=hole_no,
+            max_bp_diameter=to_int(row.get("MaxBPDiameter")),
+            final_hole_size=to_int(row.get("FinalHoleSize")),
+            fit=to_text(row.get("FIT")),
+            mdr_code=to_text(row.get("MDRCode")),
+            mdr_version=to_text(row.get("MDRVersion")),
+            ndi_name_initials=to_text(row.get("NDINameInitials")),
+            ndi_inspection_date=to_dt(row.get("NDIInspectionDate")),
+            ndi_finished=to_bool(row.get("NDIFinished")) or False,
+            inspection_status=to_text(row.get("InspectionStatus")),
+        )
+        session.merge(hole)
+
+        # Step 0 (max bp)
+        session.merge(
+            HoleStep(
+                hole_id=hole_id,
+                step_no=0,
+                size_value=to_int(row.get("MaxBPDiameter")),
+                visual_damage_check=to_text(row.get("Visual Damage Check")),
+                ream_flag=to_bool(row.get("REAM MAX B/P")),
+                mdr_flag=to_bool(row.get("MDRmaxBP")),
+                ndi_flag=to_bool(row.get("NDImaxBP")),
+            )
+        )
+
+        # Steps 1..10
+        for n in range(1, 11):
+            size_v = to_int(row.get(f"Size ({n})"))
+            visual_v = to_text(row.get(f"Visual Damage Check ({n})"))
+            mdr_v = to_bool(row.get(f"MDR{n}"))
+            ndi_v = to_bool(row.get(f"NDI{n}"))
+            if size_v is None and visual_v is None and mdr_v is None and ndi_v is None:
+                continue
+
+            session.merge(
+                HoleStep(
+                    hole_id=hole_id,
+                    step_no=n,
+                    size_value=size_v,
+                    visual_damage_check=visual_v,
+                    ream_flag=None,
+                    mdr_flag=mdr_v,
+                    ndi_flag=ndi_v,
+                )
+            )
+
+        # Parts 1..4
+        for n in range(1, 5):
+            part_number = to_text(row.get(f"Part Number {n}"))
+            part_length = to_int(row.get(f"Length Part {n}"))
+            bushing = to_text(row.get(f"SB/CS{n}"))
+            std_cst = to_text(row.get(f"Std/Cst{n}"))
+            ordered = to_bool(row.get(f"Ordered Item {n}"))
+            delivered = to_bool(row.get(f"Delivered Item {n}"))
+            status = to_text(row.get(f"PartStatus{n}"))
+
+            if all(v is None for v in [part_number, part_length, bushing, std_cst, ordered, delivered, status]):
+                continue
+
+            session.merge(
+                HolePart(
+                    hole_id=hole_id,
+                    slot_no=n,
+                    part_number=part_number,
+                    part_length=part_length,
+                    bushing_type=bushing,
+                    standard_custom=std_cst,
+                    ordered_flag=ordered,
+                    delivered_flag=delivered,
+                    status=status,
+                )
+            )
+
+
+def truncate_core(session: Session) -> None:
+    session.execute(delete(HoleStep))
+    session.execute(delete(HolePart))
+    session.execute(delete(Hole))
+    session.execute(delete(Panel))
+    session.execute(delete(Aircraft))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Import Access corrosion data into PostgreSQL")
+    parser.add_argument("--accdb", required=True, help="Path to .accdb file")
+    parser.add_argument("--append", action="store_true", help="Do not truncate core tables before import")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.accdb):
+        raise SystemExit(f"ACCDB not found: {args.accdb}")
+
+    with SessionLocal() as session:
+        if not args.append:
+            truncate_core(session)
+            session.commit()
+
+        aircraft_ids = import_aircraft(session, args.accdb)
+        panel_ids = import_panels(session, args.accdb, aircraft_ids)
+        import_holes(session, args.accdb, panel_ids)
+        session.commit()
+
+        aircraft_count = session.scalar(select(func.count()).select_from(Aircraft))
+        panel_count = session.scalar(select(func.count()).select_from(Panel))
+        hole_count = session.scalar(select(func.count()).select_from(Hole))
+        step_count = session.scalar(select(func.count()).select_from(HoleStep))
+        part_count = session.scalar(select(func.count()).select_from(HolePart))
+
+        print("Import complete")
+        print(f"Aircraft: {aircraft_count}")
+        print(f"Panels:   {panel_count}")
+        print(f"Holes:    {hole_count}")
+        print(f"Steps:    {step_count}")
+        print(f"Parts:    {part_count}")
+
+
+if __name__ == "__main__":
+    main()
