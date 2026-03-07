@@ -19,8 +19,10 @@ from .schemas import (
     MdrRemarkOut,
     MdrRequestDetailOut,
     MdrStatusTransitionIn,
+    NdiQueueRowOut,
     NdiReportIn,
     NdiReportOut,
+    NdiStatusTransitionIn,
     OrderingTrackerRowOut,
 )
 
@@ -469,6 +471,122 @@ def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db)):
     db.delete(row)
     db.commit()
     return {"deleted": True}
+
+
+@app.get("/api/v1/ndi-dashboard", response_model=list[NdiQueueRowOut])
+def list_ndi_dashboard(
+    db: Session = Depends(get_db),
+    aircraft_id: int | None = None,
+    panel_id: int | None = None,
+    queue: str = Query(default="all", pattern="^(all|check_tracker|action_needed|report_needed|finished)$"),
+    q: str | None = None,
+    limit: int = Query(default=300, ge=1, le=1000),
+):
+    stmt = (
+        select(
+            Hole.id.label("hole_id"),
+            Hole.hole_number.label("hole_number"),
+            Hole.panel_id.label("panel_id"),
+            Panel.panel_number.label("panel_number"),
+            Aircraft.id.label("aircraft_id"),
+            Aircraft.an.label("aircraft_an"),
+            Hole.inspection_status.label("inspection_status"),
+            Hole.ndi_name_initials.label("ndi_name_initials"),
+            Hole.ndi_inspection_date.label("ndi_inspection_date"),
+            Hole.ndi_finished.label("ndi_finished"),
+        )
+        .join(Panel, Panel.id == Hole.panel_id)
+        .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+    if panel_id is not None:
+        stmt = stmt.where(Hole.panel_id == panel_id)
+    if q:
+        like_q = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                cast(Hole.hole_number, String).ilike(like_q),
+                cast(Panel.panel_number, String).ilike(like_q),
+                Aircraft.an.ilike(like_q),
+                Hole.inspection_status.ilike(like_q),
+            )
+        )
+
+    base_rows = db.execute(stmt.order_by(Panel.panel_number.asc(), Hole.hole_number.asc()).limit(limit)).all()
+
+    out = []
+    for r in base_rows:
+        latest_report = db.execute(
+            select(NdiReport)
+            .where(NdiReport.hole_id == r.hole_id)
+            .order_by(NdiReport.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+        inspection = (r.inspection_status or "").strip().lower()
+        action_needed = inspection in {"corroded", "rifled", "markedascorroded", "markedasrifled"}
+        finished = bool(r.ndi_finished)
+
+        if finished:
+            queue_status = "finished"
+        elif action_needed:
+            queue_status = "action_needed"
+        elif r.ndi_name_initials or latest_report:
+            queue_status = "report_needed"
+        else:
+            queue_status = "check_tracker"
+
+        if queue != "all" and queue_status != queue:
+            continue
+
+        out.append(
+            {
+                "hole_id": r.hole_id,
+                "hole_number": r.hole_number,
+                "panel_id": r.panel_id,
+                "panel_number": r.panel_number,
+                "aircraft_id": r.aircraft_id,
+                "aircraft_an": r.aircraft_an,
+                "inspection_status": r.inspection_status,
+                "ndi_name_initials": r.ndi_name_initials,
+                "ndi_inspection_date": r.ndi_inspection_date,
+                "latest_report_id": latest_report.id if latest_report else None,
+                "latest_report_method": latest_report.method if latest_report else None,
+                "latest_report_tools": latest_report.tools if latest_report else None,
+                "queue_status": queue_status,
+            }
+        )
+
+    return out
+
+
+@app.post("/api/v1/holes/{hole_id}/ndi-status", response_model=HoleOut)
+def transition_ndi_status(hole_id: int, payload: NdiStatusTransitionIn, db: Session = Depends(get_db)):
+    hole = _get_hole_or_404(db, hole_id)
+    to_status = (payload.to_status or "").strip()
+    allowed = {"check_tracker", "action_needed", "report_needed", "finished"}
+    if to_status not in allowed:
+        raise HTTPException(status_code=400, detail=f"Invalid NDI target status: {to_status}")
+
+    if to_status == "finished":
+        latest_report = db.execute(
+            select(NdiReport)
+            .where(NdiReport.hole_id == hole_id)
+            .order_by(NdiReport.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if not hole.ndi_name_initials or not hole.ndi_inspection_date:
+            raise HTTPException(status_code=400, detail="ndi_name_initials and ndi_inspection_date are required before finishing")
+        if not latest_report or not latest_report.method:
+            raise HTTPException(status_code=400, detail="A report with method is required before finishing")
+        hole.ndi_finished = True
+    else:
+        hole.ndi_finished = False
+
+    db.commit()
+    return _get_hole_or_404(db, hole_id)
 
 
 @app.get("/api/v1/holes/{hole_id}/ndi-reports", response_model=list[NdiReportOut])

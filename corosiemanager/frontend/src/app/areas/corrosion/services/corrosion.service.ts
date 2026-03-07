@@ -7,6 +7,7 @@ import {
   HoleDto,
   MdrCaseDto,
   MdrRequestDetailDto,
+  NdiQueueRowDto,
   NdiReportDto,
   OrderingTrackerRowDto,
   PanelSummaryDto,
@@ -28,6 +29,7 @@ import {
   HoleStep,
   MdrCase,
   MdrRequestDetail,
+  NdiQueueRow,
   NdiReport,
   OrderingTrackerRow,
   PanelSummary,
@@ -132,6 +134,28 @@ export class CorrosionService {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
       .pipe(map((rows) => rows.map((row) => this.toNdiReport(row))));
+  }
+
+  listNdiDashboard(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    queue?: 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'finished';
+    q?: string | null;
+  }): Observable<NdiQueueRow[]> {
+    return this.http
+      .get<NdiQueueRowDto[]>(`${this.config.apiBaseUrl}/ndi-dashboard`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        queue: params.queue ?? 'all',
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toNdiQueueRow(row))));
+  }
+
+  transitionNdiStatus(holeId: number, toStatus: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished'): Observable<Hole> {
+    return this.http
+      .post<HoleDto>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-status`, { to_status: toStatus })
+      .pipe(map((row) => this.toHole(row)));
   }
 
   listMdrRequestDetails(panelId: number): Observable<MdrRequestDetail[]> {
@@ -334,6 +358,24 @@ export class CorrosionService {
       orderInProgress: dto.order_in_progress,
       deliveryInProgress: dto.delivery_in_progress,
       installationReady: dto.installation_ready,
+    };
+  }
+
+  private toNdiQueueRow(dto: NdiQueueRowDto): NdiQueueRow {
+    return {
+      holeId: dto.hole_id,
+      holeNumber: dto.hole_number,
+      panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      aircraftId: dto.aircraft_id,
+      aircraftAn: dto.aircraft_an,
+      inspectionStatus: dto.inspection_status,
+      ndiNameInitials: dto.ndi_name_initials,
+      ndiInspectionDate: dto.ndi_inspection_date ? new Date(dto.ndi_inspection_date) : null,
+      latestReportId: dto.latest_report_id,
+      latestReportMethod: dto.latest_report_method,
+      latestReportTools: dto.latest_report_tools,
+      queueStatus: dto.queue_status,
     };
   }
 }

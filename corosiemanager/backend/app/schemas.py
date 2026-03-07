@@ -150,6 +150,26 @@ class NdiReportOut(NdiReportIn):
         from_attributes = True
 
 
+class NdiQueueRowOut(BaseModel):
+    hole_id: int
+    hole_number: int
+    panel_id: int
+    panel_number: int
+    aircraft_id: int | None
+    aircraft_an: str | None
+    inspection_status: str | None
+    ndi_name_initials: str | None
+    ndi_inspection_date: datetime | None
+    latest_report_id: int | None
+    latest_report_method: str | None
+    latest_report_tools: str | None
+    queue_status: str
+
+
+class NdiStatusTransitionIn(BaseModel):
+    to_status: str
+
+
 class MdrRequestDetailOut(BaseModel):
     id: int
     panel_id: int | None

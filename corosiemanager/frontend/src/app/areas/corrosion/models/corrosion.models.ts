@@ -104,3 +104,19 @@ export interface OrderingTrackerRow {
   deliveryInProgress: boolean;
   installationReady: boolean;
 }
+
+export interface NdiQueueRow {
+  holeId: number;
+  holeNumber: number;
+  panelId: number;
+  panelNumber: number;
+  aircraftId: number | null;
+  aircraftAn: string | null;
+  inspectionStatus: string | null;
+  ndiNameInitials: string | null;
+  ndiInspectionDate: Date | null;
+  latestReportId: number | null;
+  latestReportMethod: string | null;
+  latestReportTools: string | null;
+  queueStatus: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished';
+}
