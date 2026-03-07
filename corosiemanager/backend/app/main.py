@@ -1,18 +1,21 @@
 import os
+import secrets
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import String, case, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
-from .models import Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
+from .models import Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
     HoleCreate,
     HoleOut,
     HolePartIn,
     HoleStepIn,
     HoleUpdate,
+    LoginIn,
+    LoginOut,
     MdrCaseIn,
     MdrCaseOut,
     MdrRemarkIn,
@@ -42,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MDR_ALLOWED_STATUSES = {"Draft", "Awaiting Request", "Request", "Submit", "Resubmit", "In Review", "Approved", "Rejected", "Closed"}
+MDR_ALLOWED_STATUSES = {"Draft", "Awaiting Request", "Request", "Submit", "Resubmit", "In Review", "Approved", "Rejected", "Closed", "Submitted"}
 MDR_TRANSITIONS: dict[str, set[str]] = {
     "Draft": {"Awaiting Request", "Request", "Submitted"},
     "Awaiting Request": {"Request", "Closed"},
@@ -55,6 +58,9 @@ MDR_TRANSITIONS: dict[str, set[str]] = {
     "Rejected": {"Resubmit", "Closed"},
     "Closed": set(),
 }
+
+TOKENS: dict[str, dict[str, str]] = {}
+ROLE_LEVEL = {"engineer": 1, "reviewer": 2, "admin": 3}
 
 
 def _validate_mdr_case_payload(payload: MdrCaseIn):
@@ -72,9 +78,50 @@ def _validate_mdr_case_payload(payload: MdrCaseIn):
         raise HTTPException(status_code=400, detail="submitted_by is required for this status")
 
 
+def _require_user(authorization: str | None, db: Session) -> dict[str, str]:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    user = TOKENS.get(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    db_user = db.execute(select(AppUser).where(AppUser.username == user["username"], AppUser.is_active.is_(True))).scalar_one_or_none()
+    if not db_user:
+        raise HTTPException(status_code=401, detail="User not active")
+    return {"username": db_user.username, "role": db_user.role}
+
+
+def current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    return _require_user(authorization, db)
+
+
+def require_role(min_role: str):
+    def _dep(user=Depends(current_user)):
+        if ROLE_LEVEL.get(user["role"], 0) < ROLE_LEVEL.get(min_role, 99):
+            raise HTTPException(status_code=403, detail=f"Requires role {min_role} or higher")
+        return user
+
+    return _dep
+
+
+def _audit(db: Session, action: str, entity: str, entity_id: int | None, username: str):
+    db.add(AuditEvent(action=action, entity=entity, entity_id=entity_id, username=username))
+
+
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    with Session(engine) as db:
+        existing = db.execute(select(AppUser).limit(1)).scalar_one_or_none()
+        if not existing:
+            db.add_all(
+                [
+                    AppUser(username="engineer", password="engineer", role="engineer"),
+                    AppUser(username="reviewer", password="reviewer", role="reviewer"),
+                    AppUser(username="admin", password="admin", role="admin"),
+                ]
+            )
+            db.commit()
 
 
 @app.get("/health")
@@ -82,14 +129,31 @@ def health():
     return {"ok": True}
 
 
+@app.post("/api/v1/auth/login", response_model=LoginOut)
+def login(payload: LoginIn, db: Session = Depends(get_db)):
+    user = db.execute(
+        select(AppUser).where(AppUser.username == payload.username, AppUser.password == payload.password, AppUser.is_active.is_(True))
+    ).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = secrets.token_urlsafe(24)
+    TOKENS[token] = {"username": user.username, "role": user.role}
+    return {"token": token, "username": user.username, "role": user.role}
+
+
+@app.get("/api/v1/auth/me")
+def me(user=Depends(current_user)):
+    return user
+
+
 @app.get("/api/v1/aircraft")
-def list_aircraft(db: Session = Depends(get_db)):
+def list_aircraft(db: Session = Depends(get_db), _user=Depends(current_user)):
     rows = db.execute(select(Aircraft).order_by(Aircraft.an.asc())).scalars().all()
     return [{"id": a.id, "an": a.an, "serial_number": a.serial_number} for a in rows]
 
 
 @app.get("/api/v1/panels")
-def list_panels(db: Session = Depends(get_db), aircraft_id: int | None = None):
+def list_panels(db: Session = Depends(get_db), aircraft_id: int | None = None, _user=Depends(current_user)):
     stmt = (
         select(
             Panel.id.label("id"),
@@ -119,6 +183,7 @@ def list_panels(db: Session = Depends(get_db), aircraft_id: int | None = None):
 @app.get("/api/v1/ordering-tracker", response_model=list[OrderingTrackerRowOut])
 def list_ordering_tracker(
     db: Session = Depends(get_db),
+    _user=Depends(current_user),
     aircraft_id: int | None = None,
     panel_id: int | None = None,
     queue: str = Query(default="all", pattern="^(all|order_needed|order_status|delivery_status|created_holes)$"),
@@ -215,7 +280,7 @@ def _get_hole_or_404(db: Session, hole_id: int) -> Hole:
 
 
 @app.post("/api/v1/panels/{panel_id}/holes", response_model=HoleOut, status_code=201)
-def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db)):
+def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     panel = db.get(Panel, panel_id)
     if not panel:
         # temporary bootstrap convenience for early MVP testing
@@ -273,6 +338,7 @@ def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db
             )
         )
 
+    _audit(db, "create", "hole", hole.id, user["username"])
     db.commit()
     return _get_hole_or_404(db, hole.id)
 
@@ -281,6 +347,7 @@ def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db
 def list_holes(
     panel_id: int,
     db: Session = Depends(get_db),
+    _user=Depends(current_user),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     inspection_status: str | None = None,
@@ -313,12 +380,12 @@ def list_holes(
 
 
 @app.get("/api/v1/holes/{hole_id}", response_model=HoleOut)
-def get_hole(hole_id: int, db: Session = Depends(get_db)):
+def get_hole(hole_id: int, db: Session = Depends(get_db), _user=Depends(current_user)):
     return _get_hole_or_404(db, hole_id)
 
 
 @app.put("/api/v1/holes/{hole_id}", response_model=HoleOut)
-def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db)):
+def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     hole = _get_hole_or_404(db, hole_id)
 
     hole.max_bp_diameter = payload.max_bp_diameter
@@ -336,7 +403,7 @@ def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db)
 
 
 @app.put("/api/v1/holes/{hole_id}/steps", response_model=HoleOut)
-def replace_hole_steps(hole_id: int, payload: list[HoleStepIn], db: Session = Depends(get_db)):
+def replace_hole_steps(hole_id: int, payload: list[HoleStepIn], db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     hole = _get_hole_or_404(db, hole_id)
 
     step_nos = [s.step_no for s in payload]
@@ -364,7 +431,7 @@ def replace_hole_steps(hole_id: int, payload: list[HoleStepIn], db: Session = De
 
 
 @app.put("/api/v1/holes/{hole_id}/parts", response_model=HoleOut)
-def replace_hole_parts(hole_id: int, payload: list[HolePartIn], db: Session = Depends(get_db)):
+def replace_hole_parts(hole_id: int, payload: list[HolePartIn], db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     hole = _get_hole_or_404(db, hole_id)
 
     slot_nos = [p.slot_no for p in payload]
@@ -394,7 +461,7 @@ def replace_hole_parts(hole_id: int, payload: list[HolePartIn], db: Session = De
 
 
 @app.get("/api/v1/mdr-cases", response_model=list[MdrCaseOut])
-def list_mdr_cases(db: Session = Depends(get_db), panel_id: int | None = None, limit: int = 200):
+def list_mdr_cases(db: Session = Depends(get_db), panel_id: int | None = None, limit: int = 200, _user=Depends(current_user)):
     stmt = select(MdrCase).order_by(MdrCase.id.desc()).limit(limit)
     if panel_id is not None:
         stmt = stmt.where(MdrCase.panel_id == panel_id)
@@ -402,30 +469,33 @@ def list_mdr_cases(db: Session = Depends(get_db), panel_id: int | None = None, l
 
 
 @app.post("/api/v1/mdr-cases", response_model=MdrCaseOut, status_code=201)
-def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db)):
+def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     _validate_mdr_case_payload(payload)
     row = MdrCase(**payload.model_dump())
     db.add(row)
+    db.flush()
+    _audit(db, "create", "mdr_case", row.id, user["username"])
     db.commit()
     db.refresh(row)
     return row
 
 
 @app.put("/api/v1/mdr-cases/{mdr_case_id}", response_model=MdrCaseOut)
-def update_mdr_case(mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(get_db)):
+def update_mdr_case(mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     _validate_mdr_case_payload(payload)
     row = db.get(MdrCase, mdr_case_id)
     if not row:
         raise HTTPException(status_code=404, detail="MDR case not found")
     for key, value in payload.model_dump().items():
         setattr(row, key, value)
+    _audit(db, "update", "mdr_case", row.id, user["username"])
     db.commit()
     db.refresh(row)
     return row
 
 
 @app.post("/api/v1/mdr-cases/{mdr_case_id}/transition", response_model=MdrCaseOut)
-def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Session = Depends(get_db)):
+def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Session = Depends(get_db), user=Depends(require_role("reviewer"))):
     row = db.get(MdrCase, mdr_case_id)
     if not row:
         raise HTTPException(status_code=404, detail="MDR case not found")
@@ -447,6 +517,7 @@ def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Se
         raise HTTPException(status_code=400, detail="submitted_by is required before this transition")
 
     row.status = to_status
+    _audit(db, "transition", "mdr_case", row.id, user["username"])
     db.commit()
     db.refresh(row)
     return row
@@ -464,10 +535,11 @@ def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends
 
 
 @app.delete("/api/v1/mdr-cases/{mdr_case_id}")
-def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db)):
+def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
     row = db.get(MdrCase, mdr_case_id)
     if not row:
         raise HTTPException(status_code=404, detail="MDR case not found")
+    _audit(db, "delete", "mdr_case", row.id, user["username"])
     db.delete(row)
     db.commit()
     return {"deleted": True}
@@ -476,6 +548,7 @@ def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db)):
 @app.get("/api/v1/ndi-dashboard", response_model=list[NdiQueueRowOut])
 def list_ndi_dashboard(
     db: Session = Depends(get_db),
+    _user=Depends(current_user),
     aircraft_id: int | None = None,
     panel_id: int | None = None,
     queue: str = Query(default="all", pattern="^(all|check_tracker|action_needed|report_needed|finished)$"),
@@ -563,7 +636,7 @@ def list_ndi_dashboard(
 
 
 @app.post("/api/v1/holes/{hole_id}/ndi-status", response_model=HoleOut)
-def transition_ndi_status(hole_id: int, payload: NdiStatusTransitionIn, db: Session = Depends(get_db)):
+def transition_ndi_status(hole_id: int, payload: NdiStatusTransitionIn, db: Session = Depends(get_db), user=Depends(require_role("reviewer"))):
     hole = _get_hole_or_404(db, hole_id)
     to_status = (payload.to_status or "").strip()
     allowed = {"check_tracker", "action_needed", "report_needed", "finished"}
@@ -585,17 +658,18 @@ def transition_ndi_status(hole_id: int, payload: NdiStatusTransitionIn, db: Sess
     else:
         hole.ndi_finished = False
 
+    _audit(db, "transition", "ndi_status", hole.id, user["username"])
     db.commit()
     return _get_hole_or_404(db, hole_id)
 
 
 @app.get("/api/v1/holes/{hole_id}/ndi-reports", response_model=list[NdiReportOut])
-def list_ndi_reports(hole_id: int, db: Session = Depends(get_db)):
+def list_ndi_reports(hole_id: int, db: Session = Depends(get_db), _user=Depends(current_user)):
     return db.execute(select(NdiReport).where(NdiReport.hole_id == hole_id).order_by(NdiReport.id.desc())).scalars().all()
 
 
 @app.post("/api/v1/holes/{hole_id}/ndi-reports", response_model=NdiReportOut, status_code=201)
-def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(get_db)):
+def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     hole = _get_hole_or_404(db, hole_id)
 
     data = payload.model_dump(exclude={"hole_id"})
@@ -605,23 +679,26 @@ def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(
         row.panel_id = hole.panel_id
 
     db.add(row)
+    db.flush()
+    _audit(db, "create", "ndi_report", row.id, user["username"])
     db.commit()
     db.refresh(row)
     return row
 
 
 @app.delete("/api/v1/ndi-reports/{report_id}")
-def delete_ndi_report(report_id: int, db: Session = Depends(get_db)):
+def delete_ndi_report(report_id: int, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
     row = db.get(NdiReport, report_id)
     if not row:
         raise HTTPException(status_code=404, detail="NDI report not found")
+    _audit(db, "delete", "ndi_report", row.id, user["username"])
     db.delete(row)
     db.commit()
     return {"deleted": True}
 
 
 @app.get("/api/v1/panels/{panel_id}/mdr-request-details", response_model=list[MdrRequestDetailOut])
-def list_mdr_request_details(panel_id: int, db: Session = Depends(get_db), limit: int = 200):
+def list_mdr_request_details(panel_id: int, db: Session = Depends(get_db), limit: int = 200, _user=Depends(current_user)):
     return (
         db.execute(
             select(MdrRequestDetail)

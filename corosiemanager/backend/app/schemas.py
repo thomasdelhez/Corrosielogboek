@@ -201,3 +201,14 @@ class OrderingTrackerRowOut(BaseModel):
     order_in_progress: bool
     delivery_in_progress: bool
     installation_ready: bool
+
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class LoginOut(BaseModel):
+    token: str
+    username: str
+    role: str

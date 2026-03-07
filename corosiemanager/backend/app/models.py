@@ -134,3 +134,24 @@ class MdrRequestDetail(Base):
     problem_statement: Mapped[str | None] = mapped_column(Text, nullable=True)
     discovered_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     date_discovered: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AppUser(Base):
+    __tablename__ = "app_user"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password: Mapped[str] = mapped_column(String(255), default="demo")
+    role: Mapped[str] = mapped_column(String(64), index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    action: Mapped[str] = mapped_column(String(128), index=True)
+    entity: Mapped[str] = mapped_column(String(64), index=True)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    username: Mapped[str] = mapped_column(String(255), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
