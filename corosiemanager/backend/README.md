@@ -27,6 +27,12 @@ export DATABASE_URL="postgresql+psycopg://$USER@localhost:5432/corrosie"
 alembic upgrade head
 ```
 
+For an existing database that was previously initialized without Alembic, align baseline first:
+
+```bash
+alembic stamp head
+```
+
 Create a new migration after model changes:
 
 ```bash
