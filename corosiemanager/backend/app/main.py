@@ -18,6 +18,7 @@ from .schemas import (
     MdrRemarkIn,
     MdrRemarkOut,
     MdrRequestDetailOut,
+    MdrStatusTransitionIn,
     NdiReportIn,
     NdiReportOut,
     OrderingTrackerRowOut,
@@ -38,6 +39,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+MDR_ALLOWED_STATUSES = {"Draft", "Awaiting Request", "Request", "Submit", "Resubmit", "In Review", "Approved", "Rejected", "Closed"}
+MDR_TRANSITIONS: dict[str, set[str]] = {
+    "Draft": {"Awaiting Request", "Request", "Submitted"},
+    "Awaiting Request": {"Request", "Closed"},
+    "Request": {"Submit", "Resubmit", "Closed"},
+    "Submit": {"In Review", "Resubmit", "Closed"},
+    "Resubmit": {"Submit", "In Review", "Closed"},
+    "Submitted": {"In Review", "Resubmit", "Closed"},
+    "In Review": {"Approved", "Rejected", "Resubmit", "Closed"},
+    "Approved": {"Closed"},
+    "Rejected": {"Resubmit", "Closed"},
+    "Closed": set(),
+}
+
+
+def _validate_mdr_case_payload(payload: MdrCaseIn):
+    status = (payload.status or "Draft").strip()
+    if status not in MDR_ALLOWED_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid MDR status: {status}")
+
+    if status in {"Request", "Submit", "Resubmit", "Submitted", "In Review", "Approved", "Rejected", "Closed"}:
+        if not payload.mdr_number:
+            raise HTTPException(status_code=400, detail="mdr_number is required for this status")
+        if not payload.subject:
+            raise HTTPException(status_code=400, detail="subject is required for this status")
+
+    if status in {"Submit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and not payload.submitted_by:
+        raise HTTPException(status_code=400, detail="submitted_by is required for this status")
 
 
 @app.on_event("startup")
@@ -371,6 +401,7 @@ def list_mdr_cases(db: Session = Depends(get_db), panel_id: int | None = None, l
 
 @app.post("/api/v1/mdr-cases", response_model=MdrCaseOut, status_code=201)
 def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db)):
+    _validate_mdr_case_payload(payload)
     row = MdrCase(**payload.model_dump())
     db.add(row)
     db.commit()
@@ -380,11 +411,40 @@ def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db)):
 
 @app.put("/api/v1/mdr-cases/{mdr_case_id}", response_model=MdrCaseOut)
 def update_mdr_case(mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(get_db)):
+    _validate_mdr_case_payload(payload)
     row = db.get(MdrCase, mdr_case_id)
     if not row:
         raise HTTPException(status_code=404, detail="MDR case not found")
     for key, value in payload.model_dump().items():
         setattr(row, key, value)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.post("/api/v1/mdr-cases/{mdr_case_id}/transition", response_model=MdrCaseOut)
+def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Session = Depends(get_db)):
+    row = db.get(MdrCase, mdr_case_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="MDR case not found")
+
+    from_status = (row.status or "Draft").strip()
+    to_status = (payload.to_status or "").strip()
+
+    if to_status not in MDR_ALLOWED_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid target status: {to_status}")
+
+    allowed = MDR_TRANSITIONS.get(from_status, set())
+    if to_status not in allowed:
+        raise HTTPException(status_code=400, detail=f"Transition not allowed: {from_status} -> {to_status}")
+
+    if to_status in {"Request", "Submit", "Resubmit", "Submitted", "In Review", "Approved", "Rejected", "Closed"}:
+        if not row.mdr_number or not row.subject:
+            raise HTTPException(status_code=400, detail="mdr_number and subject are required before this transition")
+    if to_status in {"Submit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and not row.submitted_by:
+        raise HTTPException(status_code=400, detail="submitted_by is required before this transition")
+
+    row.status = to_status
     db.commit()
     db.refresh(row)
     return row

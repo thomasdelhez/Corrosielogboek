@@ -115,6 +115,10 @@ class MdrCaseOut(MdrCaseIn):
         from_attributes = True
 
 
+class MdrStatusTransitionIn(BaseModel):
+    to_status: str
+
+
 class MdrRemarkIn(BaseModel):
     remark_index: int = Field(ge=1, le=5)
     remark_text: str

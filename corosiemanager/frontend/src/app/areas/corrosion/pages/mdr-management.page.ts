@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -15,7 +15,7 @@ import { CorrosionService } from '../services/corrosion.service';
 
       <section class="card">
         <h2>MDR Management</h2>
-        <p class="subtitle">Aanmaken, wijzigen en verwijderen van MDR-cases.</p>
+        <p class="subtitle">MDR dashboard met queue-overzicht en gecontroleerde status-overgangen.</p>
 
         <div class="filters">
           <label class="field">
@@ -53,7 +53,6 @@ import { CorrosionService } from '../services/corrosion.service';
               <label class="field">
                 <span>Status</span>
                 <select [(ngModel)]="form.status" name="status">
-                  <option [ngValue]="null">-- Selecteer status --</option>
                   @for (opt of mdrStatusOptions; track opt) {
                     <option [value]="opt">{{ opt }}</option>
                   }
@@ -71,20 +70,48 @@ import { CorrosionService } from '../services/corrosion.service';
 
         @if (loading()) {
           <p class="state">Laden...</p>
-        } @else if (mdrCases().length === 0) {
-          <p class="state">Geen MDR-cases gevonden voor deze selectie.</p>
         } @else {
-          <div class="table-wrap">
+          <div class="queue-grid">
+            <section class="queue-card">
+              <h3>Awaiting Request ({{ awaiting().length }})</h3>
+              @if (awaiting().length === 0) { <p class="state">Leeg</p> } @else {
+                @for (m of awaiting(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+              }
+            </section>
+
+            <section class="queue-card">
+              <h3>Request ({{ requestQ().length }})</h3>
+              @if (requestQ().length === 0) { <p class="state">Leeg</p> } @else {
+                @for (m of requestQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+              }
+            </section>
+
+            <section class="queue-card">
+              <h3>Submit ({{ submitQ().length }})</h3>
+              @if (submitQ().length === 0) { <p class="state">Leeg</p> } @else {
+                @for (m of submitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+              }
+            </section>
+
+            <section class="queue-card">
+              <h3>Resubmit ({{ resubmitQ().length }})</h3>
+              @if (resubmitQ().length === 0) { <p class="state">Leeg</p> } @else {
+                @for (m of resubmitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+              }
+            </section>
+          </div>
+
+          <div class="table-wrap" style="margin-top:14px;">
             <table>
               <thead>
-                <tr><th>ID</th><th>MDR Number</th><th>Versie</th><th>Status</th><th>Acties</th></tr>
+                <tr><th>ID</th><th>MDR Number</th><th>Subject</th><th>Status</th><th>Acties</th></tr>
               </thead>
               <tbody>
                 @for (m of mdrCases(); track m.id) {
                   <tr>
                     <td>#{{ m.id }}</td>
                     <td>{{ m.mdrNumber ?? '-' }}</td>
-                    <td>{{ m.mdrVersion ?? '-' }}</td>
+                    <td>{{ m.subject ?? '-' }}</td>
                     <td>{{ m.status ?? '-' }}</td>
                     <td>
                       <button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button>
@@ -100,7 +127,7 @@ import { CorrosionService } from '../services/corrosion.service';
     </main>
   `,
   styles: `
-    .page{max-width:1050px;margin:0 auto;padding:24px}.back{text-decoration:none;color:#334155;font-weight:600}
+    .page{max-width:1150px;margin:0 auto;padding:24px}.back{text-decoration:none;color:#334155;font-weight:600}
     .card{border:1px solid #e2e8f0;border-radius:14px;padding:20px;background:#fff}.subtitle{color:#64748b}
     .filters{display:grid;grid-template-columns:repeat(2,minmax(0,260px));gap:10px;margin:10px 0}
     .field{display:grid;gap:6px;font-weight:600;color:#334155} input,select{padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px}
@@ -109,7 +136,15 @@ import { CorrosionService } from '../services/corrosion.service';
     .btn-primary,.btn-secondary,.btn-danger{border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
     .btn-primary{background:#2563eb;color:#fff}.btn-secondary{background:#e2e8f0;color:#334155}.btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
     .inline{margin-right:6px;padding:6px 10px}
+    .queue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}
+    .queue-card{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}
+    .queue-card h3{margin:0 0 8px;font-size:1rem}
+    .case-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #e5e7eb}
+    .case-row:first-of-type{border-top:0}
+    .row-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
     .table-wrap{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left}
+    .state{color:#64748b}
+    @media(max-width:900px){.queue-grid{grid-template-columns:1fr}}
     @media(max-width:760px){.filters,.grid{grid-template-columns:1fr}}
   `,
 })
@@ -125,14 +160,31 @@ export class MdrManagementPage implements OnInit {
   protected readonly creatingMode = signal<boolean>(false);
   protected readonly editingId = signal<number | null>(null);
   protected readonly message = signal<string>('');
-  protected readonly mdrStatusOptions = ['Draft', 'Submitted', 'In Review', 'Approved', 'Rejected', 'Closed'];
+  protected readonly mdrStatusOptions = ['Draft', 'Awaiting Request', 'Request', 'Submit', 'Resubmit', 'In Review', 'Approved', 'Rejected', 'Closed'];
+
+  private readonly transitions: Record<string, string[]> = {
+    Draft: ['Awaiting Request', 'Request'],
+    'Awaiting Request': ['Request', 'Closed'],
+    Request: ['Submit', 'Resubmit', 'Closed'],
+    Submit: ['In Review', 'Resubmit', 'Closed'],
+    Resubmit: ['Submit', 'In Review', 'Closed'],
+    'In Review': ['Approved', 'Rejected', 'Resubmit', 'Closed'],
+    Approved: ['Closed'],
+    Rejected: ['Resubmit', 'Closed'],
+    Closed: [],
+  };
+
+  protected readonly awaiting = computed(() => this.mdrCases().filter((x) => x.status === 'Awaiting Request'));
+  protected readonly requestQ = computed(() => this.mdrCases().filter((x) => x.status === 'Request'));
+  protected readonly submitQ = computed(() => this.mdrCases().filter((x) => x.status === 'Submit'));
+  protected readonly resubmitQ = computed(() => this.mdrCases().filter((x) => x.status === 'Resubmit'));
 
   protected form: CreateMdrCaseInput = {
     panelId: null,
     mdrNumber: null,
     mdrVersion: null,
     subject: null,
-    status: null,
+    status: 'Draft',
     submittedBy: null,
     requestDate: null,
     needDate: null,
@@ -205,7 +257,7 @@ export class MdrManagementPage implements OnInit {
       mdrNumber: null,
       mdrVersion: null,
       subject: panel ? `Panel ${panel.panelNumber}` : null,
-      status: null,
+      status: 'Draft',
       submittedBy: null,
       requestDate: null,
       needDate: null,
@@ -231,9 +283,28 @@ export class MdrManagementPage implements OnInit {
       await this.onPanelChange(panelId);
       this.creatingMode.set(false);
       this.editingId.set(null);
-    } catch {
-      this.message.set('Opslaan mislukt ❌');
+    } catch (e: any) {
+      this.message.set(`Opslaan mislukt ❌ ${e?.error?.detail ?? ''}`.trim());
     }
+  }
+
+  async transition(id: number, toStatus: string): Promise<void> {
+    try {
+      await firstValueFrom(this.svc.transitionMdrCase(id, toStatus));
+      const panelId = this.selectedPanelId();
+      if (panelId) await this.onPanelChange(panelId);
+      this.message.set(`Status bijgewerkt naar ${toStatus} ✅`);
+    } catch (e: any) {
+      this.message.set(`Transitie mislukt ❌ ${e?.error?.detail ?? ''}`.trim());
+    }
+  }
+
+  nextStatuses(status: string | null): string[] {
+    return this.transitions[status ?? 'Draft'] ?? [];
+  }
+
+  caseLabel(m: MdrCase): string {
+    return `#${m.id} ${m.mdrNumber ?? '(zonder nummer)'} — ${m.subject ?? '(zonder subject)'}`;
   }
 
   async deleteMdr(id: number): Promise<void> {

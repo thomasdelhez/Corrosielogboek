@@ -120,6 +120,14 @@ export class CorrosionService {
     return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}`);
   }
 
+  transitionMdrCase(mdrCaseId: number, toStatus: string): Observable<MdrCase> {
+    return this.http
+      .post<MdrCaseDto>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}/transition`, {
+        to_status: toStatus,
+      })
+      .pipe(map((row) => this.toMdrCase(row)));
+  }
+
   listNdiReports(holeId: number): Observable<NdiReport[]> {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
