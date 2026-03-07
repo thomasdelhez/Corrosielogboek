@@ -39,7 +39,7 @@ import { RouterLink } from '@angular/router';
           <article class="menu-card">
             <h3>Ordering Tracker</h3>
             <p>Overzicht van onderdelen en leverstatus.</p>
-            <button class="btn-ghost" (click)="comingSoon('Ordering Tracker')">Open</button>
+            <a class="btn-secondary linkbtn" routerLink="/ordering">Open Ordering Tracker</a>
           </article>
 
           <article class="menu-card">

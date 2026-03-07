@@ -87,3 +87,20 @@ export interface MdrRequestDetail {
   discoveredBy: string | null;
   dateDiscovered: Date | null;
 }
+
+export interface OrderingTrackerRow {
+  holeId: number;
+  holeNumber: number;
+  panelId: number;
+  panelNumber: number;
+  aircraftId: number | null;
+  aircraftAn: string | null;
+  inspectionStatus: string | null;
+  orderedParts: number;
+  deliveredParts: number;
+  pendingParts: number;
+  orderNeeded: boolean;
+  orderInProgress: boolean;
+  deliveryInProgress: boolean;
+  installationReady: boolean;
+}

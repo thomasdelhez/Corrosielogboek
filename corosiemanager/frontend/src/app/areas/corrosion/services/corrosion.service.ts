@@ -8,6 +8,7 @@ import {
   MdrCaseDto,
   MdrRequestDetailDto,
   NdiReportDto,
+  OrderingTrackerRowDto,
   PanelSummaryDto,
   UpdateHoleInputDto,
   UpdateHolePartInputDto,
@@ -20,7 +21,17 @@ import {
   UpdateHolePartInput,
   UpdateHoleStepInput,
 } from '../models/corrosion.inputs';
-import { Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRequestDetail, NdiReport, PanelSummary } from '../models/corrosion.models';
+import {
+  Aircraft,
+  Hole,
+  HolePart,
+  HoleStep,
+  MdrCase,
+  MdrRequestDetail,
+  NdiReport,
+  OrderingTrackerRow,
+  PanelSummary,
+} from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
 export class CorrosionService {
@@ -119,6 +130,22 @@ export class CorrosionService {
     return this.http
       .get<MdrRequestDetailDto[]>(`${this.config.apiBaseUrl}/panels/${panelId}/mdr-request-details`)
       .pipe(map((rows) => rows.map((row) => this.toMdrRequestDetail(row))));
+  }
+
+  listOrderingTracker(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    queue?: 'all' | 'order_needed' | 'order_status' | 'delivery_status' | 'created_holes';
+    q?: string | null;
+  }): Observable<OrderingTrackerRow[]> {
+    return this.http
+      .get<OrderingTrackerRowDto[]>(`${this.config.apiBaseUrl}/ordering-tracker`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        queue: params.queue ?? 'all',
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toOrderingTrackerRow(row))));
   }
 
   createNdiReport(holeId: number, input: CreateNdiReportInput): Observable<NdiReport> {
@@ -280,6 +307,25 @@ export class CorrosionService {
       problemStatement: dto.problem_statement,
       discoveredBy: dto.discovered_by,
       dateDiscovered: dto.date_discovered ? new Date(dto.date_discovered) : null,
+    };
+  }
+
+  private toOrderingTrackerRow(dto: OrderingTrackerRowDto): OrderingTrackerRow {
+    return {
+      holeId: dto.hole_id,
+      holeNumber: dto.hole_number,
+      panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      aircraftId: dto.aircraft_id,
+      aircraftAn: dto.aircraft_an,
+      inspectionStatus: dto.inspection_status,
+      orderedParts: dto.ordered_parts,
+      deliveredParts: dto.delivered_parts,
+      pendingParts: dto.pending_parts,
+      orderNeeded: dto.order_needed,
+      orderInProgress: dto.order_in_progress,
+      deliveryInProgress: dto.delivery_in_progress,
+      installationReady: dto.installation_ready,
     };
   }
 }

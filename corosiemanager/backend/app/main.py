@@ -2,7 +2,7 @@ import os
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, case, cast, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
@@ -20,6 +20,7 @@ from .schemas import (
     MdrRequestDetailOut,
     NdiReportIn,
     NdiReportOut,
+    OrderingTrackerRowOut,
 )
 
 app = FastAPI(title="F35 Corrosie Logboek API", version="0.2.1")
@@ -81,6 +82,93 @@ def list_panels(db: Session = Depends(get_db), aircraft_id: int | None = None):
         }
         for r in rows
     ]
+
+
+@app.get("/api/v1/ordering-tracker", response_model=list[OrderingTrackerRowOut])
+def list_ordering_tracker(
+    db: Session = Depends(get_db),
+    aircraft_id: int | None = None,
+    panel_id: int | None = None,
+    queue: str = Query(default="all", pattern="^(all|order_needed|order_status|delivery_status|created_holes)$"),
+    q: str | None = None,
+    limit: int = Query(default=300, ge=1, le=1000),
+):
+    ordered_parts = func.sum(case((HolePart.ordered_flag.is_(True), 1), else_=0))
+    delivered_parts = func.sum(case((HolePart.delivered_flag.is_(True), 1), else_=0))
+    pending_parts = func.sum(
+        case((HolePart.part_number.is_not(None), case((HolePart.ordered_flag.is_(True), 0), else_=1)), else_=0)
+    )
+
+    stmt = (
+        select(
+            Hole.id.label("hole_id"),
+            Hole.hole_number.label("hole_number"),
+            Hole.panel_id.label("panel_id"),
+            Panel.panel_number.label("panel_number"),
+            Aircraft.id.label("aircraft_id"),
+            Aircraft.an.label("aircraft_an"),
+            Hole.inspection_status.label("inspection_status"),
+            func.coalesce(ordered_parts, 0).label("ordered_parts"),
+            func.coalesce(delivered_parts, 0).label("delivered_parts"),
+            func.coalesce(pending_parts, 0).label("pending_parts"),
+        )
+        .join(Panel, Panel.id == Hole.panel_id)
+        .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+        .outerjoin(HolePart, HolePart.hole_id == Hole.id)
+        .group_by(Hole.id, Hole.hole_number, Hole.panel_id, Panel.panel_number, Aircraft.id, Aircraft.an, Hole.inspection_status)
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+    if panel_id is not None:
+        stmt = stmt.where(Hole.panel_id == panel_id)
+    if q:
+        like_q = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                cast(Hole.hole_number, String).ilike(like_q),
+                cast(Panel.panel_number, String).ilike(like_q),
+                Aircraft.an.ilike(like_q),
+                Hole.inspection_status.ilike(like_q),
+            )
+        )
+
+    rows = db.execute(stmt.order_by(Panel.panel_number.asc(), Hole.hole_number.asc()).limit(limit)).all()
+
+    out = []
+    for r in rows:
+        order_needed = int(r.pending_parts or 0) > 0
+        order_in_progress = int(r.ordered_parts or 0) > 0 and int(r.delivered_parts or 0) < int(r.ordered_parts or 0)
+        delivery_in_progress = int(r.delivered_parts or 0) > 0 and int(r.delivered_parts or 0) < int(r.ordered_parts or 0)
+        installation_ready = int(r.ordered_parts or 0) > 0 and int(r.delivered_parts or 0) >= int(r.ordered_parts or 0)
+
+        if queue == "order_needed" and not order_needed:
+            continue
+        if queue == "order_status" and not order_in_progress:
+            continue
+        if queue == "delivery_status" and not delivery_in_progress:
+            continue
+
+        out.append(
+            {
+                "hole_id": r.hole_id,
+                "hole_number": r.hole_number,
+                "panel_id": r.panel_id,
+                "panel_number": r.panel_number,
+                "aircraft_id": r.aircraft_id,
+                "aircraft_an": r.aircraft_an,
+                "inspection_status": r.inspection_status,
+                "ordered_parts": int(r.ordered_parts or 0),
+                "delivered_parts": int(r.delivered_parts or 0),
+                "pending_parts": int(r.pending_parts or 0),
+                "order_needed": order_needed,
+                "order_in_progress": order_in_progress,
+                "delivery_in_progress": delivery_in_progress,
+                "installation_ready": installation_ready,
+            }
+        )
+
+    return out
 
 
 def _get_hole_or_404(db: Session, hole_id: int) -> Hole:

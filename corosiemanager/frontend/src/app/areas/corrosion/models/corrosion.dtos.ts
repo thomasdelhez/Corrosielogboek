@@ -119,3 +119,20 @@ export interface MdrRequestDetailDto {
   discovered_by: string | null;
   date_discovered: string | null;
 }
+
+export interface OrderingTrackerRowDto {
+  hole_id: number;
+  hole_number: number;
+  panel_id: number;
+  panel_number: number;
+  aircraft_id: number | null;
+  aircraft_an: string | null;
+  inspection_status: string | null;
+  ordered_parts: number;
+  delivered_parts: number;
+  pending_parts: number;
+  order_needed: boolean;
+  order_in_progress: boolean;
+  delivery_in_progress: boolean;
+  installation_ready: boolean;
+}

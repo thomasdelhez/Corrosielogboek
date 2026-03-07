@@ -160,3 +160,20 @@ class MdrRequestDetailOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class OrderingTrackerRowOut(BaseModel):
+    hole_id: int
+    hole_number: int
+    panel_id: int
+    panel_number: int
+    aircraft_id: int | None
+    aircraft_an: str | None
+    inspection_status: str | None
+    ordered_parts: int
+    delivered_parts: int
+    pending_parts: int
+    order_needed: bool
+    order_in_progress: bool
+    delivery_in_progress: bool
+    installation_ready: bool
