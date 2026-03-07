@@ -14,6 +14,22 @@ Environment variables:
 
 - `DATABASE_URL` (default: `postgresql+psycopg://corrosie:corrosie@localhost:5432/corrosie`)
 - `ALLOWED_ORIGINS` (default: `http://127.0.0.1:4200,http://localhost:4200`)
+- `AUTO_CREATE_SCHEMA` (default: `false`; set `true` only for local bootstrap)
+
+## Database migrations (Alembic)
+
+```bash
+cd corosiemanager/backend
+source .venv/bin/activate
+alembic upgrade head
+```
+
+Create a new migration after model changes:
+
+```bash
+alembic revision --autogenerate -m "describe change"
+alembic upgrade head
+```
 
 ## Access import script (v1+)
 

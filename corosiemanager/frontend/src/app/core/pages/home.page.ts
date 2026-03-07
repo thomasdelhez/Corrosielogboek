@@ -131,14 +131,14 @@ export class HomePage {
   async login(): Promise<void> {
     try {
       await firstValueFrom(this.auth.login(this.username, this.password));
-      this.authMessage.set('Ingelogd ✅');
+      this.authMessage.set('Ingelogd');
     } catch {
-      this.authMessage.set('Login mislukt ❌');
+      this.authMessage.set('Login mislukt');
     }
   }
 
-  logout(): void {
-    this.auth.logout();
+  async logout(): Promise<void> {
+    await firstValueFrom(this.auth.logout());
     this.authMessage.set('Uitgelogd');
   }
 

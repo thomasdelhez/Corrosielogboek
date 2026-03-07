@@ -155,3 +155,14 @@ class AuditEvent(Base):
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     username: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_session"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(255), index=True)
+    role: Mapped[str] = mapped_column(String(64), index=True)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

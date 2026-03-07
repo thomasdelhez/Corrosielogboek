@@ -212,3 +212,7 @@ class LoginOut(BaseModel):
     token: str
     username: str
     role: str
+
+
+class LogoutOut(BaseModel):
+    ok: bool

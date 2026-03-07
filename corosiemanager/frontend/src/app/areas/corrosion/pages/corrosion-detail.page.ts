@@ -164,9 +164,9 @@ export class CorrosionDetailPage implements OnInit {
     try {
       const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form));
       this.applyHole(updated);
-      this.coreMessage.set('Opgeslagen ✅');
+      this.coreMessage.set('Opgeslagen');
     } catch {
-      this.coreMessage.set('Opslaan mislukt ❌');
+      this.coreMessage.set('Opslaan mislukt');
     } finally {
       this.savingCore.set(false);
     }
@@ -184,9 +184,9 @@ export class CorrosionDetailPage implements OnInit {
     try {
       const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs));
       this.applyHole(updated);
-      this.stepsMessage.set('Steps opgeslagen ✅');
+      this.stepsMessage.set('Steps opgeslagen');
     } catch {
-      this.stepsMessage.set('Opslaan mislukt ❌');
+      this.stepsMessage.set('Opslaan mislukt');
     } finally {
       this.savingSteps.set(false);
     }
@@ -204,9 +204,9 @@ export class CorrosionDetailPage implements OnInit {
     try {
       const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs));
       this.applyHole(updated);
-      this.partsMessage.set('Parts opgeslagen ✅');
+      this.partsMessage.set('Parts opgeslagen');
     } catch {
-      this.partsMessage.set('Opslaan mislukt ❌');
+      this.partsMessage.set('Opslaan mislukt');
     } finally {
       this.savingParts.set(false);
     }

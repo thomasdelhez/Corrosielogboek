@@ -186,10 +186,10 @@ export class NdiReportsPage implements OnInit {
   async transition(holeId: number, toStatus: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished'): Promise<void> {
     try {
       await firstValueFrom(this.svc.transitionNdiStatus(holeId, toStatus));
-      this.message.set(`NDI status bijgewerkt: ${this.queueLabel(toStatus)} ✅`);
+      this.message.set(`NDI status bijgewerkt: ${this.queueLabel(toStatus)}`);
       await this.reload();
     } catch (e: any) {
-      this.message.set(`NDI status update mislukt ❌ ${e?.error?.detail ?? ''}`.trim());
+      this.message.set(`NDI status update mislukt ${e?.error?.detail ?? ''}`.trim());
     }
   }
 }

@@ -275,16 +275,16 @@ export class MdrManagementPage implements OnInit {
     try {
       if (this.editingId()) {
         await firstValueFrom(this.svc.updateMdrCase(this.editingId()!, payload));
-        this.message.set('MDR case gewijzigd ✅');
+        this.message.set('MDR case gewijzigd');
       } else {
         await firstValueFrom(this.svc.createMdrCase(payload));
-        this.message.set('MDR case aangemaakt ✅');
+        this.message.set('MDR case aangemaakt');
       }
       await this.onPanelChange(panelId);
       this.creatingMode.set(false);
       this.editingId.set(null);
     } catch (e: any) {
-      this.message.set(`Opslaan mislukt ❌ ${e?.error?.detail ?? ''}`.trim());
+      this.message.set(`Opslaan mislukt ${e?.error?.detail ?? ''}`.trim());
     }
   }
 
@@ -293,9 +293,9 @@ export class MdrManagementPage implements OnInit {
       await firstValueFrom(this.svc.transitionMdrCase(id, toStatus));
       const panelId = this.selectedPanelId();
       if (panelId) await this.onPanelChange(panelId);
-      this.message.set(`Status bijgewerkt naar ${toStatus} ✅`);
+      this.message.set(`Status bijgewerkt naar ${toStatus}`);
     } catch (e: any) {
-      this.message.set(`Transitie mislukt ❌ ${e?.error?.detail ?? ''}`.trim());
+      this.message.set(`Transitie mislukt ${e?.error?.detail ?? ''}`.trim());
     }
   }
 

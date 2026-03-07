@@ -1,13 +1,15 @@
+import hashlib
 import os
 import secrets
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import String, case, cast, func, or_, select
+from passlib.context import CryptContext
+from sqlalchemy import String, case, cast, func, inspect, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
-from .models import Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
+from .models import AuthSession, Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
     HoleCreate,
     HoleOut,
@@ -16,6 +18,7 @@ from .schemas import (
     HoleUpdate,
     LoginIn,
     LoginOut,
+    LogoutOut,
     MdrCaseIn,
     MdrCaseOut,
     MdrRemarkIn,
@@ -59,8 +62,8 @@ MDR_TRANSITIONS: dict[str, set[str]] = {
     "Closed": set(),
 }
 
-TOKENS: dict[str, dict[str, str]] = {}
 ROLE_LEVEL = {"engineer": 1, "reviewer": 2, "admin": 3}
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def _validate_mdr_case_payload(payload: MdrCaseIn):
@@ -78,17 +81,23 @@ def _validate_mdr_case_payload(payload: MdrCaseIn):
         raise HTTPException(status_code=400, detail="submitted_by is required for this status")
 
 
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def _require_user(authorization: str | None, db: Session) -> dict[str, str]:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid bearer token")
     token = authorization.split(" ", 1)[1].strip()
-    user = TOKENS.get(token)
-    if not user:
+    session = db.execute(
+        select(AuthSession).where(AuthSession.token_hash == _token_hash(token), AuthSession.revoked.is_(False))
+    ).scalar_one_or_none()
+    if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    db_user = db.execute(select(AppUser).where(AppUser.username == user["username"], AppUser.is_active.is_(True))).scalar_one_or_none()
+    db_user = db.execute(select(AppUser).where(AppUser.username == session.username, AppUser.is_active.is_(True))).scalar_one_or_none()
     if not db_user:
         raise HTTPException(status_code=401, detail="User not active")
-    return {"username": db_user.username, "role": db_user.role}
+    return {"username": db_user.username, "role": db_user.role, "token": token}
 
 
 def current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
@@ -110,18 +119,32 @@ def _audit(db: Session, action: str, entity: str, entity_id: int | None, usernam
 
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
+    if os.getenv("AUTO_CREATE_SCHEMA", "false").lower() == "true":
+        Base.metadata.create_all(bind=engine)
+
+    if not inspect(engine).has_table("app_user"):
+        return
+
     with Session(engine) as db:
         existing = db.execute(select(AppUser).limit(1)).scalar_one_or_none()
         if not existing:
             db.add_all(
                 [
-                    AppUser(username="engineer", password="engineer", role="engineer"),
-                    AppUser(username="reviewer", password="reviewer", role="reviewer"),
-                    AppUser(username="admin", password="admin", role="admin"),
+                    AppUser(username="engineer", password=pwd_context.hash("engineer"), role="engineer"),
+                    AppUser(username="reviewer", password=pwd_context.hash("reviewer"), role="reviewer"),
+                    AppUser(username="admin", password=pwd_context.hash("admin"), role="admin"),
                 ]
             )
             db.commit()
+        else:
+            users = db.execute(select(AppUser)).scalars().all()
+            changed = False
+            for u in users:
+                if not u.password.startswith("$2"):
+                    u.password = pwd_context.hash(u.password)
+                    changed = True
+            if changed:
+                db.commit()
 
 
 @app.get("/health")
@@ -132,18 +155,29 @@ def health():
 @app.post("/api/v1/auth/login", response_model=LoginOut)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
     user = db.execute(
-        select(AppUser).where(AppUser.username == payload.username, AppUser.password == payload.password, AppUser.is_active.is_(True))
+        select(AppUser).where(AppUser.username == payload.username, AppUser.is_active.is_(True))
     ).scalar_one_or_none()
-    if not user:
+    if not user or not pwd_context.verify(payload.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = secrets.token_urlsafe(24)
-    TOKENS[token] = {"username": user.username, "role": user.role}
+    token = secrets.token_urlsafe(32)
+    db.add(AuthSession(token_hash=_token_hash(token), username=user.username, role=user.role, revoked=False))
+    db.commit()
     return {"token": token, "username": user.username, "role": user.role}
+
+
+@app.post("/api/v1/auth/logout", response_model=LogoutOut)
+def logout(user=Depends(current_user), db: Session = Depends(get_db)):
+    token_hash = _token_hash(user["token"])
+    session = db.execute(select(AuthSession).where(AuthSession.token_hash == token_hash)).scalar_one_or_none()
+    if session:
+        session.revoked = True
+        db.commit()
+    return {"ok": True}
 
 
 @app.get("/api/v1/auth/me")
 def me(user=Depends(current_user)):
-    return user
+    return {"username": user["username"], "role": user["role"]}
 
 
 @app.get("/api/v1/aircraft")
@@ -524,7 +558,7 @@ def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Se
 
 
 @app.post("/api/v1/mdr-cases/{mdr_case_id}/remarks", response_model=MdrRemarkOut, status_code=201)
-def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends(get_db)):
+def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     if not db.get(MdrCase, mdr_case_id):
         raise HTTPException(status_code=404, detail="MDR case not found")
     row = MdrRemark(mdr_case_id=mdr_case_id, **payload.model_dump())

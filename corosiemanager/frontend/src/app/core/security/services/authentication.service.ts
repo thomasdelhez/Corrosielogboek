@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, of, tap } from 'rxjs';
 import { AppConfigService } from '../../services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 
@@ -12,6 +12,10 @@ interface LoginResponse {
   token: string;
   username: string;
   role: string;
+}
+
+interface LogoutResponse {
+  ok: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -52,10 +56,19 @@ export class AuthenticationService {
       );
   }
 
-  logout(): void {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_username');
-    localStorage.removeItem('auth_role');
-    this.setUser(null);
+  logout(): Observable<LogoutResponse> {
+    const hasToken = !!localStorage.getItem('auth_token');
+    const request = hasToken
+      ? this.http.post<LogoutResponse>(`${this.config.apiBaseUrl}/auth/logout`, {})
+      : of({ ok: true });
+
+    return request.pipe(
+      tap(() => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_username');
+        localStorage.removeItem('auth_role');
+        this.setUser(null);
+      }),
+    );
   }
 }
