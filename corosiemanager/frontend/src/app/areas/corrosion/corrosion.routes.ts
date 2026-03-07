@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { requireLoginGuard, requireReviewerGuard } from '../../core/security/guards/auth.guards';
 import { CorrosionDetailPage } from './pages/corrosion-detail.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
 import { MdrManagementPage } from './pages/mdr-management.page';
@@ -6,9 +7,9 @@ import { NdiReportsPage } from './pages/ndi-reports.page';
 import { OrderingTrackerPage } from './pages/ordering-tracker.page';
 
 export const CORROSION_ROUTES: Routes = [
-  { path: 'corrosion', component: CorrosionListPage },
-  { path: 'corrosion/:id', component: CorrosionDetailPage },
-  { path: 'mdr', component: MdrManagementPage },
-  { path: 'ndi', component: NdiReportsPage },
-  { path: 'ordering', component: OrderingTrackerPage },
+  { path: 'corrosion', component: CorrosionListPage, canActivate: [requireLoginGuard] },
+  { path: 'corrosion/:id', component: CorrosionDetailPage, canActivate: [requireLoginGuard] },
+  { path: 'mdr', component: MdrManagementPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
+  { path: 'ndi', component: NdiReportsPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
+  { path: 'ordering', component: OrderingTrackerPage, canActivate: [requireLoginGuard] },
 ];

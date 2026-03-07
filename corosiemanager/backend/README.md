@@ -18,9 +18,12 @@ Environment variables:
 
 ## Database migrations (Alembic)
 
+Use a valid local postgres role/database before running migrations:
+
 ```bash
 cd corosiemanager/backend
 source .venv/bin/activate
+export DATABASE_URL="postgresql+psycopg://$USER@localhost:5432/corrosie"
 alembic upgrade head
 ```
 
