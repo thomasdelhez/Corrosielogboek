@@ -41,3 +41,26 @@ export const requireReviewerGuard: CanActivateFn = (_route, state) => {
     }),
   );
 };
+
+export const requireAdminGuard: CanActivateFn = (_route, state) => {
+  const auth = inject(AuthenticationService);
+  const authorization = inject(AuthorizationService);
+  const router = inject(Router);
+
+  return auth.validateStoredSession().pipe(
+    map((ok) => {
+      if (!ok) {
+        return router.createUrlTree(['/login'], {
+          queryParams: { redirectTo: state.url, reason: 'login_required' },
+        });
+      }
+
+      const user = auth.currentUser();
+      if (authorization.hasRole(user, 'admin')) {
+        return true;
+      }
+
+      return router.createUrlTree(['/'], { queryParams: { reason: 'role_required' } });
+    }),
+  );
+};

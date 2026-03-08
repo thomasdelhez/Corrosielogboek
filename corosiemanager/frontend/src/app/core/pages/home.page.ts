@@ -78,6 +78,16 @@ import { AuthorizationService } from '../security/services/authorization.service
           </article>
 
           <article class="menu-card">
+            <h3>Admin beheer</h3>
+            <p>Aircraft en panel records aanmaken/beheren.</p>
+            @if (canUseAdmin()) {
+              <a class="btn-secondary linkbtn" routerLink="/admin/master-data">Open admin beheer</a>
+            } @else {
+              <button class="btn-ghost" disabled>Admin vereist</button>
+            }
+          </article>
+
+          <article class="menu-card">
             <h3>Data Export</h3>
             <p>Exporteer data voor review en rapportage.</p>
             <button class="btn-ghost" (click)="comingSoon('Data Export')">Open</button>
@@ -139,6 +149,11 @@ export class HomePage {
   canUseNdi(): boolean {
     const user = this.auth.currentUser();
     return this.authorization.hasRole(user, 'reviewer') || this.authorization.hasRole(user, 'admin');
+  }
+
+  canUseAdmin(): boolean {
+    const user = this.auth.currentUser();
+    return this.authorization.hasRole(user, 'admin');
   }
 
   async logout(): Promise<void> {

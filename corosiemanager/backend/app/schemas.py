@@ -260,6 +260,16 @@ class OrderingTrackerRowOut(BaseModel):
     installation_ready: bool
 
 
+class AircraftCreateIn(BaseModel):
+    an: str
+    serial_number: str | None = None
+
+
+class PanelCreateIn(BaseModel):
+    aircraft_id: int
+    panel_number: int = Field(ge=0)
+
+
 class LoginIn(BaseModel):
     username: str
     password: str

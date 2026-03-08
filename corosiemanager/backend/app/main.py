@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from .db import Base, engine, get_db
 from .models import AuthSession, Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
+    AircraftCreateIn,
     HoleBatchCreateIn,
     HoleBatchCreateOut,
     HoleCreate,
@@ -35,6 +36,7 @@ from .schemas import (
     NdiReportOut,
     NdiStatusTransitionIn,
     OrderingTrackerRowOut,
+    PanelCreateIn,
 )
 
 app = FastAPI(title="F35 Corrosie Logboek API", version="0.2.1")
@@ -217,6 +219,44 @@ def list_panels(db: Session = Depends(get_db), aircraft_id: int | None = None, _
         }
         for r in rows
     ]
+
+
+@app.post("/api/v1/aircraft", status_code=201)
+def create_aircraft(payload: AircraftCreateIn, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
+    an = payload.an.strip()
+    if not an:
+        raise HTTPException(status_code=400, detail="an is required")
+
+    existing = db.execute(select(Aircraft).where(Aircraft.an == an)).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Aircraft AN already exists")
+
+    row = Aircraft(an=an, serial_number=payload.serial_number)
+    db.add(row)
+    db.flush()
+    _audit(db, "create", "aircraft", row.id, user["username"])
+    db.commit()
+    return {"id": row.id, "an": row.an, "serial_number": row.serial_number}
+
+
+@app.post("/api/v1/panels", status_code=201)
+def create_panel(payload: PanelCreateIn, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
+    aircraft = db.get(Aircraft, payload.aircraft_id)
+    if not aircraft:
+        raise HTTPException(status_code=404, detail="Aircraft not found")
+
+    existing = db.execute(
+        select(Panel).where(Panel.aircraft_id == payload.aircraft_id, Panel.panel_number == payload.panel_number)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Panel already exists for this aircraft")
+
+    row = Panel(aircraft_id=payload.aircraft_id, panel_number=payload.panel_number)
+    db.add(row)
+    db.flush()
+    _audit(db, "create", "panel", row.id, user["username"])
+    db.commit()
+    return {"id": row.id, "aircraft_id": row.aircraft_id, "panel_number": row.panel_number}
 
 
 @app.get("/api/v1/ordering-tracker", response_model=list[OrderingTrackerRowOut])

@@ -21,11 +21,13 @@ import {
   UpdateHoleStepInputDto,
 } from '../models/corrosion.dtos';
 import {
+  CreateAircraftInput,
   CreateHoleBatchResult,
   CreateHoleBatchResultRow,
   CreateHoleInput,
   CreateMdrCaseInput,
   CreateMdrRemarkInput,
+  CreatePanelInput,
   CreateNdiReportInput,
   UpdateHoleInput,
   UpdateHolePartInput,
@@ -63,6 +65,24 @@ export class CorrosionService {
     return this.http
       .get<PanelSummaryDto[]>(`${this.config.apiBaseUrl}/panels`, { aircraft_id: aircraftId })
       .pipe(map((rows) => rows.map((row) => this.toPanelSummary(row))));
+  }
+
+  createAircraft(input: CreateAircraftInput): Observable<Aircraft> {
+    return this.http
+      .post<AircraftDto>(`${this.config.apiBaseUrl}/aircraft`, {
+        an: input.an,
+        serial_number: input.serialNumber,
+      })
+      .pipe(map((row) => this.toAircraft(row)));
+  }
+
+  createPanel(input: CreatePanelInput): Observable<PanelSummary> {
+    return this.http
+      .post<PanelSummaryDto>(`${this.config.apiBaseUrl}/panels`, {
+        aircraft_id: input.aircraftId,
+        panel_number: input.panelNumber,
+      })
+      .pipe(map((row) => this.toPanelSummary(row)));
   }
 
   listPanelHoles(panelId: number): Observable<Hole[]> {

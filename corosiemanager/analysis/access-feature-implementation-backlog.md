@@ -156,12 +156,17 @@ Legenda prioriteit:
   - Queue modes: `ready_for_installation`, `finished_installation`
   - Frontend pagina `/installation` met tabs, filters en tellingen
 
-### 9) Aircraft/Panel create-beheer in UI
+### 9) Aircraft/Panel create-beheer in UI ✅ (geleverd 2026-03-08)
 - **Access referentie**: `AircraftNrCreateF`, `PanelNrCreateF`
 - **Backend**:
   - create endpoints (met uniqueness checks)
 - **Frontend**:
   - admin forms voor aanmaken/wijzigen
+
+- **Implementatie (geleverd)**:
+  - Backend create-endpoints met uniqueness checks: `POST /api/v1/aircraft`, `POST /api/v1/panels`
+  - Frontend adminpagina `/admin/master-data` voor aircraft/panel aanmaak
+  - Route afgeschermd met admin guard
 
 ---
 

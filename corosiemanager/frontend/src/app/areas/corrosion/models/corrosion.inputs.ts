@@ -85,3 +85,13 @@ export interface CreateHoleBatchResult {
   errors: number;
   results: CreateHoleBatchResultRow[];
 }
+
+export interface CreateAircraftInput {
+  an: string;
+  serialNumber: string | null;
+}
+
+export interface CreatePanelInput {
+  aircraftId: number;
+  panelNumber: number;
+}
