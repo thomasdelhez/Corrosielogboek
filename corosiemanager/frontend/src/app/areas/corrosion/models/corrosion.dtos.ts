@@ -200,6 +200,20 @@ export interface InstallationTrackerRowDto {
   queue_status: 'ready_for_installation' | 'finished_installation';
 }
 
+export interface CorrosionReportRowDto {
+  hole_id: number;
+  aircraft_an: string | null;
+  panel_number: number;
+  hole_number: number;
+  inspection_status: string | null;
+  mdr_code: string | null;
+  mdr_version: string | null;
+  ndi_finished: boolean;
+  final_hole_size: number | null;
+  max_bp_diameter: number | null;
+  created_at: string;
+}
+
 export interface CreateHoleBatchResultRowDto {
   hole_number: number;
   hole_id: number | null;

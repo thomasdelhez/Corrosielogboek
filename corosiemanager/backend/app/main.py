@@ -12,6 +12,7 @@ from .db import Base, engine, get_db
 from .models import AuthSession, Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
     AircraftCreateIn,
+    CorrosionReportRowOut,
     HoleBatchCreateIn,
     HoleBatchCreateOut,
     HoleCreate,
@@ -257,6 +258,72 @@ def create_panel(payload: PanelCreateIn, db: Session = Depends(get_db), user=Dep
     _audit(db, "create", "panel", row.id, user["username"])
     db.commit()
     return {"id": row.id, "aircraft_id": row.aircraft_id, "panel_number": row.panel_number}
+
+
+@app.get("/api/v1/reports/corrosion-tracker", response_model=list[CorrosionReportRowOut])
+def corrosion_tracker_report(
+    db: Session = Depends(get_db),
+    _user=Depends(current_user),
+    aircraft_id: int | None = None,
+    panel_id: int | None = None,
+    inspection_status: str | None = None,
+    q: str | None = None,
+    limit: int = Query(default=1000, ge=1, le=5000),
+):
+    stmt = (
+        select(
+            Hole.id.label("hole_id"),
+            Aircraft.an.label("aircraft_an"),
+            Panel.panel_number.label("panel_number"),
+            Hole.hole_number.label("hole_number"),
+            Hole.inspection_status.label("inspection_status"),
+            Hole.mdr_code.label("mdr_code"),
+            Hole.mdr_version.label("mdr_version"),
+            Hole.ndi_finished.label("ndi_finished"),
+            Hole.final_hole_size.label("final_hole_size"),
+            Hole.max_bp_diameter.label("max_bp_diameter"),
+            Hole.created_at.label("created_at"),
+        )
+        .join(Panel, Panel.id == Hole.panel_id)
+        .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+    if panel_id is not None:
+        stmt = stmt.where(Hole.panel_id == panel_id)
+    if inspection_status:
+        stmt = stmt.where(Hole.inspection_status == inspection_status)
+    if q:
+        like_q = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                cast(Hole.hole_number, String).ilike(like_q),
+                cast(Panel.panel_number, String).ilike(like_q),
+                Aircraft.an.ilike(like_q),
+                Hole.inspection_status.ilike(like_q),
+                Hole.mdr_code.ilike(like_q),
+            )
+        )
+
+    rows = db.execute(stmt.order_by(Panel.panel_number.asc(), Hole.hole_number.asc()).limit(limit)).all()
+
+    return [
+        {
+            "hole_id": r.hole_id,
+            "aircraft_an": r.aircraft_an,
+            "panel_number": r.panel_number,
+            "hole_number": r.hole_number,
+            "inspection_status": r.inspection_status,
+            "mdr_code": r.mdr_code,
+            "mdr_version": r.mdr_version,
+            "ndi_finished": bool(r.ndi_finished),
+            "final_hole_size": r.final_hole_size,
+            "max_bp_diameter": r.max_bp_diameter,
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ]
 
 
 @app.get("/api/v1/ordering-tracker", response_model=list[OrderingTrackerRowOut])

@@ -227,6 +227,20 @@ class InstallationTrackerRowOut(BaseModel):
     queue_status: str
 
 
+class CorrosionReportRowOut(BaseModel):
+    hole_id: int
+    aircraft_an: str | None
+    panel_number: int
+    hole_number: int
+    inspection_status: str | None
+    mdr_code: str | None
+    mdr_version: str | None
+    ndi_finished: bool
+    final_hole_size: int | None
+    max_bp_diameter: int | None
+    created_at: datetime
+
+
 class MdrRequestDetailOut(BaseModel):
     id: int
     panel_id: int | None

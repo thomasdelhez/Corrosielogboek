@@ -167,3 +167,17 @@ export interface InstallationTrackerRow {
   installationReady: boolean;
   queueStatus: 'ready_for_installation' | 'finished_installation';
 }
+
+export interface CorrosionReportRow {
+  holeId: number;
+  aircraftAn: string | null;
+  panelNumber: number;
+  holeNumber: number;
+  inspectionStatus: string | null;
+  mdrCode: string | null;
+  mdrVersion: string | null;
+  ndiFinished: boolean;
+  finalHoleSize: number | null;
+  maxBpDiameter: number | null;
+  createdAt: Date;
+}

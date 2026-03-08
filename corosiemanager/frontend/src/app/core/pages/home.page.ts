@@ -90,7 +90,7 @@ import { AuthorizationService } from '../security/services/authorization.service
           <article class="menu-card">
             <h3>Data Export</h3>
             <p>Exporteer data voor review en rapportage.</p>
-            <button class="btn-ghost" (click)="comingSoon('Data Export')">Open</button>
+            <a class="btn-secondary linkbtn" routerLink="/reports/corrosion-tracker">Open report & export</a>
           </article>
         </div>
       </section>
@@ -162,7 +162,4 @@ export class HomePage {
     await this.router.navigate(['/login'], { queryParams: { reason: 'login_required' } });
   }
 
-  comingSoon(feature: string): void {
-    alert(`${feature} volgt in een volgende stap.`);
-  }
 }

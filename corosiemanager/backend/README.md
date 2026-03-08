@@ -82,6 +82,7 @@ bash scripts/smoke_api.sh http://127.0.0.1:8002
   - supports `inspection_status`, `mdr_code`, `q`, `limit`, `offset`
 - `POST /api/v1/aircraft`
 - `POST /api/v1/panels`
+- `GET /api/v1/reports/corrosion-tracker`
 - `GET /api/v1/inspection-dashboard`
 - `GET /api/v1/hole-trackers`
 - `GET /api/v1/installation-trackers`

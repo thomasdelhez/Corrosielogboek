@@ -4,6 +4,7 @@ import { AdminMasterDataPage } from './pages/admin-master-data.page';
 import { BatchHoleCreatePage } from './pages/batch-hole-create.page';
 import { CorrosionDetailPage } from './pages/corrosion-detail.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
+import { CorrosionReportPage } from './pages/corrosion-report.page';
 import { HoleTrackersPage } from './pages/hole-trackers.page';
 import { InspectionQueuesPage } from './pages/inspection-queues.page';
 import { InstallationTrackersPage } from './pages/installation-trackers.page';
@@ -21,5 +22,6 @@ export const CORROSION_ROUTES: Routes = [
   { path: 'trackers', component: HoleTrackersPage, canActivate: [requireLoginGuard] },
   { path: 'installation', component: InstallationTrackersPage, canActivate: [requireLoginGuard] },
   { path: 'admin/master-data', component: AdminMasterDataPage, canActivate: [requireLoginGuard, requireAdminGuard] },
+  { path: 'reports/corrosion-tracker', component: CorrosionReportPage, canActivate: [requireLoginGuard] },
   { path: 'batch-holes', component: BatchHoleCreatePage, canActivate: [requireLoginGuard] },
 ];

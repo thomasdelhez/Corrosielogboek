@@ -4,6 +4,7 @@ import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 import {
   AircraftDto,
+  CorrosionReportRowDto,
   CreateHoleBatchResultDto,
   HoleDto,
   HoleTrackerRowDto,
@@ -35,6 +36,7 @@ import {
 } from '../models/corrosion.inputs';
 import {
   Aircraft,
+  CorrosionReportRow,
   Hole,
   HolePart,
   HoleStep,
@@ -269,6 +271,22 @@ export class CorrosionService {
       .pipe(map((rows) => rows.map((row) => this.toMdrRequestDetail(row))));
   }
 
+  listCorrosionReport(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    inspectionStatus?: string | null;
+    q?: string | null;
+  }): Observable<CorrosionReportRow[]> {
+    return this.http
+      .get<CorrosionReportRowDto[]>(`${this.config.apiBaseUrl}/reports/corrosion-tracker`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        inspection_status: params.inspectionStatus ?? undefined,
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toCorrosionReportRow(row))));
+  }
+
   listOrderingTracker(params: {
     aircraftId?: number | null;
     panelId?: number | null;
@@ -484,6 +502,22 @@ export class CorrosionService {
       problemStatement: dto.problem_statement,
       discoveredBy: dto.discovered_by,
       dateDiscovered: dto.date_discovered ? new Date(dto.date_discovered) : null,
+    };
+  }
+
+  private toCorrosionReportRow(dto: CorrosionReportRowDto): CorrosionReportRow {
+    return {
+      holeId: dto.hole_id,
+      aircraftAn: dto.aircraft_an,
+      panelNumber: dto.panel_number,
+      holeNumber: dto.hole_number,
+      inspectionStatus: dto.inspection_status,
+      mdrCode: dto.mdr_code,
+      mdrVersion: dto.mdr_version,
+      ndiFinished: dto.ndi_finished,
+      finalHoleSize: dto.final_hole_size,
+      maxBpDiameter: dto.max_bp_diameter,
+      createdAt: new Date(dto.created_at),
     };
   }
 

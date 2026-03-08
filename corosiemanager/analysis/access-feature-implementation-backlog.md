@@ -172,11 +172,16 @@ Legenda prioriteit:
 
 ## P3 — Later
 
-### 10) Rapportage
+### 10) Rapportage ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `CorrosionTrackerR`, query `CorrosionTrackerQ`
 - **Doel**: print/export-ready overzicht
 - **Backend/Frontend**:
   - report endpoint + downloadbare output
+
+- **Implementatie (geleverd)**:
+  - Backend rapport-endpoint: `GET /api/v1/reports/corrosion-tracker`
+  - Frontend rapportpagina: `/reports/corrosion-tracker`
+  - CSV-export vanuit UI (Corrosion Tracker Report)
 
 ### 11) Export workflows
 - **Access referentie**: `AircraftDataExportF`, `MDRPowerpointInfoF`
