@@ -214,6 +214,20 @@ export interface CorrosionReportRowDto {
   created_at: string;
 }
 
+export interface MdrPowerpointInfoRowDto {
+  mdr_case_id: number;
+  panel_id: number | null;
+  panel_number: number | null;
+  aircraft_an: string | null;
+  mdr_number: string | null;
+  mdr_version: string | null;
+  subject: string | null;
+  status: string | null;
+  submitted_by: string | null;
+  request_date: string | null;
+  need_date: string | null;
+}
+
 export interface CreateHoleBatchResultRowDto {
   hole_number: number;
   hole_id: number | null;

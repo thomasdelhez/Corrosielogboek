@@ -241,6 +241,20 @@ class CorrosionReportRowOut(BaseModel):
     created_at: datetime
 
 
+class MdrPowerpointInfoRowOut(BaseModel):
+    mdr_case_id: int
+    panel_id: int | None
+    panel_number: int | None
+    aircraft_an: str | None
+    mdr_number: str | None
+    mdr_version: str | None
+    subject: str | None
+    status: str | None
+    submitted_by: str | None
+    request_date: datetime | None
+    need_date: datetime | None
+
+
 class MdrRequestDetailOut(BaseModel):
     id: int
     panel_id: int | None

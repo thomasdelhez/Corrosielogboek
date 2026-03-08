@@ -7,6 +7,7 @@ import {
   CorrosionReportRowDto,
   CreateHoleBatchResultDto,
   HoleDto,
+  MdrPowerpointInfoRowDto,
   HoleTrackerRowDto,
   InspectionQueueRowDto,
   InstallationTrackerRowDto,
@@ -44,6 +45,7 @@ import {
   InspectionQueueRow,
   InstallationTrackerRow,
   MdrCase,
+  MdrPowerpointInfoRow,
   MdrRemark,
   MdrRequestDetail,
   NdiQueueRow,
@@ -269,6 +271,22 @@ export class CorrosionService {
     return this.http
       .get<MdrRequestDetailDto[]>(`${this.config.apiBaseUrl}/panels/${panelId}/mdr-request-details`)
       .pipe(map((rows) => rows.map((row) => this.toMdrRequestDetail(row))));
+  }
+
+  listMdrPowerpointInfo(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    status?: string | null;
+    q?: string | null;
+  }): Observable<MdrPowerpointInfoRow[]> {
+    return this.http
+      .get<MdrPowerpointInfoRowDto[]>(`${this.config.apiBaseUrl}/reports/mdr-powerpoint-info`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        status: params.status ?? undefined,
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toMdrPowerpointInfoRow(row))));
   }
 
   listCorrosionReport(params: {
@@ -502,6 +520,22 @@ export class CorrosionService {
       problemStatement: dto.problem_statement,
       discoveredBy: dto.discovered_by,
       dateDiscovered: dto.date_discovered ? new Date(dto.date_discovered) : null,
+    };
+  }
+
+  private toMdrPowerpointInfoRow(dto: MdrPowerpointInfoRowDto): MdrPowerpointInfoRow {
+    return {
+      mdrCaseId: dto.mdr_case_id,
+      panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      aircraftAn: dto.aircraft_an,
+      mdrNumber: dto.mdr_number,
+      mdrVersion: dto.mdr_version,
+      subject: dto.subject,
+      status: dto.status,
+      submittedBy: dto.submitted_by,
+      requestDate: dto.request_date ? new Date(dto.request_date) : null,
+      needDate: dto.need_date ? new Date(dto.need_date) : null,
     };
   }
 

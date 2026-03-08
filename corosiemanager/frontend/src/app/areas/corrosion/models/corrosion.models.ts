@@ -181,3 +181,17 @@ export interface CorrosionReportRow {
   maxBpDiameter: number | null;
   createdAt: Date;
 }
+
+export interface MdrPowerpointInfoRow {
+  mdrCaseId: number;
+  panelId: number | null;
+  panelNumber: number | null;
+  aircraftAn: string | null;
+  mdrNumber: string | null;
+  mdrVersion: string | null;
+  subject: string | null;
+  status: string | null;
+  submittedBy: string | null;
+  requestDate: Date | null;
+  needDate: Date | null;
+}

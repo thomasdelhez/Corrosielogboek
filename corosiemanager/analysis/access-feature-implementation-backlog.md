@@ -183,11 +183,15 @@ Legenda prioriteit:
   - Frontend rapportpagina: `/reports/corrosion-tracker`
   - CSV-export vanuit UI (Corrosion Tracker Report)
 
-### 11) Export workflows
+### 11) Export workflows ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `AircraftDataExportF`, `MDRPowerpointInfoF`
 - **Doel**: data-export voor externe verwerking
 - **Backend/Frontend**:
   - CSV/Excel export + selecties op aircraft/panel/periode
+- **Implementatie (geleverd)**:
+  - Backend export-endpoint: `GET /api/v1/reports/mdr-powerpoint-info`
+  - Frontend export uitgebreid met tweede CSV: `MDR PPT CSV`
+  - Gecombineerde exportpagina met selecties op aircraft/panel/zoekterm
 
 ---
 

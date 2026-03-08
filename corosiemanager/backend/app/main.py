@@ -14,6 +14,7 @@ from .schemas import (
     AircraftCreateIn,
     CorrosionReportRowOut,
     HoleBatchCreateIn,
+    MdrPowerpointInfoRowOut,
     HoleBatchCreateOut,
     HoleCreate,
     HoleOut,
@@ -321,6 +322,70 @@ def corrosion_tracker_report(
             "final_hole_size": r.final_hole_size,
             "max_bp_diameter": r.max_bp_diameter,
             "created_at": r.created_at,
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/v1/reports/mdr-powerpoint-info", response_model=list[MdrPowerpointInfoRowOut])
+def mdr_powerpoint_info_report(
+    db: Session = Depends(get_db),
+    _user=Depends(current_user),
+    aircraft_id: int | None = None,
+    panel_id: int | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    limit: int = Query(default=1000, ge=1, le=5000),
+):
+    stmt = (
+        select(
+            MdrCase.id.label("mdr_case_id"),
+            MdrCase.panel_id.label("panel_id"),
+            Panel.panel_number.label("panel_number"),
+            Aircraft.an.label("aircraft_an"),
+            MdrCase.mdr_number.label("mdr_number"),
+            MdrCase.mdr_version.label("mdr_version"),
+            MdrCase.subject.label("subject"),
+            MdrCase.status.label("status"),
+            MdrCase.submitted_by.label("submitted_by"),
+            MdrCase.request_date.label("request_date"),
+            MdrCase.need_date.label("need_date"),
+        )
+        .outerjoin(Panel, Panel.id == MdrCase.panel_id)
+        .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+    if panel_id is not None:
+        stmt = stmt.where(MdrCase.panel_id == panel_id)
+    if status:
+        stmt = stmt.where(MdrCase.status == status)
+    if q:
+        like_q = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                MdrCase.mdr_number.ilike(like_q),
+                MdrCase.subject.ilike(like_q),
+                MdrCase.status.ilike(like_q),
+                Aircraft.an.ilike(like_q),
+            )
+        )
+
+    rows = db.execute(stmt.order_by(MdrCase.id.desc()).limit(limit)).all()
+    return [
+        {
+            "mdr_case_id": r.mdr_case_id,
+            "panel_id": r.panel_id,
+            "panel_number": r.panel_number,
+            "aircraft_an": r.aircraft_an,
+            "mdr_number": r.mdr_number,
+            "mdr_version": r.mdr_version,
+            "subject": r.subject,
+            "status": r.status,
+            "submitted_by": r.submitted_by,
+            "request_date": r.request_date,
+            "need_date": r.need_date,
         }
         for r in rows
     ]

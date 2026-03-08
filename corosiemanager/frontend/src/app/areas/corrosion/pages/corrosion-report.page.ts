@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { Aircraft, CorrosionReportRow, PanelSummary } from '../models/corrosion.models';
+import { Aircraft, CorrosionReportRow, MdrPowerpointInfoRow, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
@@ -24,7 +24,8 @@ import { CorrosionService } from '../services/corrosion.service';
         </div>
 
         <div class="actions">
-          <button class="btn-secondary" (click)="exportCsv()">Export CSV</button>
+          <button class="btn-secondary" (click)="exportCsv()">Export Corrosion CSV</button>
+          <button class="btn-secondary" (click)="exportMdrCsv()">Export MDR PPT CSV</button>
           <span class="count">{{ rows().length }} rijen</span>
         </div>
 
@@ -64,6 +65,7 @@ export class CorrosionReportPage implements OnInit {
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
   protected readonly rows = signal<CorrosionReportRow[]>([]);
+  protected readonly mdrRows = signal<MdrPowerpointInfoRow[]>([]);
   protected readonly selectedAircraftId = signal<number | null>(null);
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly inspectionStatus = signal<string>('');
@@ -95,16 +97,19 @@ export class CorrosionReportPage implements OnInit {
 
   async reload(): Promise<void> {
     this.loading.set(true);
-    this.rows.set(
-      await firstValueFrom(
-        this.svc.listCorrosionReport({
-          aircraftId: this.selectedAircraftId(),
-          panelId: this.selectedPanelId(),
-          inspectionStatus: this.inspectionStatus().trim() || null,
-          q: this.search().trim() || null,
-        }),
-      ),
-    );
+    const filters = {
+      aircraftId: this.selectedAircraftId(),
+      panelId: this.selectedPanelId(),
+      q: this.search().trim() || null,
+    };
+
+    const [corrosionRows, mdrRows] = await Promise.all([
+      firstValueFrom(this.svc.listCorrosionReport({ ...filters, inspectionStatus: this.inspectionStatus().trim() || null })),
+      firstValueFrom(this.svc.listMdrPowerpointInfo({ ...filters })),
+    ]);
+
+    this.rows.set(corrosionRows);
+    this.mdrRows.set(mdrRows);
     this.loading.set(false);
   }
 
@@ -123,12 +128,34 @@ export class CorrosionReportPage implements OnInit {
       r.createdAt.toISOString(),
     ]);
 
-    const csv = [header, ...lines].map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n');
+    this.downloadCsv('corrosion-tracker-report.csv', [header, ...lines]);
+  }
+
+  exportMdrCsv(): void {
+    const header = ['mdr_case_id','aircraft','panel','mdr_number','mdr_version','subject','status','submitted_by','request_date','need_date'];
+    const lines = this.mdrRows().map((r) => [
+      String(r.mdrCaseId),
+      r.aircraftAn ?? '',
+      r.panelNumber === null ? '' : String(r.panelNumber),
+      r.mdrNumber ?? '',
+      r.mdrVersion ?? '',
+      r.subject ?? '',
+      r.status ?? '',
+      r.submittedBy ?? '',
+      r.requestDate ? r.requestDate.toISOString() : '',
+      r.needDate ? r.needDate.toISOString() : '',
+    ]);
+
+    this.downloadCsv('mdr-powerpoint-info.csv', [header, ...lines]);
+  }
+
+  private downloadCsv(filename: string, rows: string[][]): void {
+    const csv = rows.map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'corrosion-tracker-report.csv';
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   }
