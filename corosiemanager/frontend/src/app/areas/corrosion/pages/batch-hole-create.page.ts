@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -158,6 +159,7 @@ export class BatchHoleCreatePage implements OnInit {
 
     this.submitting.set(true);
     this.resultRows.set([]);
+    this.parseError.set('');
     try {
       const payload: CreateHoleInput[] = this.previewNumbers().map((n) => ({
         holeNumber: n,
@@ -175,6 +177,8 @@ export class BatchHoleCreatePage implements OnInit {
       }));
       const result = await firstValueFrom(this.corrosionService.createBatchHoles(panelId, payload));
       this.resultRows.set(result.results);
+    } catch (error) {
+      this.parseError.set(this.toErrorMessage(error));
     } finally {
       this.submitting.set(false);
     }
@@ -184,6 +188,17 @@ export class BatchHoleCreatePage implements OnInit {
     const panels = await firstValueFrom(this.corrosionService.listPanels(aircraftId));
     this.panels.set(panels);
     this.selectedPanelId.set(panels[0]?.id ?? null);
+  }
+
+  private toErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 404) {
+        return 'Batch endpoint niet gevonden (404). Herstart de backend op poort 8002 met de nieuwste code.';
+      }
+      const detail = typeof error.error?.detail === 'string' ? error.error.detail : null;
+      return detail ? `Batch aanmaken mislukt: ${detail}` : `Batch aanmaken mislukt (HTTP ${error.status}).`;
+    }
+    return 'Batch aanmaken mislukt door een onverwachte fout.';
   }
 
   private parseHoleNumbers(value: string): number[] {
