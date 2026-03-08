@@ -1,11 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { Aircraft, OrderingTrackerRow, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
-type QueueFilter = 'all' | 'order_needed' | 'order_status' | 'delivery_status' | 'created_holes';
+type QueueFilter = 'all' | 'ordering_overview' | 'order_needed' | 'order_status' | 'delivery_status' | 'created_holes';
 
 @Component({
   selector: 'app-ordering-tracker-page',
@@ -45,11 +45,12 @@ type QueueFilter = 'all' | 'order_needed' | 'order_status' | 'delivery_status' |
         </div>
 
         <div class="queue-tabs">
-          <button [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles</button>
-          <button [class.active]="queue() === 'order_needed'" (click)="setQueue('order_needed')">Order needed</button>
-          <button [class.active]="queue() === 'order_status'" (click)="setQueue('order_status')">Order status</button>
-          <button [class.active]="queue() === 'delivery_status'" (click)="setQueue('delivery_status')">Delivery status</button>
-          <button [class.active]="queue() === 'created_holes'" (click)="setQueue('created_holes')">Created holes</button>
+          <button [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles <span class="count">{{ queueCounts().all }}</span></button>
+          <button [class.active]="queue() === 'ordering_overview'" (click)="setQueue('ordering_overview')">Ordering overview <span class="count">{{ queueCounts().ordering_overview }}</span></button>
+          <button [class.active]="queue() === 'order_needed'" (click)="setQueue('order_needed')">Order needed <span class="count">{{ queueCounts().order_needed }}</span></button>
+          <button [class.active]="queue() === 'order_status'" (click)="setQueue('order_status')">Order status <span class="count">{{ queueCounts().order_status }}</span></button>
+          <button [class.active]="queue() === 'delivery_status'" (click)="setQueue('delivery_status')">Delivery status <span class="count">{{ queueCounts().delivery_status }}</span></button>
+          <button [class.active]="queue() === 'created_holes'" (click)="setQueue('created_holes')">Created holes <span class="count">{{ queueCounts().created_holes }}</span></button>
         </div>
 
         @if (loading()) {
@@ -101,6 +102,7 @@ type QueueFilter = 'all' | 'order_needed' | 'order_status' | 'delivery_status' |
     .queue-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
     .queue-tabs button{border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:7px 12px;font-weight:700;cursor:pointer}
     .queue-tabs button.active{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
+    .count{display:inline-block;margin-left:6px;background:#e2e8f0;color:#0f172a;border-radius:999px;padding:1px 7px;font-size:.75rem}
     .table-wrap{margin-top:6px;border:1px solid #e2e8f0;border-radius:12px;overflow:auto}
     table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
     .state{color:#64748b}
@@ -115,11 +117,28 @@ export class OrderingTrackerPage implements OnInit {
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
   protected readonly rows = signal<OrderingTrackerRow[]>([]);
+  protected readonly allRows = signal<OrderingTrackerRow[]>([]);
   protected readonly selectedAircraftId = signal<number | null>(null);
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly queue = signal<QueueFilter>('all');
   protected readonly search = signal<string>('');
   protected readonly loading = signal<boolean>(true);
+  protected readonly queueCounts = computed(() => {
+    const rows = this.allRows();
+    const orderNeeded = rows.filter((r) => r.orderNeeded).length;
+    const orderStatus = rows.filter((r) => r.orderInProgress).length;
+    const deliveryStatus = rows.filter((r) => r.deliveryInProgress).length;
+    const createdHoles = rows.filter((r) => !r.orderNeeded && !r.orderInProgress && !r.deliveryInProgress && !r.installationReady).length;
+
+    return {
+      all: rows.length,
+      ordering_overview: rows.length,
+      order_needed: orderNeeded,
+      order_status: orderStatus,
+      delivery_status: deliveryStatus,
+      created_holes: createdHoles,
+    };
+  });
 
   async ngOnInit(): Promise<void> {
     const aircraft = await firstValueFrom(this.svc.listAircraft());
@@ -151,16 +170,19 @@ export class OrderingTrackerPage implements OnInit {
 
   async reload(): Promise<void> {
     this.loading.set(true);
-    this.rows.set(
-      await firstValueFrom(
-        this.svc.listOrderingTracker({
-          aircraftId: this.selectedAircraftId(),
-          panelId: this.selectedPanelId(),
-          queue: this.queue(),
-          q: this.search().trim() || null,
-        }),
-      ),
-    );
+    const filters = {
+      aircraftId: this.selectedAircraftId(),
+      panelId: this.selectedPanelId(),
+      q: this.search().trim() || null,
+    };
+
+    const [allRows, rows] = await Promise.all([
+      firstValueFrom(this.svc.listOrderingTracker({ ...filters, queue: 'all' })),
+      firstValueFrom(this.svc.listOrderingTracker({ ...filters, queue: this.queue() })),
+    ]);
+
+    this.allRows.set(allRows);
+    this.rows.set(rows);
     this.loading.set(false);
   }
 

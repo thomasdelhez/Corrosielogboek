@@ -179,7 +179,7 @@ export class CorrosionService {
   listOrderingTracker(params: {
     aircraftId?: number | null;
     panelId?: number | null;
-    queue?: 'all' | 'order_needed' | 'order_status' | 'delivery_status' | 'created_holes';
+    queue?: 'all' | 'ordering_overview' | 'order_needed' | 'order_status' | 'delivery_status' | 'created_holes';
     q?: string | null;
   }): Observable<OrderingTrackerRow[]> {
     return this.http

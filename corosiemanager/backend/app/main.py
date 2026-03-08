@@ -222,7 +222,7 @@ def list_ordering_tracker(
     _user=Depends(current_user),
     aircraft_id: int | None = None,
     panel_id: int | None = None,
-    queue: str = Query(default="all", pattern="^(all|order_needed|order_status|delivery_status|created_holes)$"),
+    queue: str = Query(default="all", pattern="^(all|ordering_overview|order_needed|order_status|delivery_status|created_holes)$"),
     q: str | None = None,
     limit: int = Query(default=300, ge=1, le=1000),
 ):
@@ -275,11 +275,15 @@ def list_ordering_tracker(
         delivery_in_progress = int(r.delivered_parts or 0) > 0 and int(r.delivered_parts or 0) < int(r.ordered_parts or 0)
         installation_ready = int(r.ordered_parts or 0) > 0 and int(r.delivered_parts or 0) >= int(r.ordered_parts or 0)
 
+        created_hole = int(r.ordered_parts or 0) == 0 and int(r.delivered_parts or 0) == 0 and int(r.pending_parts or 0) == 0
+
         if queue == "order_needed" and not order_needed:
             continue
         if queue == "order_status" and not order_in_progress:
             continue
         if queue == "delivery_status" and not delivery_in_progress:
+            continue
+        if queue == "created_holes" and not created_hole:
             continue
 
         out.append(

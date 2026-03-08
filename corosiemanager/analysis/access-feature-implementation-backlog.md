@@ -37,7 +37,7 @@ Legenda prioriteit:
   - Retourneert samenvatting + detailresultaten (`created/skipped/error`)
   - Frontend: nieuwe pagina `/batch-holes` met range/CSV invoer, preview en resultaattabel
 
-### 2) Ordering Tracker parity (volledig)
+### 2) Ordering Tracker parity (volledig) ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `OrderingTrackerF`, `SubformOrderingStatusOverview`, `SubformOrderStatusTracker`, `SubformDeliveryStatusTracker`, `SubFormCreatedHolesTracker`, queries: `OrderNeededQ`, `OrderStatusTrackerQ`, `DeliveryStatusQ`, `CreatedHolesTrackerQ`
 - **Doel in nieuwe tool**: alle ordering-queues zoals Access, niet alleen basisoverzicht.
 - **Backend**:
@@ -56,6 +56,10 @@ Legenda prioriteit:
 - **Acceptatie**:
   - alle Access-ordering views zijn af te beelden via UI tabs
   - tellers en rijen consistent met DB-data
+- **Implementatie (geleverd)**:
+  - Backend queue modes uitgebreid met `ordering_overview` + werkende filter voor `created_holes`
+  - Frontend tabs uitgebreid met `Ordering overview`
+  - Queue-tellingen per tab toegevoegd (all/overview/order-needed/order-status/delivery-status/created-holes)
 
 ### 3) MDR workflow parity (status + subflows)
 - **Access referentie**: `MDRMenuF`, `MDRListF`, `CreateNewMDRF`, `MDRStatusOverviewF`, `SubformMDRAwaitingRequest`, `SubformMDRCheckInput`, `SubformMDRRequest`, `SubformMDRResubmitRequest`, `SubformMDRResubmitTracker`, `SubformMDRSubmitTracker`, queries: `MDRAwaitingRequestQ`, `MDRRequestQ`, `MDRResubmitQ`, `MDRResubmitRequestQ`, `MDRSubmitQ`
