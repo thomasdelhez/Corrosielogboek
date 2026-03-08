@@ -13,6 +13,9 @@ import { AuthorizationService } from '../security/services/authorization.service
         <p class="eyebrow">F35 Corrosie Logboek</p>
         <h1>Main Menu</h1>
         <p class="subtitle">Kies een optie om te starten.</p>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <a class="btn-secondary linkbtn" routerLink="/inspection">Inspectie Queues</a>
+        </div>
 
         <div class="auth-box">
           @if (!isLoggedIn()) {
