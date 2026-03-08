@@ -96,6 +96,14 @@ export interface MdrCaseDto {
   approved: boolean;
 }
 
+export interface MdrRemarkDto {
+  id: number;
+  mdr_case_id: number;
+  remark_index: number;
+  remark_text: string;
+  remark_datetime: string | null;
+}
+
 export interface NdiReportDto {
   id: number;
   panel_id: number | null;

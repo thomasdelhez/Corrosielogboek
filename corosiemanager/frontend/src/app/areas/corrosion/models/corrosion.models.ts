@@ -88,6 +88,14 @@ export interface MdrRequestDetail {
   dateDiscovered: Date | null;
 }
 
+export interface MdrRemark {
+  id: number;
+  mdrCaseId: number;
+  remarkIndex: number;
+  remarkText: string;
+  remarkDatetime: Date | null;
+}
+
 export interface OrderingTrackerRow {
   holeId: number;
   holeNumber: number;

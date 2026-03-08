@@ -61,7 +61,7 @@ Legenda prioriteit:
   - Frontend tabs uitgebreid met `Ordering overview`
   - Queue-tellingen per tab toegevoegd (all/overview/order-needed/order-status/delivery-status/created-holes)
 
-### 3) MDR workflow parity (status + subflows)
+### 3) MDR workflow parity (status + subflows) ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `MDRMenuF`, `MDRListF`, `CreateNewMDRF`, `MDRStatusOverviewF`, `SubformMDRAwaitingRequest`, `SubformMDRCheckInput`, `SubformMDRRequest`, `SubformMDRResubmitRequest`, `SubformMDRResubmitTracker`, `SubformMDRSubmitTracker`, queries: `MDRAwaitingRequestQ`, `MDRRequestQ`, `MDRResubmitQ`, `MDRResubmitRequestQ`, `MDRSubmitQ`
 - **Doel in nieuwe tool**: volledige lifecycle zichtbaar en bedienbaar met juiste validatieregels.
 - **Backend**:
@@ -75,6 +75,11 @@ Legenda prioriteit:
 - **Acceptatie**:
   - elke MDR-case doorloopt lifecycle zonder handmatige DB-correcties
   - verboden transitions zijn geblokkeerd met duidelijke foutmelding
+- **Implementatie (geleverd)**:
+  - Frontend queue uitgebreid met `In Review`
+  - Case detailpaneel toegevoegd met `request details` cards op panelniveau
+  - Remark history + remark toevoegen (V1..V5) in UI
+  - Backend endpoint toegevoegd: `GET /api/v1/mdr-cases/{mdr_case_id}/remarks`
 
 ### 4) NDI workflow parity (queues)
 - **Access referentie**: `NDIMenuF`, `NDIReportF`, `SubformNDICheckInput`, `SubformNDICheckTracker`, `SubformNDIActionNeeded`, `SubformNDIReportNeeded`, `SubformNDIFinished`, queries: `NDICheckTrackerQ`, `NDIActionNeededQ`, `NDIReportNeededQ`, `NDIFinishedQ`

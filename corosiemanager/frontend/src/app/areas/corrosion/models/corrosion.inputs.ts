@@ -42,6 +42,12 @@ export interface CreateMdrCaseInput {
   approved: boolean;
 }
 
+export interface CreateMdrRemarkInput {
+  remarkIndex: number;
+  remarkText: string;
+  remarkDatetime: Date | null;
+}
+
 export interface CreateNdiReportInput {
   panelId: number | null;
   nameInitials: string | null;

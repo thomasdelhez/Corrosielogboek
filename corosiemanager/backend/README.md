@@ -84,4 +84,6 @@ bash scripts/smoke_api.sh http://127.0.0.1:8002
 - `PUT /api/v1/holes/{hole_id}`
 - `PUT /api/v1/holes/{hole_id}/steps`
 - `PUT /api/v1/holes/{hole_id}/parts`
+- `GET /api/v1/mdr-cases/{mdr_case_id}/remarks`
+- `POST /api/v1/mdr-cases/{mdr_case_id}/remarks`
 - `GET /health`

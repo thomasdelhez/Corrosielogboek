@@ -7,6 +7,7 @@ import {
   CreateHoleBatchResultDto,
   HoleDto,
   MdrCaseDto,
+  MdrRemarkDto,
   MdrRequestDetailDto,
   NdiQueueRowDto,
   NdiReportDto,
@@ -21,6 +22,7 @@ import {
   CreateHoleBatchResultRow,
   CreateHoleInput,
   CreateMdrCaseInput,
+  CreateMdrRemarkInput,
   CreateNdiReportInput,
   UpdateHoleInput,
   UpdateHolePartInput,
@@ -32,6 +34,7 @@ import {
   HolePart,
   HoleStep,
   MdrCase,
+  MdrRemark,
   MdrRequestDetail,
   NdiQueueRow,
   NdiReport,
@@ -140,6 +143,22 @@ export class CorrosionService {
         to_status: toStatus,
       })
       .pipe(map((row) => this.toMdrCase(row)));
+  }
+
+  listMdrRemarks(mdrCaseId: number): Observable<MdrRemark[]> {
+    return this.http
+      .get<MdrRemarkDto[]>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}/remarks`)
+      .pipe(map((rows) => rows.map((row) => this.toMdrRemark(row))));
+  }
+
+  addMdrRemark(mdrCaseId: number, input: CreateMdrRemarkInput): Observable<MdrRemark> {
+    return this.http
+      .post<MdrRemarkDto>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}/remarks`, {
+        remark_index: input.remarkIndex,
+        remark_text: input.remarkText,
+        remark_datetime: input.remarkDatetime ? input.remarkDatetime.toISOString() : null,
+      })
+      .pipe(map((row) => this.toMdrRemark(row)));
   }
 
   listNdiReports(holeId: number): Observable<NdiReport[]> {
@@ -353,6 +372,16 @@ export class CorrosionService {
       requestDate: dto.request_date ? new Date(dto.request_date) : null,
       needDate: dto.need_date ? new Date(dto.need_date) : null,
       approved: dto.approved,
+    };
+  }
+
+  private toMdrRemark(dto: MdrRemarkDto): MdrRemark {
+    return {
+      id: dto.id,
+      mdrCaseId: dto.mdr_case_id,
+      remarkIndex: dto.remark_index,
+      remarkText: dto.remark_text,
+      remarkDatetime: dto.remark_datetime ? new Date(dto.remark_datetime) : null,
     };
   }
 

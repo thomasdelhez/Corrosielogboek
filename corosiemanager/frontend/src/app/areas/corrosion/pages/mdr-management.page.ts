@@ -2,8 +2,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { CreateMdrCaseInput } from '../models/corrosion.inputs';
-import { Aircraft, MdrCase, PanelSummary } from '../models/corrosion.models';
+import { CreateMdrCaseInput, CreateMdrRemarkInput } from '../models/corrosion.inputs';
+import { Aircraft, MdrCase, MdrRemark, MdrRequestDetail, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
@@ -75,31 +75,68 @@ import { CorrosionService } from '../services/corrosion.service';
             <section class="queue-card">
               <h3>Awaiting Request ({{ awaiting().length }})</h3>
               @if (awaiting().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of awaiting(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+                @for (m of awaiting(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
               }
             </section>
 
             <section class="queue-card">
               <h3>Request ({{ requestQ().length }})</h3>
               @if (requestQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of requestQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+                @for (m of requestQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
               }
             </section>
 
             <section class="queue-card">
               <h3>Submit ({{ submitQ().length }})</h3>
               @if (submitQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of submitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+                @for (m of submitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
               }
             </section>
 
             <section class="queue-card">
               <h3>Resubmit ({{ resubmitQ().length }})</h3>
               @if (resubmitQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of resubmitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button></div></article> }
+                @for (m of resubmitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
+              }
+            </section>
+
+            <section class="queue-card">
+              <h3>In Review ({{ inReviewQ().length }})</h3>
+              @if (inReviewQ().length === 0) { <p class="state">Leeg</p> } @else {
+                @for (m of inReviewQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
               }
             </section>
           </div>
+
+          @if (selectedCase()) {
+            <section class="queue-card" style="margin-top:14px;">
+              <h3>Case detail #{{ selectedCase()!.id }}</h3>
+              <p><strong>MDR:</strong> {{ selectedCase()!.mdrNumber ?? '-' }} · <strong>Status:</strong> {{ selectedCase()!.status ?? '-' }}</p>
+              <p><strong>Subject:</strong> {{ selectedCase()!.subject ?? '-' }}</p>
+
+              <h4 style="margin:10px 0 6px;">Remarks</h4>
+              @if (remarks().length === 0) { <p class="state">Nog geen remarks</p> } @else {
+                @for (r of remarks(); track r.id) {
+                  <p style="margin:4px 0;"><strong>V{{ r.remarkIndex }}:</strong> {{ r.remarkText }}</p>
+                }
+              }
+
+              <div class="actions">
+                <input style="flex:1;min-width:260px;" [(ngModel)]="remarkForm.remarkText" placeholder="Nieuwe remark" />
+                <select [(ngModel)]="remarkForm.remarkIndex" style="width:90px;">
+                  @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">V{{ i }}</option> }
+                </select>
+                <button class="btn-primary" type="button" (click)="addRemark()">Add remark</button>
+              </div>
+
+              <h4 style="margin:10px 0 6px;">Request details (panel)</h4>
+              @if (requestDetails().length === 0) { <p class="state">Geen request details gevonden.</p> } @else {
+                @for (d of requestDetails(); track d.id) {
+                  <p style="margin:4px 0;">{{ d.tve ?? '-' }} · {{ d.partNumber ?? '-' }} · {{ d.problemStatement ?? '-' }}</p>
+                }
+              }
+            </section>
+          }
 
           <div class="table-wrap" style="margin-top:14px;">
             <table>
@@ -115,6 +152,7 @@ import { CorrosionService } from '../services/corrosion.service';
                     <td>{{ m.status ?? '-' }}</td>
                     <td>
                       <button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button>
+                      <button class="btn-secondary inline" (click)="selectCase(m)">Detail</button>
                       <button class="btn-danger inline" (click)="deleteMdr(m.id)">Verwijder</button>
                     </td>
                   </tr>
@@ -159,6 +197,9 @@ export class MdrManagementPage implements OnInit {
   protected readonly loading = signal<boolean>(true);
   protected readonly creatingMode = signal<boolean>(false);
   protected readonly editingId = signal<number | null>(null);
+  protected readonly selectedCase = signal<MdrCase | null>(null);
+  protected readonly remarks = signal<MdrRemark[]>([]);
+  protected readonly requestDetails = signal<MdrRequestDetail[]>([]);
   protected readonly message = signal<string>('');
   protected readonly mdrStatusOptions = ['Draft', 'Awaiting Request', 'Request', 'Submit', 'Resubmit', 'In Review', 'Approved', 'Rejected', 'Closed'];
 
@@ -178,6 +219,7 @@ export class MdrManagementPage implements OnInit {
   protected readonly requestQ = computed(() => this.mdrCases().filter((x) => x.status === 'Request'));
   protected readonly submitQ = computed(() => this.mdrCases().filter((x) => x.status === 'Submit'));
   protected readonly resubmitQ = computed(() => this.mdrCases().filter((x) => x.status === 'Resubmit'));
+  protected readonly inReviewQ = computed(() => this.mdrCases().filter((x) => x.status === 'In Review'));
 
   protected form: CreateMdrCaseInput = {
     panelId: null,
@@ -189,6 +231,12 @@ export class MdrManagementPage implements OnInit {
     requestDate: null,
     needDate: null,
     approved: false,
+  };
+
+  protected remarkForm: CreateMdrRemarkInput = {
+    remarkIndex: 1,
+    remarkText: '',
+    remarkDatetime: null,
   };
 
   async ngOnInit(): Promise<void> {
@@ -213,6 +261,9 @@ export class MdrManagementPage implements OnInit {
       await this.onPanelChange(first.id);
     } else {
       this.mdrCases.set([]);
+      this.selectedCase.set(null);
+      this.remarks.set([]);
+      this.requestDetails.set([]);
     }
     this.resetForm();
     this.loading.set(false);
@@ -222,6 +273,9 @@ export class MdrManagementPage implements OnInit {
     this.loading.set(true);
     this.selectedPanelId.set(Number(id));
     this.mdrCases.set(await firstValueFrom(this.svc.listMdrCases(Number(id))));
+    this.requestDetails.set(await firstValueFrom(this.svc.listMdrRequestDetails(Number(id))));
+    this.selectedCase.set(null);
+    this.remarks.set([]);
     this.resetForm();
     this.loading.set(false);
   }
@@ -296,6 +350,24 @@ export class MdrManagementPage implements OnInit {
       this.message.set(`Status bijgewerkt naar ${toStatus}`);
     } catch (e: any) {
       this.message.set(`Transitie mislukt ${e?.error?.detail ?? ''}`.trim());
+    }
+  }
+
+  async selectCase(row: MdrCase): Promise<void> {
+    this.selectedCase.set(row);
+    this.remarks.set(await firstValueFrom(this.svc.listMdrRemarks(row.id)));
+  }
+
+  async addRemark(): Promise<void> {
+    const selected = this.selectedCase();
+    if (!selected || !this.remarkForm.remarkText.trim()) return;
+    try {
+      await firstValueFrom(this.svc.addMdrRemark(selected.id, { ...this.remarkForm }));
+      this.remarks.set(await firstValueFrom(this.svc.listMdrRemarks(selected.id)));
+      this.remarkForm = { remarkIndex: 1, remarkText: '', remarkDatetime: null };
+      this.message.set('Remark toegevoegd');
+    } catch (e: any) {
+      this.message.set(`Remark toevoegen mislukt ${e?.error?.detail ?? ''}`.trim());
     }
   }
 

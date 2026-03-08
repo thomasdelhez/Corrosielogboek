@@ -623,6 +623,17 @@ def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Se
     return row
 
 
+@app.get("/api/v1/mdr-cases/{mdr_case_id}/remarks", response_model=list[MdrRemarkOut])
+def list_mdr_remarks(mdr_case_id: int, db: Session = Depends(get_db), _user=Depends(current_user)):
+    if not db.get(MdrCase, mdr_case_id):
+        raise HTTPException(status_code=404, detail="MDR case not found")
+    return db.execute(
+        select(MdrRemark)
+        .where(MdrRemark.mdr_case_id == mdr_case_id)
+        .order_by(MdrRemark.remark_index.asc(), MdrRemark.id.asc())
+    ).scalars().all()
+
+
 @app.post("/api/v1/mdr-cases/{mdr_case_id}/remarks", response_model=MdrRemarkOut, status_code=201)
 def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
     if not db.get(MdrCase, mdr_case_id):
