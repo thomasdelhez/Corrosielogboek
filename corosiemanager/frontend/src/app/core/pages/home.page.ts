@@ -13,10 +13,6 @@ import { AuthorizationService } from '../security/services/authorization.service
         <p class="eyebrow">F35 Corrosie Logboek</p>
         <h1>Main Menu</h1>
         <p class="subtitle">Kies een optie om te starten.</p>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-          <a class="btn-secondary linkbtn" routerLink="/inspection">Inspectie Queues</a>
-          <a class="btn-secondary linkbtn" routerLink="/trackers">Hole Trackers</a>
-        </div>
 
         <div class="auth-box">
           @if (!isLoggedIn()) {
@@ -72,9 +68,12 @@ import { AuthorizationService } from '../security/services/authorization.service
           </article>
 
           <article class="menu-card">
-            <h3>Inspectie Queues</h3>
-            <p>To be inspected, corroded, rifled en clean queues.</p>
-            <a class="btn-secondary linkbtn" routerLink="/inspection">Open inspectie dashboard</a>
+            <h3>Inspectie & Trackers</h3>
+            <p>Inspectie-queues en technische hole trackers op één plek.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <a class="btn-secondary linkbtn" routerLink="/inspection">Inspectie Queues</a>
+              <a class="btn-secondary linkbtn" routerLink="/trackers">Hole Trackers</a>
+            </div>
           </article>
 
           <article class="menu-card">
