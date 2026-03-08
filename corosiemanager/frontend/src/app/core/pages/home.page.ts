@@ -1,13 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../security/services/authentication.service';
 import { AuthorizationService } from '../security/services/authorization.service';
 
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink],
   template: `
     <main class="page">
       <section class="hero-card">
@@ -17,10 +16,8 @@ import { AuthorizationService } from '../security/services/authorization.service
 
         <div class="auth-box">
           @if (!isLoggedIn()) {
-            <input [(ngModel)]="username" placeholder="username" />
-            <input [(ngModel)]="password" placeholder="password" type="password" />
-            <button class="btn-primary" (click)="login()">Login</button>
-            <small>Demo users: engineer/engineer, reviewer/reviewer, admin/admin</small>
+            <p>Je bent niet ingelogd.</p>
+            <a class="btn-primary" routerLink="/login">Naar login</a>
           } @else {
             <p>Ingelogd als <strong>{{ userLabel() }}</strong></p>
             <button class="btn-secondary" (click)="logout()">Uitloggen</button>
@@ -103,13 +100,15 @@ import { AuthorizationService } from '../security/services/authorization.service
 export class HomePage {
   private readonly auth = inject(AuthenticationService);
   private readonly authorization = inject(AuthorizationService);
+  private readonly route = inject(ActivatedRoute);
 
-  protected username = 'engineer';
-  protected password = 'engineer';
   protected readonly authMessage = signal<string>('');
 
   constructor() {
-    this.auth.restoreFromStorage();
+    const reason = this.route.snapshot.queryParamMap.get('reason');
+    if (reason === 'role_required') {
+      this.authMessage.set('Je rol heeft geen toegang tot die pagina.');
+    }
   }
 
   isLoggedIn(): boolean {
@@ -129,15 +128,6 @@ export class HomePage {
   canUseNdi(): boolean {
     const user = this.auth.currentUser();
     return this.authorization.hasRole(user, 'reviewer') || this.authorization.hasRole(user, 'admin');
-  }
-
-  async login(): Promise<void> {
-    try {
-      await firstValueFrom(this.auth.login(this.username, this.password));
-      this.authMessage.set('Ingelogd');
-    } catch {
-      this.authMessage.set('Login mislukt');
-    }
   }
 
   async logout(): Promise<void> {

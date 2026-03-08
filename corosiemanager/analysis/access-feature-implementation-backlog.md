@@ -98,7 +98,7 @@ Legenda prioriteit:
   - Contextuele snelle acties per queue (check/action/report/finished)
   - Quick report actie toegevoegd om direct NDI-report te registreren vanuit dashboard
 
-### 5) Login screen parity + rolgedrag in UI
+### 5) Login screen parity + rolgedrag in UI ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `LoginScreenF`, `UserLoginT`
 - **Doel in nieuwe tool**: login-flow niet alleen API-side, maar volledig zichtbaar en afdwingbaar in frontend.
 - **Backend**:
@@ -110,6 +110,11 @@ Legenda prioriteit:
 - **Acceptatie**:
   - niet-ingelogde user kan geen domeinpagina’s openen
   - rolbeperkingen zichtbaar en effectief
+- **Implementatie (geleverd)**:
+  - Dedicated loginpagina toegevoegd (`/login`)
+  - Guards redirecten nu met `redirectTo` en reden (`login_required` / `role_required`)
+  - Sessievalidatie via `/auth/me` bij route-toegang, met auto-clear bij vervallen token
+  - Homepagina toont duidelijke rolmelding i.p.v. stille redirect
 
 ---
 

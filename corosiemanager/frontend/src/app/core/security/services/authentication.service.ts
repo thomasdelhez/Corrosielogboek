@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { AppConfigService } from '../../services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 
@@ -16,6 +16,11 @@ interface LoginResponse {
 
 interface LogoutResponse {
   ok: boolean;
+}
+
+interface MeResponse {
+  username: string;
+  role: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -43,6 +48,30 @@ export class AuthenticationService {
     }
   }
 
+  validateStoredSession(): Observable<boolean> {
+    if (this.currentUser()) {
+      return of(true);
+    }
+
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return of(false);
+    }
+
+    return this.http.get<MeResponse>(`${this.config.apiBaseUrl}/auth/me`).pipe(
+      tap((me) => {
+        localStorage.setItem('auth_username', me.username);
+        localStorage.setItem('auth_role', me.role);
+        this.setUser({ username: me.username, roles: [me.role] });
+      }),
+      map(() => true),
+      catchError(() => {
+        this.clearSession();
+        return of(false);
+      }),
+    );
+  }
+
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${this.config.apiBaseUrl}/auth/login`, { username, password })
@@ -64,11 +93,15 @@ export class AuthenticationService {
 
     return request.pipe(
       tap(() => {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_username');
-        localStorage.removeItem('auth_role');
-        this.setUser(null);
+        this.clearSession();
       }),
     );
+  }
+
+  clearSession(): void {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_username');
+    localStorage.removeItem('auth_role');
+    this.setUser(null);
   }
 }
