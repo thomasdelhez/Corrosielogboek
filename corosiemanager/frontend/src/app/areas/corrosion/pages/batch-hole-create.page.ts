@@ -39,12 +39,12 @@ import { CorrosionService } from '../services/corrosion.service';
 
         <label class="field" style="margin-top:10px;">
           <span>Hole nummers (ranges en/of CSV)</span>
-          <textarea rows="4" [ngModel]="rawInput()" (ngModelChange)="rawInput.set($event)" placeholder="101-120, 130, 145"></textarea>
+          <textarea rows="4" [ngModel]="rawInput()" (ngModelChange)="onRawInputChange($event)" placeholder="101-120, 130, 145"></textarea>
         </label>
 
         <div class="actions">
           <button class="btn-secondary" type="button" (click)="preview()">Preview</button>
-          <button class="btn-primary" type="button" (click)="submit()" [disabled]="submitting() || previewNumbers().length === 0">
+          <button class="btn-primary" type="button" (click)="submit()" [disabled]="submitting() || !previewConfirmed() || previewNumbers().length === 0">
             {{ submitting() ? 'Bezig...' : 'Batch aanmaken' }}
           </button>
         </div>
@@ -113,6 +113,7 @@ export class BatchHoleCreatePage implements OnInit {
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly rawInput = signal<string>('');
   protected readonly previewNumbers = signal<number[]>([]);
+  protected readonly previewConfirmed = signal<boolean>(false);
   protected readonly parseError = signal<string>('');
   protected readonly submitting = signal<boolean>(false);
   protected readonly resultRows = signal<CreateHoleBatchResultRow[]>([]);
@@ -135,10 +136,18 @@ export class BatchHoleCreatePage implements OnInit {
     await this.loadPanels(Number(aircraftId));
   }
 
+  onRawInputChange(value: string): void {
+    this.rawInput.set(value);
+    this.previewConfirmed.set(false);
+    this.previewNumbers.set([]);
+  }
+
   preview(): void {
     this.parseError.set('');
+    this.previewConfirmed.set(false);
     try {
       this.previewNumbers.set(this.parseHoleNumbers(this.rawInput()));
+      this.previewConfirmed.set(true);
     } catch (e) {
       this.previewNumbers.set([]);
       this.parseError.set(e instanceof Error ? e.message : 'Kon invoer niet verwerken');
@@ -152,9 +161,9 @@ export class BatchHoleCreatePage implements OnInit {
       return;
     }
 
-    if (this.previewNumbers().length === 0) {
-      this.preview();
-      if (this.previewNumbers().length === 0) return;
+    if (!this.previewConfirmed() || this.previewNumbers().length === 0) {
+      this.parseError.set('Klik eerst op Preview voordat je Batch aanmaken gebruikt.');
+      return;
     }
 
     this.submitting.set(true);
