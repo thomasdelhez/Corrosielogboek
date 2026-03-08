@@ -15,6 +15,7 @@ import { AuthorizationService } from '../security/services/authorization.service
         <p class="subtitle">Kies een optie om te starten.</p>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
           <a class="btn-secondary linkbtn" routerLink="/inspection">Inspectie Queues</a>
+          <a class="btn-secondary linkbtn" routerLink="/trackers">Hole Trackers</a>
         </div>
 
         <div class="auth-box">

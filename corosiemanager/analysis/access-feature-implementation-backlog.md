@@ -132,12 +132,17 @@ Legenda prioriteit:
   - Queue modes: `to_be_inspected`, `marked_as_corroded`, `marked_as_rifled`, `marked_as_clean`
   - Frontend pagina `/inspection` met 4 queue-tabs + filters + tellingen
 
-### 7) Hole trackers uitbreiden
+### 7) Hole trackers uitbreiden ✅ (geleverd 2026-03-08)
 - **Access referentie**: `SubformMaxBPTracker`, `SubformFlexhoneTrackerQ`, `SubformReamingStepsTracker`
 - **Backend**:
   - query/endpoints per tracker
 - **Frontend**:
   - trackercards/filters op hole niveau
+
+- **Implementatie (geleverd)**:
+  - Backend endpoint: `GET /api/v1/hole-trackers`
+  - Queue modes: `max_bp`, `flexhone`, `reaming_steps`
+  - Frontend pagina `/trackers` met queue-tabs, filters en tellingen
 
 ### 8) Installatie trackers
 - **Access referentie**: `SubformInstallationTracker`, `SubformFinishedInstallation`, query `FinishedInstallationQ`, `ReadyForInstallationQ`

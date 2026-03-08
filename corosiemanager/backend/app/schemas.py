@@ -199,6 +199,20 @@ class InspectionQueueRowOut(BaseModel):
     queue_status: str
 
 
+class HoleTrackerRowOut(BaseModel):
+    hole_id: int
+    hole_number: int
+    panel_id: int
+    panel_number: int
+    aircraft_id: int | None
+    aircraft_an: str | None
+    max_bp_diameter: int | None
+    max_step_size: int | None
+    flexhone_needed: bool
+    reaming_step_count: int
+    queue_status: str
+
+
 class MdrRequestDetailOut(BaseModel):
     id: int
     panel_id: int | None

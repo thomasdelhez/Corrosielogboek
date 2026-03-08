@@ -6,6 +6,7 @@ import {
   AircraftDto,
   CreateHoleBatchResultDto,
   HoleDto,
+  HoleTrackerRowDto,
   InspectionQueueRowDto,
   MdrCaseDto,
   MdrRemarkDto,
@@ -34,6 +35,7 @@ import {
   Hole,
   HolePart,
   HoleStep,
+  HoleTrackerRow,
   InspectionQueueRow,
   MdrCase,
   MdrRemark,
@@ -167,6 +169,22 @@ export class CorrosionService {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
       .pipe(map((rows) => rows.map((row) => this.toNdiReport(row))));
+  }
+
+  listHoleTrackers(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    queue?: 'all' | 'max_bp' | 'flexhone' | 'reaming_steps';
+    q?: string | null;
+  }): Observable<HoleTrackerRow[]> {
+    return this.http
+      .get<HoleTrackerRowDto[]>(`${this.config.apiBaseUrl}/hole-trackers`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        queue: params.queue ?? 'all',
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toHoleTrackerRow(row))));
   }
 
   listInspectionDashboard(params: {
@@ -447,6 +465,22 @@ export class CorrosionService {
       orderInProgress: dto.order_in_progress,
       deliveryInProgress: dto.delivery_in_progress,
       installationReady: dto.installation_ready,
+    };
+  }
+
+  private toHoleTrackerRow(dto: HoleTrackerRowDto): HoleTrackerRow {
+    return {
+      holeId: dto.hole_id,
+      holeNumber: dto.hole_number,
+      panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      aircraftId: dto.aircraft_id,
+      aircraftAn: dto.aircraft_an,
+      maxBpDiameter: dto.max_bp_diameter,
+      maxStepSize: dto.max_step_size,
+      flexhoneNeeded: dto.flexhone_needed,
+      reamingStepCount: dto.reaming_step_count,
+      queueStatus: dto.queue_status,
     };
   }
 

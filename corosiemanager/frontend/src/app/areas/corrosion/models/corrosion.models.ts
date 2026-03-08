@@ -139,3 +139,17 @@ export interface InspectionQueueRow {
   inspectionStatus: string | null;
   queueStatus: 'to_be_inspected' | 'marked_as_corroded' | 'marked_as_rifled' | 'marked_as_clean';
 }
+
+export interface HoleTrackerRow {
+  holeId: number;
+  holeNumber: number;
+  panelId: number;
+  panelNumber: number;
+  aircraftId: number | null;
+  aircraftAn: string | null;
+  maxBpDiameter: number | null;
+  maxStepSize: number | null;
+  flexhoneNeeded: boolean;
+  reamingStepCount: number;
+  queueStatus: 'max_bp' | 'flexhone' | 'reaming_steps';
+}

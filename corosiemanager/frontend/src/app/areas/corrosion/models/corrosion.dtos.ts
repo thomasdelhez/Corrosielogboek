@@ -172,6 +172,20 @@ export interface InspectionQueueRowDto {
   queue_status: 'to_be_inspected' | 'marked_as_corroded' | 'marked_as_rifled' | 'marked_as_clean';
 }
 
+export interface HoleTrackerRowDto {
+  hole_id: number;
+  hole_number: number;
+  panel_id: number;
+  panel_number: number;
+  aircraft_id: number | null;
+  aircraft_an: string | null;
+  max_bp_diameter: number | null;
+  max_step_size: number | null;
+  flexhone_needed: boolean;
+  reaming_step_count: number;
+  queue_status: 'max_bp' | 'flexhone' | 'reaming_steps';
+}
+
 export interface CreateHoleBatchResultRowDto {
   hole_number: number;
   hole_id: number | null;
