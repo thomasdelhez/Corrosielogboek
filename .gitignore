@@ -2,4 +2,7 @@
 *
 !corosiemanager/
 !corosiemanager/**
+!.github/
+!.github/workflows/
+!.github/workflows/**
 !.gitignore

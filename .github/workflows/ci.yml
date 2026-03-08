@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: corosiemanager/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: corosiemanager/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  backend-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: corrosie
+          POSTGRES_USER: corrosie
+          POSTGRES_PASSWORD: corrosie
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U corrosie -d corrosie"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    defaults:
+      run:
+        working-directory: corosiemanager/backend
+    env:
+      DATABASE_URL: postgresql+psycopg://corrosie:corrosie@localhost:5432/corrosie
+      ALLOWED_ORIGINS: http://127.0.0.1:4200,http://localhost:4200
+      AUTO_CREATE_SCHEMA: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Start API
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+      - name: Wait for health
+        run: |
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:8002/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become healthy"
+          cat /tmp/api.log || true
+          exit 1
+      - name: Smoke API
+        run: bash scripts/smoke_api.sh http://127.0.0.1:8002
+      - name: API log (on failure)
+        if: failure()
+        run: cat /tmp/api.log || true
