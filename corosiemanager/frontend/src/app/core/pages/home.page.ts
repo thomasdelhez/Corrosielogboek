@@ -38,7 +38,10 @@ import { AuthorizationService } from '../security/services/authorization.service
           <article class="menu-card">
             <h3>Hole Repairs</h3>
             <p>Bekijk en bewerk hole details, steps en parts.</p>
-            <a class="btn-primary linkbtn" routerLink="/corrosion">Open hole overzicht</a>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <a class="btn-primary linkbtn" routerLink="/corrosion">Open hole overzicht</a>
+              <a class="btn-secondary linkbtn" routerLink="/batch-holes">Batch Hole Create</a>
+            </div>
           </article>
 
           <article class="menu-card">

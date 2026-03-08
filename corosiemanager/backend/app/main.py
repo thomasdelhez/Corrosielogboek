@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session, selectinload
 from .db import Base, engine, get_db
 from .models import AuthSession, Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
 from .schemas import (
+    HoleBatchCreateIn,
+    HoleBatchCreateOut,
     HoleCreate,
     HoleOut,
     HolePartIn,
@@ -313,8 +315,7 @@ def _get_hole_or_404(db: Session, hole_id: int) -> Hole:
     return row
 
 
-@app.post("/api/v1/panels/{panel_id}/holes", response_model=HoleOut, status_code=201)
-def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def _ensure_panel_exists(db: Session, panel_id: int) -> None:
     panel = db.get(Panel, panel_id)
     if not panel:
         # temporary bootstrap convenience for early MVP testing
@@ -322,12 +323,8 @@ def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db
         db.add(panel)
         db.flush()
 
-    existing = db.execute(
-        select(Hole).where(Hole.panel_id == panel_id, Hole.hole_number == payload.hole_number)
-    ).scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=409, detail="Hole already exists for this panel")
 
+def _create_hole_row(db: Session, panel_id: int, payload: HoleCreate) -> Hole:
     hole = Hole(
         panel_id=panel_id,
         hole_number=payload.hole_number,
@@ -372,9 +369,74 @@ def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db
             )
         )
 
+    return hole
+
+
+@app.post("/api/v1/panels/{panel_id}/holes", response_model=HoleOut, status_code=201)
+def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+    _ensure_panel_exists(db, panel_id)
+
+    existing = db.execute(
+        select(Hole).where(Hole.panel_id == panel_id, Hole.hole_number == payload.hole_number)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Hole already exists for this panel")
+
+    hole = _create_hole_row(db, panel_id, payload)
+
     _audit(db, "create", "hole", hole.id, user["username"])
     db.commit()
     return _get_hole_or_404(db, hole.id)
+
+
+@app.post("/api/v1/panels/{panel_id}/holes/batch", response_model=HoleBatchCreateOut, status_code=201)
+def create_holes_batch(panel_id: int, payload: HoleBatchCreateIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+    _ensure_panel_exists(db, panel_id)
+
+    existing_numbers = set(
+        db.execute(select(Hole.hole_number).where(Hole.panel_id == panel_id)).scalars().all()
+    )
+
+    seen_in_payload: set[int] = set()
+    created = 0
+    skipped = 0
+    errors = 0
+    results = []
+
+    for entry in payload.holes:
+        hole_number = entry.hole_number
+
+        if hole_number in seen_in_payload:
+            skipped += 1
+            results.append({"hole_number": hole_number, "status": "skipped", "detail": "Duplicate hole_number in payload"})
+            continue
+        seen_in_payload.add(hole_number)
+
+        if hole_number in existing_numbers:
+            skipped += 1
+            results.append({"hole_number": hole_number, "status": "skipped", "detail": "Hole already exists for this panel"})
+            continue
+
+        step_nos = [s.step_no for s in entry.steps]
+        if len(step_nos) != len(set(step_nos)):
+            errors += 1
+            results.append({"hole_number": hole_number, "status": "error", "detail": "Duplicate step_no values are not allowed"})
+            continue
+
+        slot_nos = [p.slot_no for p in entry.parts]
+        if len(slot_nos) != len(set(slot_nos)):
+            errors += 1
+            results.append({"hole_number": hole_number, "status": "error", "detail": "Duplicate slot_no values are not allowed"})
+            continue
+
+        hole = _create_hole_row(db, panel_id, entry)
+        existing_numbers.add(hole_number)
+        created += 1
+        _audit(db, "create", "hole", hole.id, user["username"])
+        results.append({"hole_number": hole_number, "hole_id": hole.id, "status": "created"})
+
+    db.commit()
+    return {"created": created, "skipped": skipped, "errors": errors, "results": results}
 
 
 @app.get("/api/v1/panels/{panel_id}/holes", response_model=list[HoleOut])

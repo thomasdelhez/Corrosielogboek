@@ -16,7 +16,7 @@ Legenda prioriteit:
 
 ## P1 — Must (eerst bouwen)
 
-### 1) Batch Hole Create
+### 1) Batch Hole Create ✅ (2026-03-08)
 - **Access referentie**: `BatchHoleIDCreateF`, `~sq_cBatchHoleIDCreateF~sq_cSubFormCreatedHolesTracker`
 - **Doel in nieuwe tool**: meerdere holes in 1 actie aanmaken voor een panel.
 - **Backend**:
@@ -31,6 +31,11 @@ Legenda prioriteit:
 - **Acceptatie**:
   - in 1 submit ≥50 holes aanmaken
   - duplicates worden netjes gerapporteerd, niet silent gefaald
+- **Implementatie (geleverd)**:
+  - Backend: `POST /api/v1/panels/{panel_id}/holes/batch`
+  - Detecteert duplicates in payload en bestaande holes in panel
+  - Retourneert samenvatting + detailresultaten (`created/skipped/error`)
+  - Frontend: nieuwe pagina `/batch-holes` met range/CSV invoer, preview en resultaattabel
 
 ### 2) Ordering Tracker parity (volledig)
 - **Access referentie**: `OrderingTrackerF`, `SubformOrderingStatusOverview`, `SubformOrderStatusTracker`, `SubformDeliveryStatusTracker`, `SubFormCreatedHolesTracker`, queries: `OrderNeededQ`, `OrderStatusTrackerQ`, `DeliveryStatusQ`, `CreatedHolesTrackerQ`

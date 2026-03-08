@@ -50,3 +50,32 @@ export interface CreateNdiReportInput {
   tools: string | null;
   corrosionPosition: string | null;
 }
+
+export interface CreateHoleInput {
+  holeNumber: number;
+  maxBpDiameter: number | null;
+  finalHoleSize: number | null;
+  fit: string | null;
+  mdrCode: string | null;
+  mdrVersion: string | null;
+  ndiNameInitials: string | null;
+  ndiInspectionDate: Date | null;
+  ndiFinished: boolean;
+  inspectionStatus: string | null;
+  steps: UpdateHoleStepInput[];
+  parts: UpdateHolePartInput[];
+}
+
+export interface CreateHoleBatchResultRow {
+  holeNumber: number;
+  holeId: number | null;
+  status: 'created' | 'skipped' | 'error';
+  detail: string | null;
+}
+
+export interface CreateHoleBatchResult {
+  created: number;
+  skipped: number;
+  errors: number;
+  results: CreateHoleBatchResultRow[];
+}

@@ -77,6 +77,7 @@ bash scripts/smoke_api.sh http://127.0.0.1:8002
 ## First implemented endpoints
 
 - `POST /api/v1/panels/{panel_id}/holes`
+- `POST /api/v1/panels/{panel_id}/holes/batch`
 - `GET /api/v1/panels/{panel_id}/holes`
   - supports `inspection_status`, `mdr_code`, `q`, `limit`, `offset`
 - `GET /api/v1/holes/{hole_id}`

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { requireLoginGuard, requireReviewerGuard } from '../../core/security/guards/auth.guards';
+import { BatchHoleCreatePage } from './pages/batch-hole-create.page';
 import { CorrosionDetailPage } from './pages/corrosion-detail.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
 import { MdrManagementPage } from './pages/mdr-management.page';
@@ -12,4 +13,5 @@ export const CORROSION_ROUTES: Routes = [
   { path: 'mdr', component: MdrManagementPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ndi', component: NdiReportsPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ordering', component: OrderingTrackerPage, canActivate: [requireLoginGuard] },
+  { path: 'batch-holes', component: BatchHoleCreatePage, canActivate: [requireLoginGuard] },
 ];

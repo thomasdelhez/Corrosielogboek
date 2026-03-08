@@ -152,3 +152,17 @@ export interface NdiQueueRowDto {
   latest_report_tools: string | null;
   queue_status: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished';
 }
+
+export interface CreateHoleBatchResultRowDto {
+  hole_number: number;
+  hole_id: number | null;
+  status: 'created' | 'skipped' | 'error';
+  detail: string | null;
+}
+
+export interface CreateHoleBatchResultDto {
+  created: number;
+  skipped: number;
+  errors: number;
+  results: CreateHoleBatchResultRowDto[];
+}

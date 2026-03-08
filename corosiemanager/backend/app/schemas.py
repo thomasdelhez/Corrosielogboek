@@ -43,6 +43,24 @@ class HoleCreate(BaseModel):
         return self
 
 
+class HoleBatchCreateIn(BaseModel):
+    holes: list[HoleCreate] = Field(min_length=1, max_length=500)
+
+
+class HoleBatchCreateResultRow(BaseModel):
+    hole_number: int
+    hole_id: int | None = None
+    status: str
+    detail: str | None = None
+
+
+class HoleBatchCreateOut(BaseModel):
+    created: int
+    skipped: int
+    errors: int
+    results: list[HoleBatchCreateResultRow]
+
+
 class HoleUpdate(BaseModel):
     max_bp_diameter: int | None = None
     final_hole_size: int | None = None

@@ -4,6 +4,7 @@ import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 import {
   AircraftDto,
+  CreateHoleBatchResultDto,
   HoleDto,
   MdrCaseDto,
   MdrRequestDetailDto,
@@ -16,6 +17,9 @@ import {
   UpdateHoleStepInputDto,
 } from '../models/corrosion.dtos';
 import {
+  CreateHoleBatchResult,
+  CreateHoleBatchResultRow,
+  CreateHoleInput,
   CreateMdrCaseInput,
   CreateNdiReportInput,
   UpdateHoleInput,
@@ -56,6 +60,14 @@ export class CorrosionService {
     return this.http
       .get<HoleDto[]>(`${this.config.apiBaseUrl}/panels/${panelId}/holes`)
       .pipe(map((rows) => rows.map((row) => this.toHole(row))));
+  }
+
+  createBatchHoles(panelId: number, holes: CreateHoleInput[]): Observable<CreateHoleBatchResult> {
+    return this.http
+      .post<CreateHoleBatchResultDto>(`${this.config.apiBaseUrl}/panels/${panelId}/holes/batch`, {
+        holes: holes.map((h) => this.toCreateHoleDto(h)),
+      })
+      .pipe(map((row) => this.toCreateBatchResult(row)));
   }
 
   getHole(holeId: number): Observable<Hole> {
@@ -196,6 +208,36 @@ export class CorrosionService {
 
   deleteNdiReport(reportId: number): Observable<{ deleted: boolean }> {
     return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/ndi-reports/${reportId}`);
+  }
+
+  private toCreateHoleDto(input: CreateHoleInput): {
+    hole_number: number;
+    max_bp_diameter: number | null;
+    final_hole_size: number | null;
+    fit: string | null;
+    mdr_code: string | null;
+    mdr_version: string | null;
+    ndi_name_initials: string | null;
+    ndi_inspection_date: string | null;
+    ndi_finished: boolean;
+    inspection_status: string | null;
+    steps: UpdateHoleStepInputDto[];
+    parts: UpdateHolePartInputDto[];
+  } {
+    return {
+      hole_number: input.holeNumber,
+      max_bp_diameter: input.maxBpDiameter,
+      final_hole_size: input.finalHoleSize,
+      fit: input.fit,
+      mdr_code: input.mdrCode,
+      mdr_version: input.mdrVersion,
+      ndi_name_initials: input.ndiNameInitials,
+      ndi_inspection_date: input.ndiInspectionDate ? input.ndiInspectionDate.toISOString() : null,
+      ndi_finished: input.ndiFinished,
+      inspection_status: input.inspectionStatus,
+      steps: input.steps.map((s) => this.toUpdateStepDto(s)),
+      parts: input.parts.map((p) => this.toUpdatePartDto(p)),
+    };
   }
 
   private toUpdateDto(input: UpdateHoleInput): UpdateHoleInputDto {
@@ -358,6 +400,24 @@ export class CorrosionService {
       orderInProgress: dto.order_in_progress,
       deliveryInProgress: dto.delivery_in_progress,
       installationReady: dto.installation_ready,
+    };
+  }
+
+  private toCreateBatchResult(dto: CreateHoleBatchResultDto): CreateHoleBatchResult {
+    return {
+      created: dto.created,
+      skipped: dto.skipped,
+      errors: dto.errors,
+      results: dto.results.map((row) => this.toCreateBatchResultRow(row)),
+    };
+  }
+
+  private toCreateBatchResultRow(row: CreateHoleBatchResultDto['results'][number]): CreateHoleBatchResultRow {
+    return {
+      holeNumber: row.hole_number,
+      holeId: row.hole_id,
+      status: row.status,
+      detail: row.detail,
     };
   }
 
