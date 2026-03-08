@@ -186,6 +186,20 @@ export interface HoleTrackerRowDto {
   queue_status: 'max_bp' | 'flexhone' | 'reaming_steps';
 }
 
+export interface InstallationTrackerRowDto {
+  hole_id: number;
+  hole_number: number;
+  panel_id: number;
+  panel_number: number;
+  aircraft_id: number | null;
+  aircraft_an: string | null;
+  ordered_parts: number;
+  delivered_parts: number;
+  pending_parts: number;
+  installation_ready: boolean;
+  queue_status: 'ready_for_installation' | 'finished_installation';
+}
+
 export interface CreateHoleBatchResultRowDto {
   hole_number: number;
   hole_id: number | null;

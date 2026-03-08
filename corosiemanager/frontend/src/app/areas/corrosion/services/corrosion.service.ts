@@ -8,6 +8,7 @@ import {
   HoleDto,
   HoleTrackerRowDto,
   InspectionQueueRowDto,
+  InstallationTrackerRowDto,
   MdrCaseDto,
   MdrRemarkDto,
   MdrRequestDetailDto,
@@ -37,6 +38,7 @@ import {
   HoleStep,
   HoleTrackerRow,
   InspectionQueueRow,
+  InstallationTrackerRow,
   MdrCase,
   MdrRemark,
   MdrRequestDetail,
@@ -169,6 +171,22 @@ export class CorrosionService {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
       .pipe(map((rows) => rows.map((row) => this.toNdiReport(row))));
+  }
+
+  listInstallationTrackers(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    queue?: 'all' | 'ready_for_installation' | 'finished_installation';
+    q?: string | null;
+  }): Observable<InstallationTrackerRow[]> {
+    return this.http
+      .get<InstallationTrackerRowDto[]>(`${this.config.apiBaseUrl}/installation-trackers`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        queue: params.queue ?? 'all',
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toInstallationTrackerRow(row))));
   }
 
   listHoleTrackers(params: {
@@ -465,6 +483,22 @@ export class CorrosionService {
       orderInProgress: dto.order_in_progress,
       deliveryInProgress: dto.delivery_in_progress,
       installationReady: dto.installation_ready,
+    };
+  }
+
+  private toInstallationTrackerRow(dto: InstallationTrackerRowDto): InstallationTrackerRow {
+    return {
+      holeId: dto.hole_id,
+      holeNumber: dto.hole_number,
+      panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      aircraftId: dto.aircraft_id,
+      aircraftAn: dto.aircraft_an,
+      orderedParts: dto.ordered_parts,
+      deliveredParts: dto.delivered_parts,
+      pendingParts: dto.pending_parts,
+      installationReady: dto.installation_ready,
+      queueStatus: dto.queue_status,
     };
   }
 

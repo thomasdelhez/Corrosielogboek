@@ -213,6 +213,20 @@ class HoleTrackerRowOut(BaseModel):
     queue_status: str
 
 
+class InstallationTrackerRowOut(BaseModel):
+    hole_id: int
+    hole_number: int
+    panel_id: int
+    panel_number: int
+    aircraft_id: int | None
+    aircraft_an: str | None
+    ordered_parts: int
+    delivered_parts: int
+    pending_parts: int
+    installation_ready: bool
+    queue_status: str
+
+
 class MdrRequestDetailOut(BaseModel):
     id: int
     panel_id: int | None

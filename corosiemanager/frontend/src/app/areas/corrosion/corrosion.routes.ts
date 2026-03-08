@@ -5,6 +5,7 @@ import { CorrosionDetailPage } from './pages/corrosion-detail.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
 import { HoleTrackersPage } from './pages/hole-trackers.page';
 import { InspectionQueuesPage } from './pages/inspection-queues.page';
+import { InstallationTrackersPage } from './pages/installation-trackers.page';
 import { MdrManagementPage } from './pages/mdr-management.page';
 import { NdiReportsPage } from './pages/ndi-reports.page';
 import { OrderingTrackerPage } from './pages/ordering-tracker.page';
@@ -17,5 +18,6 @@ export const CORROSION_ROUTES: Routes = [
   { path: 'ordering', component: OrderingTrackerPage, canActivate: [requireLoginGuard] },
   { path: 'inspection', component: InspectionQueuesPage, canActivate: [requireLoginGuard] },
   { path: 'trackers', component: HoleTrackersPage, canActivate: [requireLoginGuard] },
+  { path: 'installation', component: InstallationTrackersPage, canActivate: [requireLoginGuard] },
   { path: 'batch-holes', component: BatchHoleCreatePage, canActivate: [requireLoginGuard] },
 ];

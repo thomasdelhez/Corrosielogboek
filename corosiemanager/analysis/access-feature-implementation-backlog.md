@@ -144,12 +144,17 @@ Legenda prioriteit:
   - Queue modes: `max_bp`, `flexhone`, `reaming_steps`
   - Frontend pagina `/trackers` met queue-tabs, filters en tellingen
 
-### 8) Installatie trackers
+### 8) Installatie trackers ✅ (geleverd 2026-03-08)
 - **Access referentie**: `SubformInstallationTracker`, `SubformFinishedInstallation`, query `FinishedInstallationQ`, `ReadyForInstallationQ`
 - **Backend**:
   - installatie readiness + finished endpoints/filters
 - **Frontend**:
   - installatie-overzicht met voortgang
+
+- **Implementatie (geleverd)**:
+  - Backend endpoint: `GET /api/v1/installation-trackers`
+  - Queue modes: `ready_for_installation`, `finished_installation`
+  - Frontend pagina `/installation` met tabs, filters en tellingen
 
 ### 9) Aircraft/Panel create-beheer in UI
 - **Access referentie**: `AircraftNrCreateF`, `PanelNrCreateF`

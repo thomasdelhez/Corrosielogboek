@@ -153,3 +153,17 @@ export interface HoleTrackerRow {
   reamingStepCount: number;
   queueStatus: 'max_bp' | 'flexhone' | 'reaming_steps';
 }
+
+export interface InstallationTrackerRow {
+  holeId: number;
+  holeNumber: number;
+  panelId: number;
+  panelNumber: number;
+  aircraftId: number | null;
+  aircraftAn: string | null;
+  orderedParts: number;
+  deliveredParts: number;
+  pendingParts: number;
+  installationReady: boolean;
+  queueStatus: 'ready_for_installation' | 'finished_installation';
+}

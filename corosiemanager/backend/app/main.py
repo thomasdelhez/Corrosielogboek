@@ -28,6 +28,7 @@ from .schemas import (
     MdrRequestDetailOut,
     MdrStatusTransitionIn,
     HoleTrackerRowOut,
+    InstallationTrackerRowOut,
     InspectionQueueRowOut,
     NdiQueueRowOut,
     NdiReportIn,
@@ -656,6 +657,87 @@ def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db), user=Depend
     db.delete(row)
     db.commit()
     return {"deleted": True}
+
+
+@app.get("/api/v1/installation-trackers", response_model=list[InstallationTrackerRowOut])
+def list_installation_trackers(
+    db: Session = Depends(get_db),
+    _user=Depends(current_user),
+    aircraft_id: int | None = None,
+    panel_id: int | None = None,
+    queue: str = Query(default="all", pattern="^(all|ready_for_installation|finished_installation)$"),
+    q: str | None = None,
+    limit: int = Query(default=300, ge=1, le=1000),
+):
+    ordered_parts = func.sum(case((HolePart.ordered_flag.is_(True), 1), else_=0))
+    delivered_parts = func.sum(case((HolePart.delivered_flag.is_(True), 1), else_=0))
+    pending_parts = func.sum(
+        case((HolePart.part_number.is_not(None), case((HolePart.ordered_flag.is_(True), 0), else_=1)), else_=0)
+    )
+
+    stmt = (
+        select(
+            Hole.id.label("hole_id"),
+            Hole.hole_number.label("hole_number"),
+            Hole.panel_id.label("panel_id"),
+            Panel.panel_number.label("panel_number"),
+            Aircraft.id.label("aircraft_id"),
+            Aircraft.an.label("aircraft_an"),
+            func.coalesce(ordered_parts, 0).label("ordered_parts"),
+            func.coalesce(delivered_parts, 0).label("delivered_parts"),
+            func.coalesce(pending_parts, 0).label("pending_parts"),
+        )
+        .join(Panel, Panel.id == Hole.panel_id)
+        .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+        .outerjoin(HolePart, HolePart.hole_id == Hole.id)
+        .group_by(Hole.id, Hole.hole_number, Hole.panel_id, Panel.panel_number, Aircraft.id, Aircraft.an)
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+    if panel_id is not None:
+        stmt = stmt.where(Hole.panel_id == panel_id)
+    if q:
+        like_q = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                cast(Hole.hole_number, String).ilike(like_q),
+                cast(Panel.panel_number, String).ilike(like_q),
+                Aircraft.an.ilike(like_q),
+            )
+        )
+
+    rows = db.execute(stmt.order_by(Panel.panel_number.asc(), Hole.hole_number.asc()).limit(limit)).all()
+
+    out = []
+    for r in rows:
+        ordered = int(r.ordered_parts or 0)
+        delivered = int(r.delivered_parts or 0)
+        pending = int(r.pending_parts or 0)
+
+        installation_ready = ordered > 0 and delivered >= ordered
+        queue_status = "finished_installation" if installation_ready else "ready_for_installation"
+
+        if queue != "all" and queue_status != queue:
+            continue
+
+        out.append(
+            {
+                "hole_id": r.hole_id,
+                "hole_number": r.hole_number,
+                "panel_id": r.panel_id,
+                "panel_number": r.panel_number,
+                "aircraft_id": r.aircraft_id,
+                "aircraft_an": r.aircraft_an,
+                "ordered_parts": ordered,
+                "delivered_parts": delivered,
+                "pending_parts": pending,
+                "installation_ready": installation_ready,
+                "queue_status": queue_status,
+            }
+        )
+
+    return out
 
 
 @app.get("/api/v1/hole-trackers", response_model=list[HoleTrackerRowOut])

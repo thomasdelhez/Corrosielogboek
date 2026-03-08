@@ -69,10 +69,11 @@ import { AuthorizationService } from '../security/services/authorization.service
 
           <article class="menu-card">
             <h3>Inspectie & Trackers</h3>
-            <p>Inspectie-queues en technische hole trackers op één plek.</p>
+            <p>Inspectie-queues, hole trackers en installatie-status op één plek.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <a class="btn-secondary linkbtn" routerLink="/inspection">Inspectie Queues</a>
               <a class="btn-secondary linkbtn" routerLink="/trackers">Hole Trackers</a>
+              <a class="btn-secondary linkbtn" routerLink="/installation">Installatie Trackers</a>
             </div>
           </article>
 
