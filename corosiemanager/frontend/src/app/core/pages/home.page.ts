@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../security/services/authentication.service';
 import { AuthorizationService } from '../security/services/authorization.service';
@@ -101,6 +101,7 @@ export class HomePage {
   private readonly auth = inject(AuthenticationService);
   private readonly authorization = inject(AuthorizationService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly authMessage = signal<string>('');
 
@@ -133,6 +134,7 @@ export class HomePage {
   async logout(): Promise<void> {
     await firstValueFrom(this.auth.logout());
     this.authMessage.set('Uitgelogd');
+    await this.router.navigate(['/login'], { queryParams: { reason: 'login_required' } });
   }
 
   comingSoon(feature: string): void {
