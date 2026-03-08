@@ -128,3 +128,14 @@ export interface NdiQueueRow {
   latestReportTools: string | null;
   queueStatus: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished';
 }
+
+export interface InspectionQueueRow {
+  holeId: number;
+  holeNumber: number;
+  panelId: number;
+  panelNumber: number;
+  aircraftId: number | null;
+  aircraftAn: string | null;
+  inspectionStatus: string | null;
+  queueStatus: 'to_be_inspected' | 'marked_as_corroded' | 'marked_as_rifled' | 'marked_as_clean';
+}

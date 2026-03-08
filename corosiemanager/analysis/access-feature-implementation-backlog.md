@@ -120,12 +120,17 @@ Legenda prioriteit:
 
 ## P2 — Should
 
-### 6) Inspectie-queues (Hole inspection menu parity)
+### 6) Inspectie-queues (Hole inspection menu parity) ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `HoleIDInspectionMenuF`, `SubformHoleIDInspection`, `SubformToBeInspected`, `SubformMarkedAsCorroded`, `SubformMarkedAsRifled`, `SubformMarkedAsClean`, queries: `ToBeInspectedQ`, `MarkedAsCorrodedQ`, `MarkedAsRifledQ`, `MarkedAsCleanQ`
 - **Backend**:
   - endpoint voor inspectiequeue-overzicht met genoemde statussen
 - **Frontend**:
   - inspectie-dashboard met 4 queue-tabs
+
+- **Implementatie (geleverd)**:
+  - Backend endpoint: `GET /api/v1/inspection-dashboard`
+  - Queue modes: `to_be_inspected`, `marked_as_corroded`, `marked_as_rifled`, `marked_as_clean`
+  - Frontend pagina `/inspection` met 4 queue-tabs + filters + tellingen
 
 ### 7) Hole trackers uitbreiden
 - **Access referentie**: `SubformMaxBPTracker`, `SubformFlexhoneTrackerQ`, `SubformReamingStepsTracker`

@@ -27,6 +27,7 @@ from .schemas import (
     MdrRemarkOut,
     MdrRequestDetailOut,
     MdrStatusTransitionIn,
+    InspectionQueueRowOut,
     NdiQueueRowOut,
     NdiReportIn,
     NdiReportOut,
@@ -654,6 +655,78 @@ def delete_mdr_case(mdr_case_id: int, db: Session = Depends(get_db), user=Depend
     db.delete(row)
     db.commit()
     return {"deleted": True}
+
+
+@app.get("/api/v1/inspection-dashboard", response_model=list[InspectionQueueRowOut])
+def list_inspection_dashboard(
+    db: Session = Depends(get_db),
+    _user=Depends(current_user),
+    aircraft_id: int | None = None,
+    panel_id: int | None = None,
+    queue: str = Query(default="all", pattern="^(all|to_be_inspected|marked_as_corroded|marked_as_rifled|marked_as_clean)$"),
+    q: str | None = None,
+    limit: int = Query(default=300, ge=1, le=1000),
+):
+    stmt = (
+        select(
+            Hole.id.label("hole_id"),
+            Hole.hole_number.label("hole_number"),
+            Hole.panel_id.label("panel_id"),
+            Panel.panel_number.label("panel_number"),
+            Aircraft.id.label("aircraft_id"),
+            Aircraft.an.label("aircraft_an"),
+            Hole.inspection_status.label("inspection_status"),
+        )
+        .join(Panel, Panel.id == Hole.panel_id)
+        .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+    )
+
+    if aircraft_id is not None:
+        stmt = stmt.where(Panel.aircraft_id == aircraft_id)
+    if panel_id is not None:
+        stmt = stmt.where(Hole.panel_id == panel_id)
+    if q:
+        like_q = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                cast(Hole.hole_number, String).ilike(like_q),
+                cast(Panel.panel_number, String).ilike(like_q),
+                Aircraft.an.ilike(like_q),
+                Hole.inspection_status.ilike(like_q),
+            )
+        )
+
+    rows = db.execute(stmt.order_by(Panel.panel_number.asc(), Hole.hole_number.asc()).limit(limit)).all()
+
+    out = []
+    for r in rows:
+        status = (r.inspection_status or "").strip().lower()
+        if status in {"corroded", "markedascorroded", "marked as corroded"}:
+            queue_status = "marked_as_corroded"
+        elif status in {"rifled", "markedasrifled", "marked as rifled"}:
+            queue_status = "marked_as_rifled"
+        elif status in {"clean", "markedasclean", "marked as clean"}:
+            queue_status = "marked_as_clean"
+        else:
+            queue_status = "to_be_inspected"
+
+        if queue != "all" and queue_status != queue:
+            continue
+
+        out.append(
+            {
+                "hole_id": r.hole_id,
+                "hole_number": r.hole_number,
+                "panel_id": r.panel_id,
+                "panel_number": r.panel_number,
+                "aircraft_id": r.aircraft_id,
+                "aircraft_an": r.aircraft_an,
+                "inspection_status": r.inspection_status,
+                "queue_status": queue_status,
+            }
+        )
+
+    return out
 
 
 @app.get("/api/v1/ndi-dashboard", response_model=list[NdiQueueRowOut])

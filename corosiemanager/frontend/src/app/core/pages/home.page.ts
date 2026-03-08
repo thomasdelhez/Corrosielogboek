@@ -68,6 +68,12 @@ import { AuthorizationService } from '../security/services/authorization.service
           </article>
 
           <article class="menu-card">
+            <h3>Inspectie Queues</h3>
+            <p>To be inspected, corroded, rifled en clean queues.</p>
+            <a class="btn-secondary linkbtn" routerLink="/inspection">Open inspectie dashboard</a>
+          </article>
+
+          <article class="menu-card">
             <h3>Data Export</h3>
             <p>Exporteer data voor review en rapportage.</p>
             <button class="btn-ghost" (click)="comingSoon('Data Export')">Open</button>

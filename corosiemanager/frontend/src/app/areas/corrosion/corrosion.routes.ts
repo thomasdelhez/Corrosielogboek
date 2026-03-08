@@ -3,6 +3,7 @@ import { requireLoginGuard, requireReviewerGuard } from '../../core/security/gua
 import { BatchHoleCreatePage } from './pages/batch-hole-create.page';
 import { CorrosionDetailPage } from './pages/corrosion-detail.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
+import { InspectionQueuesPage } from './pages/inspection-queues.page';
 import { MdrManagementPage } from './pages/mdr-management.page';
 import { NdiReportsPage } from './pages/ndi-reports.page';
 import { OrderingTrackerPage } from './pages/ordering-tracker.page';
@@ -13,5 +14,6 @@ export const CORROSION_ROUTES: Routes = [
   { path: 'mdr', component: MdrManagementPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ndi', component: NdiReportsPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ordering', component: OrderingTrackerPage, canActivate: [requireLoginGuard] },
+  { path: 'inspection', component: InspectionQueuesPage, canActivate: [requireLoginGuard] },
   { path: 'batch-holes', component: BatchHoleCreatePage, canActivate: [requireLoginGuard] },
 ];

@@ -80,6 +80,7 @@ bash scripts/smoke_api.sh http://127.0.0.1:8002
 - `POST /api/v1/panels/{panel_id}/holes/batch`
 - `GET /api/v1/panels/{panel_id}/holes`
   - supports `inspection_status`, `mdr_code`, `q`, `limit`, `offset`
+- `GET /api/v1/inspection-dashboard`
 - `GET /api/v1/holes/{hole_id}`
 - `PUT /api/v1/holes/{hole_id}`
 - `PUT /api/v1/holes/{hole_id}/steps`

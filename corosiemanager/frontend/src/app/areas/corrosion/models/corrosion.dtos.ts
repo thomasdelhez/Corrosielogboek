@@ -161,6 +161,17 @@ export interface NdiQueueRowDto {
   queue_status: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished';
 }
 
+export interface InspectionQueueRowDto {
+  hole_id: number;
+  hole_number: number;
+  panel_id: number;
+  panel_number: number;
+  aircraft_id: number | null;
+  aircraft_an: string | null;
+  inspection_status: string | null;
+  queue_status: 'to_be_inspected' | 'marked_as_corroded' | 'marked_as_rifled' | 'marked_as_clean';
+}
+
 export interface CreateHoleBatchResultRowDto {
   hole_number: number;
   hole_id: number | null;

@@ -188,6 +188,17 @@ class NdiStatusTransitionIn(BaseModel):
     to_status: str
 
 
+class InspectionQueueRowOut(BaseModel):
+    hole_id: int
+    hole_number: int
+    panel_id: int
+    panel_number: int
+    aircraft_id: int | None
+    aircraft_an: str | None
+    inspection_status: str | None
+    queue_status: str
+
+
 class MdrRequestDetailOut(BaseModel):
     id: int
     panel_id: int | None

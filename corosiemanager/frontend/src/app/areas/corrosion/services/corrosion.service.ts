@@ -6,6 +6,7 @@ import {
   AircraftDto,
   CreateHoleBatchResultDto,
   HoleDto,
+  InspectionQueueRowDto,
   MdrCaseDto,
   MdrRemarkDto,
   MdrRequestDetailDto,
@@ -33,6 +34,7 @@ import {
   Hole,
   HolePart,
   HoleStep,
+  InspectionQueueRow,
   MdrCase,
   MdrRemark,
   MdrRequestDetail,
@@ -165,6 +167,22 @@ export class CorrosionService {
     return this.http
       .get<NdiReportDto[]>(`${this.config.apiBaseUrl}/holes/${holeId}/ndi-reports`)
       .pipe(map((rows) => rows.map((row) => this.toNdiReport(row))));
+  }
+
+  listInspectionDashboard(params: {
+    aircraftId?: number | null;
+    panelId?: number | null;
+    queue?: 'all' | 'to_be_inspected' | 'marked_as_corroded' | 'marked_as_rifled' | 'marked_as_clean';
+    q?: string | null;
+  }): Observable<InspectionQueueRow[]> {
+    return this.http
+      .get<InspectionQueueRowDto[]>(`${this.config.apiBaseUrl}/inspection-dashboard`, {
+        aircraft_id: params.aircraftId ?? undefined,
+        panel_id: params.panelId ?? undefined,
+        queue: params.queue ?? 'all',
+        q: params.q ?? undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toInspectionQueueRow(row))));
   }
 
   listNdiDashboard(params: {
@@ -429,6 +447,19 @@ export class CorrosionService {
       orderInProgress: dto.order_in_progress,
       deliveryInProgress: dto.delivery_in_progress,
       installationReady: dto.installation_ready,
+    };
+  }
+
+  private toInspectionQueueRow(dto: InspectionQueueRowDto): InspectionQueueRow {
+    return {
+      holeId: dto.hole_id,
+      holeNumber: dto.hole_number,
+      panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      aircraftId: dto.aircraft_id,
+      aircraftAn: dto.aircraft_an,
+      inspectionStatus: dto.inspection_status,
+      queueStatus: dto.queue_status,
     };
   }
 
