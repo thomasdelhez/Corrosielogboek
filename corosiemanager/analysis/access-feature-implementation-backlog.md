@@ -81,7 +81,7 @@ Legenda prioriteit:
   - Remark history + remark toevoegen (V1..V5) in UI
   - Backend endpoint toegevoegd: `GET /api/v1/mdr-cases/{mdr_case_id}/remarks`
 
-### 4) NDI workflow parity (queues)
+### 4) NDI workflow parity (queues) ✅ (baseline geleverd 2026-03-08)
 - **Access referentie**: `NDIMenuF`, `NDIReportF`, `SubformNDICheckInput`, `SubformNDICheckTracker`, `SubformNDIActionNeeded`, `SubformNDIReportNeeded`, `SubformNDIFinished`, queries: `NDICheckTrackerQ`, `NDIActionNeededQ`, `NDIReportNeededQ`, `NDIFinishedQ`
 - **Doel in nieuwe tool**: alle NDI-werkbakken apart beschikbaar met correcte transitions.
 - **Backend**:
@@ -93,6 +93,10 @@ Legenda prioriteit:
 - **Acceptatie**:
   - NDI items vallen altijd in exact 1 juiste queue
   - `finished` alleen mogelijk als verplichte data compleet is
+- **Implementatie (geleverd)**:
+  - NDI queue-tabs met live tellingen op basis van volledige dataset
+  - Contextuele snelle acties per queue (check/action/report/finished)
+  - Quick report actie toegevoegd om direct NDI-report te registreren vanuit dashboard
 
 ### 5) Login screen parity + rolgedrag in UI
 - **Access referentie**: `LoginScreenF`, `UserLoginT`

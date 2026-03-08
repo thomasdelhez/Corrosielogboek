@@ -45,11 +45,11 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
         </div>
 
         <div class="queue-tabs">
-          <button [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles</button>
-          <button [class.active]="queue() === 'check_tracker'" (click)="setQueue('check_tracker')">Check tracker</button>
-          <button [class.active]="queue() === 'action_needed'" (click)="setQueue('action_needed')">Action needed</button>
-          <button [class.active]="queue() === 'report_needed'" (click)="setQueue('report_needed')">Report needed</button>
-          <button [class.active]="queue() === 'finished'" (click)="setQueue('finished')">Finished</button>
+          <button [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles ({{ allRows().length }})</button>
+          <button [class.active]="queue() === 'check_tracker'" (click)="setQueue('check_tracker')">Check tracker ({{ checkCount() }})</button>
+          <button [class.active]="queue() === 'action_needed'" (click)="setQueue('action_needed')">Action needed ({{ actionCount() }})</button>
+          <button [class.active]="queue() === 'report_needed'" (click)="setQueue('report_needed')">Report needed ({{ reportCount() }})</button>
+          <button [class.active]="queue() === 'finished'" (click)="setQueue('finished')">Finished ({{ finishedCount() }})</button>
         </div>
 
         <div class="queue-summary">
@@ -85,9 +85,19 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
                     <td>{{ r.ndiInspectionDate ? (r.ndiInspectionDate | date:'yyyy-MM-dd') : '-' }}</td>
                     <td>{{ r.latestReportMethod ?? '-' }}</td>
                     <td class="actions">
-                      <button class="btn" (click)="transition(r.holeId, 'report_needed')">Report needed</button>
-                      <button class="btn" (click)="transition(r.holeId, 'finished')">Mark finished</button>
-                      <button class="btn" (click)="transition(r.holeId, 'check_tracker')">Reopen</button>
+                      @if (r.queueStatus === 'check_tracker') {
+                        <button class="btn" (click)="transition(r.holeId, 'report_needed')">To report needed</button>
+                      }
+                      @if (r.queueStatus === 'action_needed') {
+                        <button class="btn" (click)="transition(r.holeId, 'report_needed')">Action done</button>
+                      }
+                      @if (r.queueStatus !== 'finished') {
+                        <button class="btn" (click)="quickAddReport(r.holeId, r.panelId)">+ Quick report</button>
+                        <button class="btn" (click)="transition(r.holeId, 'finished')">Mark finished</button>
+                      }
+                      @if (r.queueStatus === 'finished') {
+                        <button class="btn" (click)="transition(r.holeId, 'check_tracker')">Reopen</button>
+                      }
                       <a [routerLink]="['/corrosion', r.holeId]" class="link">Open hole</a>
                     </td>
                   </tr>
@@ -121,6 +131,7 @@ export class NdiReportsPage implements OnInit {
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
   protected readonly rows = signal<NdiQueueRow[]>([]);
+  protected readonly allRows = signal<NdiQueueRow[]>([]);
   protected readonly selectedAircraftId = signal<number | null>(null);
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly queue = signal<NdiQueue>('all');
@@ -128,10 +139,10 @@ export class NdiReportsPage implements OnInit {
   protected readonly loading = signal<boolean>(true);
   protected readonly message = signal<string>('');
 
-  protected readonly checkCount = computed(() => this.rows().filter((x) => x.queueStatus === 'check_tracker').length);
-  protected readonly actionCount = computed(() => this.rows().filter((x) => x.queueStatus === 'action_needed').length);
-  protected readonly reportCount = computed(() => this.rows().filter((x) => x.queueStatus === 'report_needed').length);
-  protected readonly finishedCount = computed(() => this.rows().filter((x) => x.queueStatus === 'finished').length);
+  protected readonly checkCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'check_tracker').length);
+  protected readonly actionCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'action_needed').length);
+  protected readonly reportCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'report_needed').length);
+  protected readonly finishedCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'finished').length);
 
   async ngOnInit(): Promise<void> {
     const aircraft = await firstValueFrom(this.svc.listAircraft());
@@ -163,16 +174,19 @@ export class NdiReportsPage implements OnInit {
 
   async reload(): Promise<void> {
     this.loading.set(true);
-    this.rows.set(
-      await firstValueFrom(
-        this.svc.listNdiDashboard({
-          aircraftId: this.selectedAircraftId(),
-          panelId: this.selectedPanelId(),
-          queue: this.queue(),
-          q: this.search().trim() || null,
-        }),
-      ),
-    );
+    const filters = {
+      aircraftId: this.selectedAircraftId(),
+      panelId: this.selectedPanelId(),
+      q: this.search().trim() || null,
+    };
+
+    const [allRows, rows] = await Promise.all([
+      firstValueFrom(this.svc.listNdiDashboard({ ...filters, queue: 'all' })),
+      firstValueFrom(this.svc.listNdiDashboard({ ...filters, queue: this.queue() })),
+    ]);
+
+    this.allRows.set(allRows);
+    this.rows.set(rows);
     this.loading.set(false);
   }
 
@@ -190,6 +204,25 @@ export class NdiReportsPage implements OnInit {
       await this.reload();
     } catch (e: any) {
       this.message.set(`NDI status update mislukt ${e?.error?.detail ?? ''}`.trim());
+    }
+  }
+
+  async quickAddReport(holeId: number, panelId: number): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.svc.createNdiReport(holeId, {
+          panelId,
+          nameInitials: 'TBD',
+          inspectionDate: new Date(),
+          method: 'VT',
+          tools: null,
+          corrosionPosition: null,
+        }),
+      );
+      this.message.set('Quick NDI report toegevoegd (VT/TBD).');
+      await this.reload();
+    } catch (e: any) {
+      this.message.set(`Quick report mislukt ${e?.error?.detail ?? ''}`.trim());
     }
   }
 }
