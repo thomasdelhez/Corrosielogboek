@@ -9,7 +9,22 @@ from sqlalchemy import String, case, cast, func, inspect, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import Base, engine, get_db
-from .models import AuthSession, Aircraft, AppUser, AuditEvent, Hole, HolePart, HoleStep, MdrCase, MdrRemark, MdrRequestDetail, NdiReport, Panel
+from .models import (
+    AuthSession,
+    Aircraft,
+    AppUser,
+    AuditEvent,
+    Hole,
+    HolePart,
+    HoleStep,
+    LookupMdrOption,
+    LookupStatusCode,
+    MdrCase,
+    MdrRemark,
+    MdrRequestDetail,
+    NdiReport,
+    Panel,
+)
 from .schemas import (
     AircraftCreateIn,
     CorrosionReportRowOut,
@@ -23,11 +38,14 @@ from .schemas import (
     HoleUpdate,
     LoginIn,
     LoginOut,
+    LookupMdrOptionOut,
+    LookupStatusCodeOut,
     LogoutOut,
     MdrCaseIn,
     MdrCaseOut,
     MdrRemarkIn,
     MdrRemarkOut,
+    MdrRequestDetailIn,
     MdrRequestDetailOut,
     MdrStatusTransitionIn,
     HoleTrackerRowOut,
@@ -75,19 +93,63 @@ ROLE_LEVEL = {"engineer": 1, "reviewer": 2, "admin": 3}
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def _validate_mdr_case_payload(payload: MdrCaseIn):
-    status = (payload.status or "Draft").strip()
+def _has_text(value: str | None) -> bool:
+    return bool(value and value.strip())
+
+
+def _validate_mdr_case_fields(
+    *,
+    status: str,
+    mdr_number: str | None,
+    subject: str | None,
+    submitted_by: str | None,
+    request_date,
+    need_date,
+    approval_date,
+    request_sent: bool,
+    approved: bool,
+) -> None:
     if status not in MDR_ALLOWED_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid MDR status: {status}")
 
     if status in {"Request", "Submit", "Resubmit", "Submitted", "In Review", "Approved", "Rejected", "Closed"}:
-        if not payload.mdr_number:
+        if not _has_text(mdr_number):
             raise HTTPException(status_code=400, detail="mdr_number is required for this status")
-        if not payload.subject:
+        if not _has_text(subject):
             raise HTTPException(status_code=400, detail="subject is required for this status")
 
-    if status in {"Submit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and not payload.submitted_by:
+    if status in {"Request", "Submit", "Resubmit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and request_date is None:
+        raise HTTPException(status_code=400, detail="request_date is required for this status")
+
+    if status in {"Submit", "Resubmit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and need_date is None:
+        raise HTTPException(status_code=400, detail="need_date is required for this status")
+
+    if status in {"Submit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and not _has_text(submitted_by):
         raise HTTPException(status_code=400, detail="submitted_by is required for this status")
+
+    if status == "Approved" and approval_date is None:
+        raise HTTPException(status_code=400, detail="approval_date is required for Approved status")
+
+    if request_sent and request_date is None:
+        raise HTTPException(status_code=400, detail="request_date is required when request_sent is true")
+
+    if approved and approval_date is None:
+        raise HTTPException(status_code=400, detail="approval_date is required when approved is true")
+
+
+def _validate_mdr_case_payload(payload: MdrCaseIn):
+    status = (payload.status or "Draft").strip()
+    _validate_mdr_case_fields(
+        status=status,
+        mdr_number=payload.mdr_number,
+        subject=payload.subject,
+        submitted_by=payload.submitted_by,
+        request_date=payload.request_date,
+        need_date=payload.need_date,
+        approval_date=payload.approval_date,
+        request_sent=bool(payload.request_sent),
+        approved=bool(payload.approved),
+    )
 
 
 def _token_hash(token: str) -> str:
@@ -259,6 +321,16 @@ def create_panel(payload: PanelCreateIn, db: Session = Depends(get_db), user=Dep
     _audit(db, "create", "panel", row.id, user["username"])
     db.commit()
     return {"id": row.id, "aircraft_id": row.aircraft_id, "panel_number": row.panel_number}
+
+
+@app.get("/api/v1/lookups/status-codes", response_model=list[LookupStatusCodeOut])
+def list_lookup_status_codes(db: Session = Depends(get_db), _user=Depends(current_user)):
+    return db.execute(select(LookupStatusCode).order_by(LookupStatusCode.id.asc())).scalars().all()
+
+
+@app.get("/api/v1/lookups/mdr-options", response_model=list[LookupMdrOptionOut])
+def list_lookup_mdr_options(db: Session = Depends(get_db), _user=Depends(current_user)):
+    return db.execute(select(LookupMdrOption).order_by(LookupMdrOption.id.asc())).scalars().all()
 
 
 @app.get("/api/v1/reports/corrosion-tracker", response_model=list[CorrosionReportRowOut])
@@ -516,6 +588,21 @@ def _create_hole_row(db: Session, panel_id: int, payload: HoleCreate) -> Hole:
         ndi_inspection_date=payload.ndi_inspection_date,
         ndi_finished=payload.ndi_finished,
         inspection_status=payload.inspection_status,
+        mdr_resubmit=payload.mdr_resubmit,
+        total_stackup_length=payload.total_stackup_length,
+        stack_up=payload.stack_up,
+        sleeve_bushings=payload.sleeve_bushings,
+        countersinked=payload.countersinked,
+        clean=payload.clean,
+        cut_sleeve_bushing=payload.cut_sleeve_bushing,
+        installed=payload.installed,
+        primer=payload.primer,
+        surface_corrosion=payload.surface_corrosion,
+        nutplate_inspection=payload.nutplate_inspection,
+        nutplate_surface_corrosion=payload.nutplate_surface_corrosion,
+        total_structure_thickness=payload.total_structure_thickness,
+        flexhone=payload.flexhone,
+        flexndi=payload.flexndi,
     )
     db.add(hole)
     db.flush()
@@ -672,6 +759,21 @@ def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db)
     hole.ndi_inspection_date = payload.ndi_inspection_date
     hole.ndi_finished = payload.ndi_finished
     hole.inspection_status = payload.inspection_status
+    hole.mdr_resubmit = payload.mdr_resubmit
+    hole.total_stackup_length = payload.total_stackup_length
+    hole.stack_up = payload.stack_up
+    hole.sleeve_bushings = payload.sleeve_bushings
+    hole.countersinked = payload.countersinked
+    hole.clean = payload.clean
+    hole.cut_sleeve_bushing = payload.cut_sleeve_bushing
+    hole.installed = payload.installed
+    hole.primer = payload.primer
+    hole.surface_corrosion = payload.surface_corrosion
+    hole.nutplate_inspection = payload.nutplate_inspection
+    hole.nutplate_surface_corrosion = payload.nutplate_surface_corrosion
+    hole.total_structure_thickness = payload.total_structure_thickness
+    hole.flexhone = payload.flexhone
+    hole.flexndi = payload.flexndi
 
     db.commit()
     return _get_hole_or_404(db, hole_id)
@@ -785,11 +887,17 @@ def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Se
     if to_status not in allowed:
         raise HTTPException(status_code=400, detail=f"Transition not allowed: {from_status} -> {to_status}")
 
-    if to_status in {"Request", "Submit", "Resubmit", "Submitted", "In Review", "Approved", "Rejected", "Closed"}:
-        if not row.mdr_number or not row.subject:
-            raise HTTPException(status_code=400, detail="mdr_number and subject are required before this transition")
-    if to_status in {"Submit", "Submitted", "In Review", "Approved", "Rejected", "Closed"} and not row.submitted_by:
-        raise HTTPException(status_code=400, detail="submitted_by is required before this transition")
+    _validate_mdr_case_fields(
+        status=to_status,
+        mdr_number=row.mdr_number,
+        subject=row.subject,
+        submitted_by=row.submitted_by,
+        request_date=row.request_date,
+        need_date=row.need_date,
+        approval_date=row.approval_date,
+        request_sent=bool(row.request_sent),
+        approved=bool(row.approved),
+    )
 
     row.status = to_status
     _audit(db, "transition", "mdr_case", row.id, user["username"])
@@ -1227,3 +1335,43 @@ def list_mdr_request_details(panel_id: int, db: Session = Depends(get_db), limit
         .scalars()
         .all()
     )
+
+
+@app.post("/api/v1/panels/{panel_id}/mdr-request-details", response_model=MdrRequestDetailOut, status_code=201)
+def create_mdr_request_detail(panel_id: int, payload: MdrRequestDetailIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+    panel = db.get(Panel, panel_id)
+    if not panel:
+        raise HTTPException(status_code=404, detail="Panel not found")
+    data = payload.model_dump()
+    data["panel_id"] = panel_id
+    row = MdrRequestDetail(**data)
+    db.add(row)
+    db.flush()
+    _audit(db, "create", "mdr_request_detail", row.id, user["username"])
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.put("/api/v1/mdr-request-details/{detail_id}", response_model=MdrRequestDetailOut)
+def update_mdr_request_detail(detail_id: int, payload: MdrRequestDetailIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+    row = db.get(MdrRequestDetail, detail_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="MDR request detail not found")
+    for key, value in payload.model_dump().items():
+        setattr(row, key, value)
+    _audit(db, "update", "mdr_request_detail", row.id, user["username"])
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.delete("/api/v1/mdr-request-details/{detail_id}")
+def delete_mdr_request_detail(detail_id: int, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
+    row = db.get(MdrRequestDetail, detail_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="MDR request detail not found")
+    _audit(db, "delete", "mdr_request_detail", row.id, user["username"])
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}

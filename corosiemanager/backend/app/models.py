@@ -42,6 +42,21 @@ class Hole(Base):
     ndi_inspection_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ndi_finished: Mapped[bool] = mapped_column(Boolean, default=False)
     inspection_status: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mdr_resubmit: Mapped[bool] = mapped_column(Boolean, default=False)
+    total_stackup_length: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stack_up: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sleeve_bushings: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    countersinked: Mapped[bool] = mapped_column(Boolean, default=False)
+    clean: Mapped[bool] = mapped_column(Boolean, default=False)
+    cut_sleeve_bushing: Mapped[bool] = mapped_column(Boolean, default=False)
+    installed: Mapped[bool] = mapped_column(Boolean, default=False)
+    primer: Mapped[bool] = mapped_column(Boolean, default=False)
+    surface_corrosion: Mapped[bool] = mapped_column(Boolean, default=False)
+    nutplate_inspection: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    nutplate_surface_corrosion: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    total_structure_thickness: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    flexhone: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    flexndi: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -87,15 +102,28 @@ class MdrCase(Base):
     __tablename__ = "mdr_case"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    aircraft_id: Mapped[int | None] = mapped_column(ForeignKey("aircraft.id", ondelete="SET NULL"), nullable=True, index=True)
+    aircraft_an: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    aircraft_serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    aircraft_arrival_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     panel_id: Mapped[int | None] = mapped_column(ForeignKey("panel.id", ondelete="SET NULL"), nullable=True, index=True)
+    panel_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hole_ids: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    resubmit: Mapped[bool] = mapped_column(Boolean, default=False)
+    request_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     mdr_number: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     mdr_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ed_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dcm_check: Mapped[str | None] = mapped_column(String(255), nullable=True)
     submitted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    submit_list_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     request_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     need_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    approval_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    tier2: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class MdrRemark(Base):
@@ -127,13 +155,58 @@ class MdrRequestDetail(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     panel_id: Mapped[int | None] = mapped_column(ForeignKey("panel.id", ondelete="SET NULL"), nullable=True, index=True)
     tve: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    panel_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    task_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    fms_or_non_fms: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    releasability: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    technical_product_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    technical_product_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    submitter_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mdr_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     part_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    internal_reference_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cr_ecp: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    discrepancy_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cause_code_discrepant_work: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    resubmit_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     defect_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    access_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    date_due_to_field: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    lcn: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lcn_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    inspection_criteria: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mgi_required: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mgi_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    discovered_during: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    when_discovered: Mapped[str | None] = mapped_column(String(255), nullable=True)
     problem_statement: Mapped[str | None] = mapped_column(Text, nullable=True)
+    technical_product_details_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tms: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    confirm_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     discovered_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     date_discovered: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class LookupStatusCode(Base):
+    __tablename__ = "lookup_status_code"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    status_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status_code_dcm: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class LookupMdrOption(Base):
+    __tablename__ = "lookup_mdr_option"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    lcn: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    discrepancy_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cause_code_discrepant_work: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    when_discovered: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    discovered_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class AppUser(Base):

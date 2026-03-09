@@ -33,6 +33,21 @@ export interface Hole {
   ndiInspectionDate: Date | null;
   ndiFinished: boolean;
   inspectionStatus: string | null;
+  mdrResubmit: boolean;
+  totalStackupLength: string | null;
+  stackUp: number | null;
+  sleeveBushings: string | null;
+  countersinked: boolean;
+  clean: boolean;
+  cutSleeveBushing: boolean;
+  installed: boolean;
+  primer: boolean;
+  surfaceCorrosion: boolean;
+  nutplateInspection: string | null;
+  nutplateSurfaceCorrosion: string | null;
+  totalStructureThickness: string | null;
+  flexhone: string | null;
+  flexndi: boolean;
   createdAt: Date;
   steps: HoleStep[];
   parts: HolePart[];
@@ -53,15 +68,28 @@ export interface PanelSummary {
 
 export interface MdrCase {
   id: number;
+  aircraftId: number | null;
+  aircraftAn: string | null;
+  aircraftSerialNumber: string | null;
+  aircraftArrivalDate: Date | null;
   panelId: number | null;
+  panelNumber: number | null;
+  holeIds: string | null;
+  resubmit: boolean;
+  requestSent: boolean;
   mdrNumber: string | null;
   mdrVersion: string | null;
+  edNumber: string | null;
   subject: string | null;
   status: string | null;
+  dcmCheck: string | null;
   submittedBy: string | null;
+  submitListDate: Date | null;
   requestDate: Date | null;
   needDate: Date | null;
+  approvalDate: Date | null;
   approved: boolean;
+  tier2: boolean;
 }
 
 export interface NdiReport {
@@ -79,13 +107,39 @@ export interface MdrRequestDetail {
   id: number;
   panelId: number | null;
   tve: string | null;
+  panelNumber: number | null;
+  taskType: string | null;
+  fmsOrNonFms: string | null;
+  releasability: string | null;
+  technicalProductNumber: string | null;
+  technicalProductTitle: string | null;
+  submitterName: string | null;
+  location: string | null;
   mdrType: string | null;
   serialNumber: string | null;
   partNumber: string | null;
+  internalReferenceNumber: string | null;
+  crEcp: string | null;
+  discrepancyType: string | null;
+  causeCodeDiscrepantWork: string | null;
+  resubmitReason: string | null;
   defectCode: string | null;
+  accessLocation: string | null;
+  dateDueToField: Date | null;
+  lcn: string | null;
+  lcnDescription: string | null;
+  inspectionCriteria: string | null;
+  mgiRequired: string | null;
+  mgiNumber: string | null;
+  discoveredDuring: string | null;
+  whenDiscovered: string | null;
   problemStatement: string | null;
   discoveredBy: string | null;
   dateDiscovered: Date | null;
+  technicalProductDetailsSummary: string | null;
+  tms: string | null;
+  email: string | null;
+  confirmEmail: string | null;
 }
 
 export interface MdrRemark {
@@ -194,4 +248,19 @@ export interface MdrPowerpointInfoRow {
   submittedBy: string | null;
   requestDate: Date | null;
   needDate: Date | null;
+}
+
+export interface LookupStatusCode {
+  id: number;
+  statusCode: string | null;
+  statusCodeDcm: string | null;
+}
+
+export interface LookupMdrOption {
+  id: number;
+  lcn: string | null;
+  discrepancyType: string | null;
+  causeCodeDiscrepantWork: string | null;
+  whenDiscovered: string | null;
+  discoveredBy: string | null;
 }

@@ -33,6 +33,21 @@ export interface HoleDto {
   ndi_inspection_date: string | null;
   ndi_finished: boolean;
   inspection_status: string | null;
+  mdr_resubmit: boolean;
+  total_stackup_length: string | null;
+  stack_up: number | null;
+  sleeve_bushings: string | null;
+  countersinked: boolean;
+  clean: boolean;
+  cut_sleeve_bushing: boolean;
+  installed: boolean;
+  primer: boolean;
+  surface_corrosion: boolean;
+  nutplate_inspection: string | null;
+  nutplate_surface_corrosion: string | null;
+  total_structure_thickness: string | null;
+  flexhone: string | null;
+  flexndi: boolean;
   created_at: string;
   steps: HoleStepDto[];
   parts: HolePartDto[];
@@ -48,6 +63,21 @@ export interface UpdateHoleInputDto {
   ndi_inspection_date: string | null;
   ndi_finished: boolean;
   inspection_status: string | null;
+  mdr_resubmit: boolean;
+  total_stackup_length: string | null;
+  stack_up: number | null;
+  sleeve_bushings: string | null;
+  countersinked: boolean;
+  clean: boolean;
+  cut_sleeve_bushing: boolean;
+  installed: boolean;
+  primer: boolean;
+  surface_corrosion: boolean;
+  nutplate_inspection: string | null;
+  nutplate_surface_corrosion: string | null;
+  total_structure_thickness: string | null;
+  flexhone: string | null;
+  flexndi: boolean;
 }
 
 export interface UpdateHoleStepInputDto {
@@ -85,15 +115,28 @@ export interface PanelSummaryDto {
 
 export interface MdrCaseDto {
   id: number;
+  aircraft_id: number | null;
+  aircraft_an: string | null;
+  aircraft_serial_number: string | null;
+  aircraft_arrival_date: string | null;
   panel_id: number | null;
+  panel_number: number | null;
+  hole_ids: string | null;
+  resubmit: boolean;
+  request_sent: boolean;
   mdr_number: string | null;
   mdr_version: string | null;
+  ed_number: string | null;
   subject: string | null;
   status: string | null;
+  dcm_check: string | null;
   submitted_by: string | null;
+  submit_list_date: string | null;
   request_date: string | null;
   need_date: string | null;
+  approval_date: string | null;
   approved: boolean;
+  tier2: boolean;
 }
 
 export interface MdrRemarkDto {
@@ -119,13 +162,54 @@ export interface MdrRequestDetailDto {
   id: number;
   panel_id: number | null;
   tve: string | null;
+  panel_number: number | null;
+  task_type: string | null;
+  fms_or_non_fms: string | null;
+  releasability: string | null;
+  technical_product_number: string | null;
+  technical_product_title: string | null;
+  submitter_name: string | null;
+  location: string | null;
   mdr_type: string | null;
   serial_number: string | null;
   part_number: string | null;
+  internal_reference_number: string | null;
+  cr_ecp: string | null;
+  discrepancy_type: string | null;
+  cause_code_discrepant_work: string | null;
+  resubmit_reason: string | null;
   defect_code: string | null;
-  problem_statement: string | null;
+  access_location: string | null;
+  date_due_to_field: string | null;
+  lcn: string | null;
+  lcn_description: string | null;
+  inspection_criteria: string | null;
+  mgi_required: string | null;
+  mgi_number: string | null;
+  discovered_during: string | null;
+  when_discovered: string | null;
   discovered_by: string | null;
   date_discovered: string | null;
+  problem_statement: string | null;
+  technical_product_details_summary: string | null;
+  tms: string | null;
+  email: string | null;
+  confirm_email: string | null;
+}
+
+export interface LookupStatusCodeDto {
+  id: number;
+  status_code: string | null;
+  status_code_dcm: string | null;
+}
+
+export interface LookupMdrOptionDto {
+  id: number;
+  lcn: string | null;
+  discrepancy_type: string | null;
+  cause_code_discrepant_work: string | null;
+  when_discovered: string | null;
+  discovered_by: string | null;
 }
 
 export interface OrderingTrackerRowDto {

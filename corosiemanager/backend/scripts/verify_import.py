@@ -17,21 +17,14 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db import SessionLocal
-from app.models import Aircraft, Hole, HolePart, HoleStep, MdrCase, MdrRequestDetail, NdiReport, Panel
-
-
-def mdb_count(accdb: str, table: str) -> int:
-    out = subprocess.check_output(["mdb-count", accdb, table], text=True).strip()
-    return int(out)
+from app.models import Aircraft, Hole, HolePart, HoleStep, LookupMdrOption, LookupStatusCode, MdrCase, MdrRequestDetail, NdiReport, Panel
 
 
 def mdb_export_count(accdb: str, table: str) -> int:
-    """Count rows via mdb-export (header excluded). More reliable for some Access files."""
+    """Count rows via mdb-export parsed as CSV, consistent with import script semantics."""
     out = subprocess.check_output(["mdb-export", accdb, table], text=True)
-    lines = [line for line in out.splitlines() if line.strip() != ""]
-    if not lines:
-        return 0
-    return max(0, len(lines) - 1)
+    reader = csv.DictReader(io.StringIO(out))
+    return sum(1 for _ in reader)
 
 
 def main() -> None:
@@ -40,12 +33,14 @@ def main() -> None:
     args = parser.parse_args()
 
     src = {
-        "AircraftNrT": mdb_count(args.accdb, "AircraftNrT"),
-        "PanelNrT": mdb_count(args.accdb, "PanelNrT"),
+        "AircraftNrT": mdb_export_count(args.accdb, "AircraftNrT"),
+        "PanelNrT": mdb_export_count(args.accdb, "PanelNrT"),
         "HoleRepairT": mdb_export_count(args.accdb, "HoleRepairT"),
-        "MDRStatusT": mdb_count(args.accdb, "MDRStatusT"),
-        "NDIReportT": mdb_count(args.accdb, "NDIReportT"),
-        "MDRListT": mdb_count(args.accdb, "MDRListT"),
+        "MDRStatusT": mdb_export_count(args.accdb, "MDRStatusT"),
+        "NDIReportT": mdb_export_count(args.accdb, "NDIReportT"),
+        "MDRListT": mdb_export_count(args.accdb, "MDRListT"),
+        "MDRStatusDropDownT": mdb_export_count(args.accdb, "MDRStatusDropDownT"),
+        "MDRListDropDownOptionsT": mdb_export_count(args.accdb, "MDRListDropDownOptionsT"),
     }
 
     with SessionLocal() as s:
@@ -58,6 +53,8 @@ def main() -> None:
             "mdr_case": s.scalar(select(func.count()).select_from(MdrCase)),
             "ndi_report": s.scalar(select(func.count()).select_from(NdiReport)),
             "mdr_request_detail": s.scalar(select(func.count()).select_from(MdrRequestDetail)),
+            "lookup_status_code": s.scalar(select(func.count()).select_from(LookupStatusCode)),
+            "lookup_mdr_option": s.scalar(select(func.count()).select_from(LookupMdrOption)),
         }
 
     print("=== ACCESS SOURCE COUNTS ===")
@@ -71,7 +68,7 @@ def main() -> None:
     print("\nNotes:")
     print("- aircraft can be lower in target due to AN deduplication")
     print("- panel can differ due to placeholder panel creation")
-    print("- HoleRepairT is counted via mdb-export rows (header excluded)")
+    print("- source counts use mdb-export CSV row parsing (same basis as import script)")
     print("- hole_step/hole_part are normalized expansions of HoleRepairT")
 
 

@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ApiErrorService } from '../../../shared/services/api-error.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { Aircraft, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
@@ -37,8 +39,6 @@ import { CorrosionService } from '../services/corrosion.service';
           </section>
         </div>
 
-        @if (message()) { <p class="msg">{{ message() }}</p> }
-
         <section class="subcard" style="margin-top:12px;">
           <h3>Overzicht</h3>
           <ul>
@@ -65,10 +65,13 @@ import { CorrosionService } from '../services/corrosion.service';
 })
 export class AdminMasterDataPage implements OnInit {
   private readonly svc = inject(CorrosionService);
+  private readonly apiErrors = inject(ApiErrorService);
+  private readonly toast = inject(ToastService);
 
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
   protected readonly message = signal('');
+  protected readonly messageType = signal<'success' | 'error' | 'info'>('info');
 
   protected aircraftAn = '';
   protected aircraftSerial = '';
@@ -85,15 +88,22 @@ export class AdminMasterDataPage implements OnInit {
       this.aircraftAn = '';
       this.aircraftSerial = '';
       this.message.set('Aircraft aangemaakt');
+      this.messageType.set('success');
+      this.toast.success('Aircraft aangemaakt');
       await this.reload();
-    } catch (e: any) {
-      this.message.set(`Aircraft aanmaken mislukt ${e?.error?.detail ?? ''}`.trim());
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Aircraft aanmaken mislukt');
+      this.message.set(msg);
+      this.messageType.set('error');
+      this.toast.error(msg);
     }
   }
 
   async createPanel(): Promise<void> {
     if (!this.panelAircraftId || this.panelNumber === null) {
       this.message.set('Selecteer aircraft en panel number');
+      this.messageType.set('info');
+      this.toast.info('Selecteer aircraft en panel number');
       return;
     }
 
@@ -101,9 +111,14 @@ export class AdminMasterDataPage implements OnInit {
       await firstValueFrom(this.svc.createPanel({ aircraftId: this.panelAircraftId, panelNumber: Number(this.panelNumber) }));
       this.panelNumber = null;
       this.message.set('Panel aangemaakt');
+      this.messageType.set('success');
+      this.toast.success('Panel aangemaakt');
       await this.reload();
-    } catch (e: any) {
-      this.message.set(`Panel aanmaken mislukt ${e?.error?.detail ?? ''}`.trim());
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Panel aanmaken mislukt');
+      this.message.set(msg);
+      this.messageType.set('error');
+      this.toast.error(msg);
     }
   }
 
