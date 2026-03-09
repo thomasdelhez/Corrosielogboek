@@ -1,8 +1,9 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ApiErrorService } from '../../../shared/services/api-error.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { CreateHoleInput, CreateHoleBatchResultRow } from '../models/corrosion.inputs';
 import { Aircraft, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
@@ -48,10 +49,6 @@ import { CorrosionService } from '../services/corrosion.service';
             {{ submitting() ? 'Bezig...' : 'Batch aanmaken' }}
           </button>
         </div>
-
-        @if (parseError()) {
-          <p class="error">{{ parseError() }}</p>
-        }
 
         @if (previewNumbers().length > 0) {
           <p class="preview">Preview: {{ previewNumbers().length }} holes → {{ previewNumbers().slice(0, 20).join(', ') }}@if (previewNumbers().length > 20) { ... }</p>
@@ -106,6 +103,8 @@ import { CorrosionService } from '../services/corrosion.service';
 })
 export class BatchHoleCreatePage implements OnInit {
   private readonly corrosionService = inject(CorrosionService);
+  private readonly apiErrors = inject(ApiErrorService);
+  private readonly toast = inject(ToastService);
 
   protected readonly aircraftList = signal<Aircraft[]>([]);
   protected readonly selectedAircraftId = signal<number | null>(null);
@@ -150,7 +149,9 @@ export class BatchHoleCreatePage implements OnInit {
       this.previewConfirmed.set(true);
     } catch (e) {
       this.previewNumbers.set([]);
-      this.parseError.set(e instanceof Error ? e.message : 'Kon invoer niet verwerken');
+      const msg = e instanceof Error ? e.message : 'Kon invoer niet verwerken';
+      this.parseError.set(msg);
+      this.toast.error(msg);
     }
   }
 
@@ -158,11 +159,13 @@ export class BatchHoleCreatePage implements OnInit {
     const panelId = this.selectedPanelId();
     if (!panelId) {
       this.parseError.set('Selecteer eerst een panel.');
+      this.toast.info('Selecteer eerst een panel.');
       return;
     }
 
     if (!this.previewConfirmed() || this.previewNumbers().length === 0) {
       this.parseError.set('Klik eerst op Preview voordat je Batch aanmaken gebruikt.');
+      this.toast.info('Klik eerst op Preview voordat je Batch aanmaken gebruikt.');
       return;
     }
 
@@ -186,8 +189,11 @@ export class BatchHoleCreatePage implements OnInit {
       }));
       const result = await firstValueFrom(this.corrosionService.createBatchHoles(panelId, payload));
       this.resultRows.set(result.results);
+      this.toast.success(`Batch verwerkt: ${result.created} aangemaakt, ${result.skipped} overgeslagen, ${result.errors} fouten.`);
     } catch (error) {
-      this.parseError.set(this.toErrorMessage(error));
+      const msg = this.toErrorMessage(error);
+      this.parseError.set(msg);
+      this.toast.error(msg);
     } finally {
       this.submitting.set(false);
     }
@@ -200,14 +206,7 @@ export class BatchHoleCreatePage implements OnInit {
   }
 
   private toErrorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 404) {
-        return 'Batch endpoint niet gevonden (404). Herstart de backend op poort 8002 met de nieuwste code.';
-      }
-      const detail = typeof error.error?.detail === 'string' ? error.error.detail : null;
-      return detail ? `Batch aanmaken mislukt: ${detail}` : `Batch aanmaken mislukt (HTTP ${error.status}).`;
-    }
-    return 'Batch aanmaken mislukt door een onverwachte fout.';
+    return this.apiErrors.toUserMessage(error, 'Batch aanmaken mislukt');
   }
 
   private parseHoleNumbers(value: string): number[] {

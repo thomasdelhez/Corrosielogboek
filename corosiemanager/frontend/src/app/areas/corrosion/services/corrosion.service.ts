@@ -7,6 +7,8 @@ import {
   CorrosionReportRowDto,
   CreateHoleBatchResultDto,
   HoleDto,
+  LookupMdrOptionDto,
+  LookupStatusCodeDto,
   MdrPowerpointInfoRowDto,
   HoleTrackerRowDto,
   InspectionQueueRowDto,
@@ -31,6 +33,7 @@ import {
   CreateMdrRemarkInput,
   CreatePanelInput,
   CreateNdiReportInput,
+  MdrRequestDetailInput,
   UpdateHoleInput,
   UpdateHolePartInput,
   UpdateHoleStepInput,
@@ -44,6 +47,8 @@ import {
   HoleTrackerRow,
   InspectionQueueRow,
   InstallationTrackerRow,
+  LookupMdrOption,
+  LookupStatusCode,
   MdrCase,
   MdrPowerpointInfoRow,
   MdrRemark,
@@ -134,15 +139,28 @@ export class CorrosionService {
   createMdrCase(input: CreateMdrCaseInput): Observable<MdrCase> {
     return this.http
       .post<MdrCaseDto>(`${this.config.apiBaseUrl}/mdr-cases`, {
+        aircraft_id: input.aircraftId,
+        aircraft_an: input.aircraftAn,
+        aircraft_serial_number: input.aircraftSerialNumber,
+        aircraft_arrival_date: input.aircraftArrivalDate ? input.aircraftArrivalDate.toISOString() : null,
         panel_id: input.panelId,
+        panel_number: input.panelNumber,
+        hole_ids: input.holeIds,
+        resubmit: input.resubmit ?? false,
+        request_sent: input.requestSent ?? false,
         mdr_number: input.mdrNumber,
         mdr_version: input.mdrVersion,
+        ed_number: input.edNumber,
         subject: input.subject,
         status: input.status,
+        dcm_check: input.dcmCheck,
         submitted_by: input.submittedBy,
+        submit_list_date: input.submitListDate ? input.submitListDate.toISOString() : null,
         request_date: input.requestDate ? input.requestDate.toISOString() : null,
         need_date: input.needDate ? input.needDate.toISOString() : null,
+        approval_date: input.approvalDate ? input.approvalDate.toISOString() : null,
         approved: input.approved,
+        tier2: input.tier2 ?? false,
       })
       .pipe(map((row) => this.toMdrCase(row)));
   }
@@ -150,15 +168,28 @@ export class CorrosionService {
   updateMdrCase(mdrCaseId: number, input: CreateMdrCaseInput): Observable<MdrCase> {
     return this.http
       .put<MdrCaseDto>(`${this.config.apiBaseUrl}/mdr-cases/${mdrCaseId}`, {
+        aircraft_id: input.aircraftId,
+        aircraft_an: input.aircraftAn,
+        aircraft_serial_number: input.aircraftSerialNumber,
+        aircraft_arrival_date: input.aircraftArrivalDate ? input.aircraftArrivalDate.toISOString() : null,
         panel_id: input.panelId,
+        panel_number: input.panelNumber,
+        hole_ids: input.holeIds,
+        resubmit: input.resubmit ?? false,
+        request_sent: input.requestSent ?? false,
         mdr_number: input.mdrNumber,
         mdr_version: input.mdrVersion,
+        ed_number: input.edNumber,
         subject: input.subject,
         status: input.status,
+        dcm_check: input.dcmCheck,
         submitted_by: input.submittedBy,
+        submit_list_date: input.submitListDate ? input.submitListDate.toISOString() : null,
         request_date: input.requestDate ? input.requestDate.toISOString() : null,
         need_date: input.needDate ? input.needDate.toISOString() : null,
+        approval_date: input.approvalDate ? input.approvalDate.toISOString() : null,
         approved: input.approved,
+        tier2: input.tier2 ?? false,
       })
       .pipe(map((row) => this.toMdrCase(row)));
   }
@@ -273,6 +304,34 @@ export class CorrosionService {
       .pipe(map((rows) => rows.map((row) => this.toMdrRequestDetail(row))));
   }
 
+  createMdrRequestDetail(panelId: number, input: MdrRequestDetailInput): Observable<MdrRequestDetail> {
+    return this.http
+      .post<MdrRequestDetailDto>(`${this.config.apiBaseUrl}/panels/${panelId}/mdr-request-details`, this.toMdrRequestDetailDto(input))
+      .pipe(map((row) => this.toMdrRequestDetail(row)));
+  }
+
+  updateMdrRequestDetail(detailId: number, input: MdrRequestDetailInput): Observable<MdrRequestDetail> {
+    return this.http
+      .put<MdrRequestDetailDto>(`${this.config.apiBaseUrl}/mdr-request-details/${detailId}`, this.toMdrRequestDetailDto(input))
+      .pipe(map((row) => this.toMdrRequestDetail(row)));
+  }
+
+  deleteMdrRequestDetail(detailId: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/mdr-request-details/${detailId}`);
+  }
+
+  listLookupStatusCodes(): Observable<LookupStatusCode[]> {
+    return this.http
+      .get<LookupStatusCodeDto[]>(`${this.config.apiBaseUrl}/lookups/status-codes`)
+      .pipe(map((rows) => rows.map((row) => this.toLookupStatusCode(row))));
+  }
+
+  listLookupMdrOptions(): Observable<LookupMdrOption[]> {
+    return this.http
+      .get<LookupMdrOptionDto[]>(`${this.config.apiBaseUrl}/lookups/mdr-options`)
+      .pipe(map((rows) => rows.map((row) => this.toLookupMdrOption(row))));
+  }
+
   listMdrPowerpointInfo(params: {
     aircraftId?: number | null;
     panelId?: number | null;
@@ -350,6 +409,21 @@ export class CorrosionService {
     ndi_inspection_date: string | null;
     ndi_finished: boolean;
     inspection_status: string | null;
+    mdr_resubmit: boolean;
+    total_stackup_length: string | null;
+    stack_up: number | null;
+    sleeve_bushings: string | null;
+    countersinked: boolean;
+    clean: boolean;
+    cut_sleeve_bushing: boolean;
+    installed: boolean;
+    primer: boolean;
+    surface_corrosion: boolean;
+    nutplate_inspection: string | null;
+    nutplate_surface_corrosion: string | null;
+    total_structure_thickness: string | null;
+    flexhone: string | null;
+    flexndi: boolean;
     steps: UpdateHoleStepInputDto[];
     parts: UpdateHolePartInputDto[];
   } {
@@ -364,6 +438,21 @@ export class CorrosionService {
       ndi_inspection_date: input.ndiInspectionDate ? input.ndiInspectionDate.toISOString() : null,
       ndi_finished: input.ndiFinished,
       inspection_status: input.inspectionStatus,
+      mdr_resubmit: input.mdrResubmit ?? false,
+      total_stackup_length: input.totalStackupLength ?? null,
+      stack_up: input.stackUp ?? null,
+      sleeve_bushings: input.sleeveBushings ?? null,
+      countersinked: input.countersinked ?? false,
+      clean: input.clean ?? false,
+      cut_sleeve_bushing: input.cutSleeveBushing ?? false,
+      installed: input.installed ?? false,
+      primer: input.primer ?? false,
+      surface_corrosion: input.surfaceCorrosion ?? false,
+      nutplate_inspection: input.nutplateInspection ?? null,
+      nutplate_surface_corrosion: input.nutplateSurfaceCorrosion ?? null,
+      total_structure_thickness: input.totalStructureThickness ?? null,
+      flexhone: input.flexhone ?? null,
+      flexndi: input.flexndi ?? false,
       steps: input.steps.map((s) => this.toUpdateStepDto(s)),
       parts: input.parts.map((p) => this.toUpdatePartDto(p)),
     };
@@ -380,6 +469,21 @@ export class CorrosionService {
       ndi_inspection_date: input.ndiInspectionDate ? input.ndiInspectionDate.toISOString() : null,
       ndi_finished: input.ndiFinished,
       inspection_status: input.inspectionStatus,
+      mdr_resubmit: input.mdrResubmit ?? false,
+      total_stackup_length: input.totalStackupLength ?? null,
+      stack_up: input.stackUp ?? null,
+      sleeve_bushings: input.sleeveBushings ?? null,
+      countersinked: input.countersinked ?? false,
+      clean: input.clean ?? false,
+      cut_sleeve_bushing: input.cutSleeveBushing ?? false,
+      installed: input.installed ?? false,
+      primer: input.primer ?? false,
+      surface_corrosion: input.surfaceCorrosion ?? false,
+      nutplate_inspection: input.nutplateInspection ?? null,
+      nutplate_surface_corrosion: input.nutplateSurfaceCorrosion ?? null,
+      total_structure_thickness: input.totalStructureThickness ?? null,
+      flexhone: input.flexhone ?? null,
+      flexndi: input.flexndi ?? false,
     };
   }
 
@@ -421,6 +525,21 @@ export class CorrosionService {
       ndiInspectionDate: dto.ndi_inspection_date ? new Date(dto.ndi_inspection_date) : null,
       ndiFinished: dto.ndi_finished,
       inspectionStatus: dto.inspection_status,
+      mdrResubmit: dto.mdr_resubmit,
+      totalStackupLength: dto.total_stackup_length,
+      stackUp: dto.stack_up,
+      sleeveBushings: dto.sleeve_bushings,
+      countersinked: dto.countersinked,
+      clean: dto.clean,
+      cutSleeveBushing: dto.cut_sleeve_bushing,
+      installed: dto.installed,
+      primer: dto.primer,
+      surfaceCorrosion: dto.surface_corrosion,
+      nutplateInspection: dto.nutplate_inspection,
+      nutplateSurfaceCorrosion: dto.nutplate_surface_corrosion,
+      totalStructureThickness: dto.total_structure_thickness,
+      flexhone: dto.flexhone,
+      flexndi: dto.flexndi,
       createdAt: new Date(dto.created_at),
       steps: dto.steps.map((step) => this.toHoleStep(step)),
       parts: dto.parts.map((part) => this.toHolePart(part)),
@@ -473,15 +592,28 @@ export class CorrosionService {
   private toMdrCase(dto: MdrCaseDto): MdrCase {
     return {
       id: dto.id,
+      aircraftId: dto.aircraft_id,
+      aircraftAn: dto.aircraft_an,
+      aircraftSerialNumber: dto.aircraft_serial_number,
+      aircraftArrivalDate: dto.aircraft_arrival_date ? new Date(dto.aircraft_arrival_date) : null,
       panelId: dto.panel_id,
+      panelNumber: dto.panel_number,
+      holeIds: dto.hole_ids,
+      resubmit: dto.resubmit,
+      requestSent: dto.request_sent,
       mdrNumber: dto.mdr_number,
       mdrVersion: dto.mdr_version,
+      edNumber: dto.ed_number,
       subject: dto.subject,
       status: dto.status,
+      dcmCheck: dto.dcm_check,
       submittedBy: dto.submitted_by,
+      submitListDate: dto.submit_list_date ? new Date(dto.submit_list_date) : null,
       requestDate: dto.request_date ? new Date(dto.request_date) : null,
       needDate: dto.need_date ? new Date(dto.need_date) : null,
+      approvalDate: dto.approval_date ? new Date(dto.approval_date) : null,
       approved: dto.approved,
+      tier2: dto.tier2,
     };
   }
 
@@ -513,13 +645,98 @@ export class CorrosionService {
       id: dto.id,
       panelId: dto.panel_id,
       tve: dto.tve,
+      panelNumber: dto.panel_number,
+      taskType: dto.task_type,
+      fmsOrNonFms: dto.fms_or_non_fms,
+      releasability: dto.releasability,
+      technicalProductNumber: dto.technical_product_number,
+      technicalProductTitle: dto.technical_product_title,
+      submitterName: dto.submitter_name,
+      location: dto.location,
       mdrType: dto.mdr_type,
       serialNumber: dto.serial_number,
       partNumber: dto.part_number,
+      internalReferenceNumber: dto.internal_reference_number,
+      crEcp: dto.cr_ecp,
+      discrepancyType: dto.discrepancy_type,
+      causeCodeDiscrepantWork: dto.cause_code_discrepant_work,
+      resubmitReason: dto.resubmit_reason,
       defectCode: dto.defect_code,
+      accessLocation: dto.access_location,
+      dateDueToField: dto.date_due_to_field ? new Date(dto.date_due_to_field) : null,
+      lcn: dto.lcn,
+      lcnDescription: dto.lcn_description,
+      inspectionCriteria: dto.inspection_criteria,
+      mgiRequired: dto.mgi_required,
+      mgiNumber: dto.mgi_number,
+      discoveredDuring: dto.discovered_during,
+      whenDiscovered: dto.when_discovered,
       problemStatement: dto.problem_statement,
       discoveredBy: dto.discovered_by,
       dateDiscovered: dto.date_discovered ? new Date(dto.date_discovered) : null,
+      technicalProductDetailsSummary: dto.technical_product_details_summary,
+      tms: dto.tms,
+      email: dto.email,
+      confirmEmail: dto.confirm_email,
+    };
+  }
+
+  private toMdrRequestDetailDto(input: MdrRequestDetailInput): Record<string, unknown> {
+    return {
+      panel_id: input.panelId,
+      tve: input.tve,
+      panel_number: input.panelNumber,
+      task_type: input.taskType,
+      fms_or_non_fms: input.fmsOrNonFms,
+      releasability: input.releasability,
+      technical_product_number: input.technicalProductNumber,
+      technical_product_title: input.technicalProductTitle,
+      submitter_name: input.submitterName,
+      location: input.location,
+      mdr_type: input.mdrType,
+      serial_number: input.serialNumber,
+      part_number: input.partNumber,
+      internal_reference_number: input.internalReferenceNumber,
+      cr_ecp: input.crEcp,
+      discrepancy_type: input.discrepancyType,
+      cause_code_discrepant_work: input.causeCodeDiscrepantWork,
+      resubmit_reason: input.resubmitReason,
+      defect_code: input.defectCode,
+      access_location: input.accessLocation,
+      date_due_to_field: input.dateDueToField ? input.dateDueToField.toISOString() : null,
+      lcn: input.lcn,
+      lcn_description: input.lcnDescription,
+      inspection_criteria: input.inspectionCriteria,
+      mgi_required: input.mgiRequired,
+      mgi_number: input.mgiNumber,
+      discovered_during: input.discoveredDuring,
+      when_discovered: input.whenDiscovered,
+      discovered_by: input.discoveredBy,
+      date_discovered: input.dateDiscovered ? input.dateDiscovered.toISOString() : null,
+      problem_statement: input.problemStatement,
+      technical_product_details_summary: input.technicalProductDetailsSummary,
+      tms: input.tms,
+      email: input.email,
+      confirm_email: input.confirmEmail,
+    };
+  }
+
+  private toLookupStatusCode(dto: LookupStatusCodeDto): LookupStatusCode {
+    return {
+      id: dto.id,
+      statusCode: dto.status_code,
+      statusCodeDcm: dto.status_code_dcm,
+    };
+  }
+
+  private toLookupMdrOption(dto: LookupMdrOptionDto): LookupMdrOption {
+    return {
+      id: dto.id,
+      lcn: dto.lcn,
+      discrepancyType: dto.discrepancy_type,
+      causeCodeDiscrepantWork: dto.cause_code_discrepant_work,
+      whenDiscovered: dto.when_discovered,
+      discoveredBy: dto.discovered_by,
     };
   }
 

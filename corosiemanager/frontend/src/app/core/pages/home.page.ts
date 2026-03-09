@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ToastService } from '../../shared/services/toast.service';
 import { AuthenticationService } from '../security/services/authentication.service';
 import { AuthorizationService } from '../security/services/authorization.service';
 
@@ -22,7 +23,6 @@ import { AuthorizationService } from '../security/services/authorization.service
             <p>Ingelogd als <strong>{{ userLabel() }}</strong></p>
             <button class="btn-secondary" (click)="logout()">Uitloggen</button>
           }
-          @if (authMessage()) { <p class="auth-msg">{{ authMessage() }}</p> }
         </div>
 
         <div class="menu-grid">
@@ -104,7 +104,6 @@ import { AuthorizationService } from '../security/services/authorization.service
     .subtitle { margin: 12px 0 0; color: #475569; max-width: 70ch; line-height: 1.5; }
     .auth-box{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .auth-box input{padding:8px;border:1px solid #cbd5e1;border-radius:8px}
-    .auth-msg{margin:0;color:#0f766e;font-weight:600}
     .menu-grid { margin-top: 22px; display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .menu-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; background: #fff; }
     .menu-card h3 { margin: 0 0 6px; font-size: 1.05rem; color: #0f172a; }
@@ -119,6 +118,7 @@ import { AuthorizationService } from '../security/services/authorization.service
 })
 export class HomePage {
   private readonly auth = inject(AuthenticationService);
+  private readonly toast = inject(ToastService);
   private readonly authorization = inject(AuthorizationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -159,6 +159,7 @@ export class HomePage {
   async logout(): Promise<void> {
     await firstValueFrom(this.auth.logout());
     this.authMessage.set('Uitgelogd');
+    this.toast.info('Uitgelogd');
     await this.router.navigate(['/login'], { queryParams: { reason: 'login_required' } });
   }
 

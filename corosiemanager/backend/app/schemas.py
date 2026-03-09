@@ -33,6 +33,21 @@ class HoleCreate(BaseModel):
     ndi_inspection_date: datetime | None = None
     ndi_finished: bool = False
     inspection_status: str | None = None
+    mdr_resubmit: bool = False
+    total_stackup_length: str | None = None
+    stack_up: int | None = None
+    sleeve_bushings: str | None = None
+    countersinked: bool = False
+    clean: bool = False
+    cut_sleeve_bushing: bool = False
+    installed: bool = False
+    primer: bool = False
+    surface_corrosion: bool = False
+    nutplate_inspection: str | None = None
+    nutplate_surface_corrosion: str | None = None
+    total_structure_thickness: str | None = None
+    flexhone: str | None = None
+    flexndi: bool = False
     steps: list[HoleStepIn] = []
     parts: list[HolePartIn] = []
 
@@ -71,6 +86,21 @@ class HoleUpdate(BaseModel):
     ndi_inspection_date: datetime | None = None
     ndi_finished: bool = False
     inspection_status: str | None = None
+    mdr_resubmit: bool = False
+    total_stackup_length: str | None = None
+    stack_up: int | None = None
+    sleeve_bushings: str | None = None
+    countersinked: bool = False
+    clean: bool = False
+    cut_sleeve_bushing: bool = False
+    installed: bool = False
+    primer: bool = False
+    surface_corrosion: bool = False
+    nutplate_inspection: str | None = None
+    nutplate_surface_corrosion: str | None = None
+    total_structure_thickness: str | None = None
+    flexhone: str | None = None
+    flexndi: bool = False
 
     @model_validator(mode="after")
     def validate_ndi(self):
@@ -106,6 +136,21 @@ class HoleOut(BaseModel):
     ndi_inspection_date: datetime | None
     ndi_finished: bool
     inspection_status: str | None
+    mdr_resubmit: bool
+    total_stackup_length: str | None
+    stack_up: int | None
+    sleeve_bushings: str | None
+    countersinked: bool
+    clean: bool
+    cut_sleeve_bushing: bool
+    installed: bool
+    primer: bool
+    surface_corrosion: bool
+    nutplate_inspection: str | None
+    nutplate_surface_corrosion: str | None
+    total_structure_thickness: str | None
+    flexhone: str | None
+    flexndi: bool
     created_at: datetime
     steps: list[HoleStepOut] = []
     parts: list[HolePartOut] = []
@@ -115,15 +160,28 @@ class HoleOut(BaseModel):
 
 
 class MdrCaseIn(BaseModel):
+    aircraft_id: int | None = None
+    aircraft_an: str | None = None
+    aircraft_serial_number: str | None = None
+    aircraft_arrival_date: datetime | None = None
     panel_id: int | None = None
+    panel_number: int | None = None
+    hole_ids: str | None = None
+    resubmit: bool = False
+    request_sent: bool = False
     mdr_number: str | None = None
     mdr_version: str | None = None
+    ed_number: str | None = None
     subject: str | None = None
     status: str | None = None
+    dcm_check: str | None = None
     submitted_by: str | None = None
+    submit_list_date: datetime | None = None
     request_date: datetime | None = None
     need_date: datetime | None = None
+    approval_date: datetime | None = None
     approved: bool = False
+    tier2: bool = False
 
 
 class MdrCaseOut(MdrCaseIn):
@@ -255,17 +313,91 @@ class MdrPowerpointInfoRowOut(BaseModel):
     need_date: datetime | None
 
 
-class MdrRequestDetailOut(BaseModel):
+class MdrRequestDetailIn(BaseModel):
+    panel_id: int | None = None
+    tve: str | None = None
+    panel_number: int | None = None
+    task_type: str | None = None
+    fms_or_non_fms: str | None = None
+    releasability: str | None = None
+    technical_product_number: str | None = None
+    technical_product_title: str | None = None
+    submitter_name: str | None = None
+    location: str | None = None
+    mdr_type: str | None = None
+    serial_number: str | None = None
+    part_number: str | None = None
+    internal_reference_number: str | None = None
+    cr_ecp: str | None = None
+    discrepancy_type: str | None = None
+    cause_code_discrepant_work: str | None = None
+    resubmit_reason: str | None = None
+    defect_code: str | None = None
+    access_location: str | None = None
+    date_due_to_field: datetime | None = None
+    lcn: str | None = None
+    lcn_description: str | None = None
+    inspection_criteria: str | None = None
+    mgi_required: str | None = None
+    mgi_number: str | None = None
+    discovered_during: str | None = None
+    when_discovered: str | None = None
+    discovered_by: str | None = None
+    date_discovered: datetime | None = None
+    problem_statement: str | None = None
+    technical_product_details_summary: str | None = None
+    tms: str | None = None
+    email: str | None = None
+    confirm_email: str | None = None
+
+    @model_validator(mode="after")
+    def validate_required_fields(self):
+        required_text_fields = {
+            "tve": self.tve,
+            "mdr_type": self.mdr_type,
+            "part_number": self.part_number,
+            "problem_statement": self.problem_statement,
+            "discovered_by": self.discovered_by,
+            "when_discovered": self.when_discovered,
+        }
+        missing = [name for name, value in required_text_fields.items() if not (value and value.strip())]
+        if missing:
+            raise ValueError(f"Missing required fields: {', '.join(missing)}")
+
+        if self.email and not self.confirm_email:
+            raise ValueError("confirm_email is required when email is provided")
+        if self.email and self.confirm_email and self.email.strip().lower() != self.confirm_email.strip().lower():
+            raise ValueError("confirm_email must match email")
+
+        if self.date_due_to_field and self.date_discovered and self.date_due_to_field < self.date_discovered:
+            raise ValueError("date_due_to_field cannot be earlier than date_discovered")
+
+        return self
+
+
+class MdrRequestDetailOut(MdrRequestDetailIn):
     id: int
-    panel_id: int | None
-    tve: str | None
-    mdr_type: str | None
-    serial_number: str | None
-    part_number: str | None
-    defect_code: str | None
-    problem_statement: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class LookupStatusCodeOut(BaseModel):
+    id: int
+    status_code: str | None
+    status_code_dcm: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class LookupMdrOptionOut(BaseModel):
+    id: int
+    lcn: str | None
+    discrepancy_type: str | None
+    cause_code_discrepant_work: str | None
+    when_discovered: str | None
     discovered_by: str | None
-    date_discovered: datetime | None
 
     class Config:
         from_attributes = True

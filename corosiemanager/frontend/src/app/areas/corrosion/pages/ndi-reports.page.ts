@@ -3,6 +3,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ApiErrorService } from '../../../shared/services/api-error.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { Aircraft, NdiQueueRow, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
@@ -58,8 +60,6 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
           <span>Report: {{ reportCount() }}</span>
           <span>Finished: {{ finishedCount() }}</span>
         </div>
-
-        @if (message()) { <p class="msg">{{ message() }}</p> }
 
         @if (loading()) {
           <p class="state">Laden...</p>
@@ -127,6 +127,8 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
 })
 export class NdiReportsPage implements OnInit {
   private readonly svc = inject(CorrosionService);
+  private readonly apiErrors = inject(ApiErrorService);
+  private readonly toast = inject(ToastService);
 
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
@@ -138,6 +140,7 @@ export class NdiReportsPage implements OnInit {
   protected readonly search = signal<string>('');
   protected readonly loading = signal<boolean>(true);
   protected readonly message = signal<string>('');
+  protected readonly messageType = signal<'success' | 'error' | 'info'>('info');
 
   protected readonly checkCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'check_tracker').length);
   protected readonly actionCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'action_needed').length);
@@ -201,9 +204,14 @@ export class NdiReportsPage implements OnInit {
     try {
       await firstValueFrom(this.svc.transitionNdiStatus(holeId, toStatus));
       this.message.set(`NDI status bijgewerkt: ${this.queueLabel(toStatus)}`);
+      this.messageType.set('success');
+      this.toast.success(`NDI status bijgewerkt: ${this.queueLabel(toStatus)}`);
       await this.reload();
-    } catch (e: any) {
-      this.message.set(`NDI status update mislukt ${e?.error?.detail ?? ''}`.trim());
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'NDI status update mislukt');
+      this.message.set(msg);
+      this.messageType.set('error');
+      this.toast.error(msg);
     }
   }
 
@@ -220,9 +228,14 @@ export class NdiReportsPage implements OnInit {
         }),
       );
       this.message.set('Quick NDI report toegevoegd (VT/TBD).');
+      this.messageType.set('success');
+      this.toast.success('Quick NDI report toegevoegd (VT/TBD).');
       await this.reload();
-    } catch (e: any) {
-      this.message.set(`Quick report mislukt ${e?.error?.detail ?? ''}`.trim());
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Quick report mislukt');
+      this.message.set(msg);
+      this.messageType.set('error');
+      this.toast.error(msg);
     }
   }
 }

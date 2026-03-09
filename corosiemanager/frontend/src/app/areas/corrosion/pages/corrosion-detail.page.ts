@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ApiErrorService } from '../../../shared/services/api-error.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../models/corrosion.inputs';
 import { Hole } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
@@ -26,6 +28,13 @@ import { CorrosionService } from '../services/corrosion.service';
               <label class="field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
               <label class="field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
               <label class="field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
+              <label class="field"><span>TOTAL StackUp Length</span><input [(ngModel)]="form.totalStackupLength" name="totalStackupLength" type="text" /></label>
+              <label class="field"><span>Stack up</span><input [(ngModel)]="form.stackUp" name="stackUp" type="number" /></label>
+              <label class="field"><span>Sleeve/Bushings</span><input [(ngModel)]="form.sleeveBushings" name="sleeveBushings" type="text" /></label>
+              <label class="field"><span>Nutplate Inspection</span><input [(ngModel)]="form.nutplateInspection" name="nutplateInspection" type="text" /></label>
+              <label class="field"><span>Nutplate Surface Corrosion</span><input [(ngModel)]="form.nutplateSurfaceCorrosion" name="nutplateSurfaceCorrosion" type="text" /></label>
+              <label class="field"><span>TOTAL Structure Thickness</span><input [(ngModel)]="form.totalStructureThickness" name="totalStructureThickness" type="text" /></label>
+              <label class="field"><span>FlexHone</span><input [(ngModel)]="form.flexhone" name="flexhone" type="text" /></label>
               <label class="field">
                 <span>Inspection status</span>
                 <select [(ngModel)]="form.inspectionStatus" name="inspectionStatus">
@@ -36,8 +45,16 @@ import { CorrosionService } from '../services/corrosion.service';
                 </select>
               </label>
               <label class="field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
+              <label class="field"><span><input [(ngModel)]="form.mdrResubmit" name="mdrResubmit" type="checkbox" /> MDR Resubmit</span></label>
+              <label class="field"><span><input [(ngModel)]="form.countersinked" name="countersinked" type="checkbox" /> Countersinked</span></label>
+              <label class="field"><span><input [(ngModel)]="form.clean" name="clean" type="checkbox" /> Clean</span></label>
+              <label class="field"><span><input [(ngModel)]="form.cutSleeveBushing" name="cutSleeveBushing" type="checkbox" /> Cut Sleeve/Bushing</span></label>
+              <label class="field"><span><input [(ngModel)]="form.installed" name="installed" type="checkbox" /> Installed</span></label>
+              <label class="field"><span><input [(ngModel)]="form.primer" name="primer" type="checkbox" /> Primer</span></label>
+              <label class="field"><span><input [(ngModel)]="form.surfaceCorrosion" name="surfaceCorrosion" type="checkbox" /> Surface Corrosion</span></label>
+              <label class="field"><span><input [(ngModel)]="form.flexndi" name="flexndi" type="checkbox" /> FlexNDI</span></label>
             </div>
-            <div class="actions"><button class="btn-primary" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan kern' }}</button><span class="message">{{ coreMessage() }}</span></div>
+            <div class="actions"><button class="btn-primary" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan kern' }}</button></div>
           </form>
 
           <section class="subcard">
@@ -60,7 +77,6 @@ import { CorrosionService } from '../services/corrosion.service';
             <div class="actions">
               <button class="btn-secondary" type="button" (click)="addStep()">+ Step</button>
               <button class="btn-primary" type="button" (click)="saveSteps()" [disabled]="savingSteps()">{{ savingSteps() ? 'Opslaan...' : 'Opslaan steps' }}</button>
-              <span class="message">{{ stepsMessage() }}</span>
             </div>
           </section>
 
@@ -95,7 +111,6 @@ import { CorrosionService } from '../services/corrosion.service';
             <div class="actions">
               <button class="btn-secondary" type="button" (click)="addPart()">+ Part</button>
               <button class="btn-primary" type="button" (click)="saveParts()" [disabled]="savingParts()">{{ savingParts() ? 'Opslaan...' : 'Opslaan parts' }}</button>
-              <span class="message">{{ partsMessage() }}</span>
             </div>
           </section>
 
@@ -132,11 +147,16 @@ import { CorrosionService } from '../services/corrosion.service';
 export class CorrosionDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly corrosionService = inject(CorrosionService);
+  private readonly apiErrors = inject(ApiErrorService);
+  private readonly toast = inject(ToastService);
 
   protected readonly hole = signal<Hole | null>(null);
   protected readonly coreMessage = signal('');
   protected readonly stepsMessage = signal('');
   protected readonly partsMessage = signal('');
+  protected readonly coreMessageType = signal<'success' | 'error' | 'info'>('info');
+  protected readonly stepsMessageType = signal<'success' | 'error' | 'info'>('info');
+  protected readonly partsMessageType = signal<'success' | 'error' | 'info'>('info');
 
   protected readonly savingCore = signal(false);
   protected readonly savingSteps = signal(false);
@@ -148,7 +168,32 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly bushingTypeOptions = ['SB', 'CS'];
   protected readonly stdCstOptions = ['STD', 'CST'];
 
-  protected form: UpdateHoleInput = { maxBpDiameter: null, finalHoleSize: null, fit: null, mdrCode: null, mdrVersion: null, ndiNameInitials: null, ndiInspectionDate: null, ndiFinished: false, inspectionStatus: null };
+  protected form: UpdateHoleInput = {
+    maxBpDiameter: null,
+    finalHoleSize: null,
+    fit: null,
+    mdrCode: null,
+    mdrVersion: null,
+    ndiNameInitials: null,
+    ndiInspectionDate: null,
+    ndiFinished: false,
+    inspectionStatus: null,
+    mdrResubmit: false,
+    totalStackupLength: null,
+    stackUp: null,
+    sleeveBushings: null,
+    countersinked: false,
+    clean: false,
+    cutSleeveBushing: false,
+    installed: false,
+    primer: false,
+    surfaceCorrosion: false,
+    nutplateInspection: null,
+    nutplateSurfaceCorrosion: null,
+    totalStructureThickness: null,
+    flexhone: null,
+    flexndi: false,
+  };
   protected stepInputs: UpdateHoleStepInput[] = [];
   protected partInputs: UpdateHolePartInput[] = [];
   async ngOnInit(): Promise<void> {
@@ -165,8 +210,13 @@ export class CorrosionDetailPage implements OnInit {
       const updated = await firstValueFrom(this.corrosionService.updateHole(h.id, this.form));
       this.applyHole(updated);
       this.coreMessage.set('Opgeslagen');
-    } catch {
-      this.coreMessage.set('Opslaan mislukt');
+      this.coreMessageType.set('success');
+      this.toast.success('Kerngegevens opgeslagen');
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Kerngegevens opslaan mislukt');
+      this.coreMessage.set(msg);
+      this.coreMessageType.set('error');
+      this.toast.error(msg);
     } finally {
       this.savingCore.set(false);
     }
@@ -178,6 +228,8 @@ export class CorrosionDetailPage implements OnInit {
     const ids = this.stepInputs.map((s) => s.stepNo);
     if (new Set(ids).size !== ids.length) {
       this.stepsMessage.set('Dubbele step nummers');
+      this.stepsMessageType.set('error');
+      this.toast.error('Dubbele step nummers');
       return;
     }
     this.savingSteps.set(true);
@@ -185,8 +237,13 @@ export class CorrosionDetailPage implements OnInit {
       const updated = await firstValueFrom(this.corrosionService.updateHoleSteps(h.id, this.stepInputs));
       this.applyHole(updated);
       this.stepsMessage.set('Steps opgeslagen');
-    } catch {
-      this.stepsMessage.set('Opslaan mislukt');
+      this.stepsMessageType.set('success');
+      this.toast.success('Steps opgeslagen');
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Steps opslaan mislukt');
+      this.stepsMessage.set(msg);
+      this.stepsMessageType.set('error');
+      this.toast.error(msg);
     } finally {
       this.savingSteps.set(false);
     }
@@ -198,6 +255,8 @@ export class CorrosionDetailPage implements OnInit {
     const ids = this.partInputs.map((p) => p.slotNo);
     if (new Set(ids).size !== ids.length) {
       this.partsMessage.set('Dubbele slot nummers');
+      this.partsMessageType.set('error');
+      this.toast.error('Dubbele slot nummers');
       return;
     }
     this.savingParts.set(true);
@@ -205,8 +264,13 @@ export class CorrosionDetailPage implements OnInit {
       const updated = await firstValueFrom(this.corrosionService.updateHoleParts(h.id, this.partInputs));
       this.applyHole(updated);
       this.partsMessage.set('Parts opgeslagen');
-    } catch {
-      this.partsMessage.set('Opslaan mislukt');
+      this.partsMessageType.set('success');
+      this.toast.success('Parts opgeslagen');
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Parts opslaan mislukt');
+      this.partsMessage.set(msg);
+      this.partsMessageType.set('error');
+      this.toast.error(msg);
     } finally {
       this.savingParts.set(false);
     }
@@ -220,7 +284,32 @@ export class CorrosionDetailPage implements OnInit {
 
   private applyHole(hole: Hole): void {
     this.hole.set(hole);
-    this.form = { maxBpDiameter: hole.maxBpDiameter, finalHoleSize: hole.finalHoleSize, fit: hole.fit, mdrCode: hole.mdrCode, mdrVersion: hole.mdrVersion, ndiNameInitials: hole.ndiNameInitials, ndiInspectionDate: hole.ndiInspectionDate, ndiFinished: hole.ndiFinished, inspectionStatus: hole.inspectionStatus };
+    this.form = {
+      maxBpDiameter: hole.maxBpDiameter,
+      finalHoleSize: hole.finalHoleSize,
+      fit: hole.fit,
+      mdrCode: hole.mdrCode,
+      mdrVersion: hole.mdrVersion,
+      ndiNameInitials: hole.ndiNameInitials,
+      ndiInspectionDate: hole.ndiInspectionDate,
+      ndiFinished: hole.ndiFinished,
+      inspectionStatus: hole.inspectionStatus,
+      mdrResubmit: hole.mdrResubmit,
+      totalStackupLength: hole.totalStackupLength,
+      stackUp: hole.stackUp,
+      sleeveBushings: hole.sleeveBushings,
+      countersinked: hole.countersinked,
+      clean: hole.clean,
+      cutSleeveBushing: hole.cutSleeveBushing,
+      installed: hole.installed,
+      primer: hole.primer,
+      surfaceCorrosion: hole.surfaceCorrosion,
+      nutplateInspection: hole.nutplateInspection,
+      nutplateSurfaceCorrosion: hole.nutplateSurfaceCorrosion,
+      totalStructureThickness: hole.totalStructureThickness,
+      flexhone: hole.flexhone,
+      flexndi: hole.flexndi,
+    };
     this.stepInputs = hole.steps.map((s) => ({ stepNo: s.stepNo, sizeValue: s.sizeValue, visualDamageCheck: s.visualDamageCheck, reamFlag: s.reamFlag, mdrFlag: s.mdrFlag, ndiFlag: s.ndiFlag }));
     this.partInputs = hole.parts.map((p) => ({ slotNo: p.slotNo, partNumber: p.partNumber, partLength: p.partLength, bushingType: p.bushingType, standardCustom: p.standardCustom, orderedFlag: p.orderedFlag, deliveredFlag: p.deliveredFlag, status: p.status }));
   }
