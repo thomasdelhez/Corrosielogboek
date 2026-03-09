@@ -92,7 +92,7 @@ echo "[8/14] create MDR case (engineer)"
 MDR_ID=$(curl -fsS -X POST "$BASE_URL/api/v1/mdr-cases" \
   -H "Authorization: Bearer $ENGINEER_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "{\"panel_id\":$PANEL_ID,\"mdr_number\":\"SMOKE-MDR\",\"mdr_version\":\"A\",\"subject\":\"Smoke case\",\"status\":\"Request\",\"submitted_by\":\"ENG\",\"request_date\":null,\"need_date\":null,\"approved\":false}" \
+  -d "{\"panel_id\":$PANEL_ID,\"mdr_number\":\"SMOKE-MDR\",\"mdr_version\":\"A\",\"subject\":\"Smoke case\",\"status\":\"Request\",\"submitted_by\":\"ENG\",\"request_date\":\"2026-03-09T00:00:00\",\"need_date\":\"2026-03-10T00:00:00\",\"approved\":false}" \
   | json_get 'd["id"]')
 
 echo "[9/14] MDR transition + remarks"
