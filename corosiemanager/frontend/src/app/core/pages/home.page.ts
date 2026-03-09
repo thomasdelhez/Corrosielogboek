@@ -21,7 +21,7 @@ import { AuthenticationService } from '../security/services/authentication.servi
         <header class="topbar">
           <div>
             <p class="eyebrow">F35 Corrosie Logboek</p>
-            <h1>Main Menu</h1>
+            <h1>Hoofdmenu</h1>
           </div>
           <div class="userbox">
             @if (isLoggedIn()) {

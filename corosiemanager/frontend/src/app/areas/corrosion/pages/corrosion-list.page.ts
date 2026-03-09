@@ -17,11 +17,6 @@ import { CorrosionService } from '../services/corrosion.service';
         <header class="header">
           <div class="header-copy">
             <h2>Corrosie overzicht</h2>
-            <div class="flow-steps">
-              <span class="step" [class.active]="!!selectedAircraft()">1. Aircraft</span>
-              <span class="step" [class.active]="!!selectedPanel()">2. Panel</span>
-              <span class="step" [class.active]="filteredHoles().length > 0">3. Hole</span>
-            </div>
             <p class="subtitle">
               @if (selectedAircraft()) {
                 {{ selectedAircraft()!.an }}
@@ -33,27 +28,27 @@ import { CorrosionService } from '../services/corrosion.service';
               }
             </p>
           </div>
-
-          <div class="pickers">
-            <label class="panel-picker">
-              <span>Aircraft</span>
-              <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
-                @for (aircraft of aircraftList(); track aircraft.id) {
-                  <option [ngValue]="aircraft.id">{{ aircraft.an }}{{ aircraft.serialNumber ? ' (' + aircraft.serialNumber + ')' : '' }}</option>
-                }
-              </select>
-            </label>
-
-            <label class="panel-picker">
-              <span>Panel</span>
-              <select [disabled]="panels().length === 0" [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
-                @for (panel of panels(); track panel.id) {
-                  <option [ngValue]="panel.id">Panel {{ panel.panelNumber }} ({{ panel.holeCount }})</option>
-                }
-              </select>
-            </label>
-          </div>
         </header>
+
+        <section class="control-strip">
+          <label class="panel-picker">
+            <span>Aircraft</span>
+            <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+              @for (aircraft of aircraftList(); track aircraft.id) {
+                <option [ngValue]="aircraft.id">{{ aircraft.an }}{{ aircraft.serialNumber ? ' (' + aircraft.serialNumber + ')' : '' }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="panel-picker">
+            <span>Panel</span>
+            <select [disabled]="panels().length === 0" [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+              @for (panel of panels(); track panel.id) {
+                <option [ngValue]="panel.id">Panel {{ panel.panelNumber }} ({{ panel.holeCount }})</option>
+              }
+            </select>
+          </label>
+        </section>
 
         @if (loading()) {
           <p class="loading">Laden...</p>
@@ -85,18 +80,18 @@ import { CorrosionService } from '../services/corrosion.service';
   styles: `
     .page { max-width: 1040px; margin: 0 auto; padding: 24px; }
     .card { background: #fff; border: 1px solid #dbeafe; border-radius: 16px; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08); padding: 22px; }
-    .header { margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; align-items: end; flex-wrap: wrap; }
+    .header { margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
     .header-copy { display:grid; gap:6px; }
     .back-link { display:inline-block; margin-bottom:10px; color:#334155; text-decoration:none; font-weight:600; }
     .back-link:hover { text-decoration:underline; }
     h2 { margin: 0; font-size: 1.4rem; color: #0f172a; }
-    .flow-steps{display:flex;gap:8px;margin:8px 0}
-    .step{font-size:.78rem;color:#64748b;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px;background:#f8fafc}
-    .step.active{color:#1d4ed8;border-color:#bfdbfe;background:#eff6ff}
     .subtitle { margin: 6px 0 0; color: #64748b; }
-    .pickers{display:grid;gap:8px}
+    .control-strip{
+      margin:0 0 14px;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+    }
     .panel-picker { display: grid; gap: 6px; color: #334155; font-weight: 600; }
-    .panel-picker select { min-width: 290px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 10px; }
+    .panel-picker select { width:100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 10px; }
     .panel-picker select:disabled{opacity:.6;background:#f1f5f9}
     .filter-bar{
       margin: 4px 0 12px;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;
@@ -111,7 +106,7 @@ import { CorrosionService } from '../services/corrosion.service';
     }
     .loading, .empty { margin: 0; color: #475569; padding: 10px 0; }
     @media (max-width: 760px){
-      .panel-picker select{min-width:220px}
+      .control-strip{grid-template-columns:1fr}
       .search-box input{min-width:220px}
     }
   `,

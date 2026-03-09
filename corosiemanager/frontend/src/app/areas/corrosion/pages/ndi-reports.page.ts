@@ -17,7 +17,7 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
   imports: [FormsModule, RouterLink, DatePipe],
   template: `
     <main class="page">
-      <a routerLink="/" class="back">← Main Menu</a>
+      <a routerLink="/" class="back">← Hoofdmenu</a>
       <section class="card">
         <h2>NDI Dashboard</h2>
         <p class="subtitle">Check tracker, action needed, report needed en finished queues.</p>
