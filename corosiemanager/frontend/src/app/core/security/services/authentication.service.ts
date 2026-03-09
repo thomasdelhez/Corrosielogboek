@@ -23,6 +23,12 @@ interface MeResponse {
   role: string;
 }
 
+export interface UpdateOwnAccountInput {
+  currentPassword: string;
+  newUsername?: string | null;
+  newPassword?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthenticationService {
   private readonly http = inject(HttpService);
@@ -96,6 +102,23 @@ export class AuthenticationService {
         this.clearSession();
       }),
     );
+  }
+
+  updateOwnAccount(input: UpdateOwnAccountInput): Observable<AuthenticatedUser> {
+    return this.http
+      .put<MeResponse>(`${this.config.apiBaseUrl}/auth/me`, {
+        current_password: input.currentPassword,
+        new_username: input.newUsername ?? null,
+        new_password: input.newPassword ?? null,
+      })
+      .pipe(
+        map((res) => ({ username: res.username, roles: [res.role] })),
+        tap((user) => {
+          localStorage.setItem('auth_username', user.username);
+          localStorage.setItem('auth_role', user.roles[0]);
+          this.setUser(user);
+        }),
+      );
   }
 
   clearSession(): void {

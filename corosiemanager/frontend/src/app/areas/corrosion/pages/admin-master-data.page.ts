@@ -16,6 +16,9 @@ import { CorrosionService } from '../services/corrosion.service';
       <section class="card">
         <h2>Admin — Aircraft & Panel beheer</h2>
         <p class="subtitle">Aanmaken van aircraft en panels met uniqueness-checks.</p>
+        <div class="actions-top">
+          <a class="btn-secondary" routerLink="/admin/users">Naar User Control</a>
+        </div>
 
         <div class="grid">
           <section class="subcard">
@@ -58,7 +61,10 @@ import { CorrosionService } from '../services/corrosion.service';
     .card{border:1px solid #e2e8f0;border-radius:14px;padding:20px;background:#fff}.subtitle{color:#64748b}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.subcard{border:1px solid #e2e8f0;border-radius:12px;padding:12px}
     .field{display:grid;gap:6px;margin-bottom:8px;font-weight:600;color:#334155}input,select{padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px}
-    .btn-primary{border:0;border-radius:8px;padding:8px 12px;background:#2563eb;color:#fff;font-weight:700}
+    .actions-top{margin:8px 0 12px}
+    .btn-primary,.btn-secondary{border:0;border-radius:8px;padding:8px 12px;font-weight:700;text-decoration:none;display:inline-block}
+    .btn-primary{background:#2563eb;color:#fff}
+    .btn-secondary{background:#e2e8f0;color:#334155}
     .msg{color:#0f766e;font-weight:700}
     @media(max-width:820px){.grid{grid-template-columns:1fr}}
   `,

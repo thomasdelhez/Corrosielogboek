@@ -3,6 +3,7 @@ import { map, Observable } from 'rxjs';
 import { AppConfigService } from '../../../core/services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
 import {
+  AppUserDto,
   AircraftDto,
   CorrosionReportRowDto,
   CreateHoleBatchResultDto,
@@ -26,6 +27,7 @@ import {
 } from '../models/corrosion.dtos';
 import {
   CreateAircraftInput,
+  CreateAppUserInput,
   CreateHoleBatchResult,
   CreateHoleBatchResultRow,
   CreateHoleInput,
@@ -40,6 +42,7 @@ import {
 } from '../models/corrosion.inputs';
 import {
   Aircraft,
+  AppUser,
   CorrosionReportRow,
   Hole,
   HolePart,
@@ -92,6 +95,29 @@ export class CorrosionService {
         panel_number: input.panelNumber,
       })
       .pipe(map((row) => this.toPanelSummary(row)));
+  }
+
+  listUsers(): Observable<AppUser[]> {
+    return this.http
+      .get<AppUserDto[]>(`${this.config.apiBaseUrl}/users`)
+      .pipe(map((rows) => rows.map((row) => this.toAppUser(row))));
+  }
+
+  createUser(input: CreateAppUserInput): Observable<AppUser> {
+    return this.http
+      .post<AppUserDto>(`${this.config.apiBaseUrl}/users`, {
+        username: input.username,
+        password: input.password,
+        role: input.role,
+        is_active: input.isActive ?? true,
+      })
+      .pipe(map((row) => this.toAppUser(row)));
+  }
+
+  updateUserRole(userId: number, role: 'engineer' | 'reviewer' | 'admin'): Observable<AppUser> {
+    return this.http
+      .put<AppUserDto>(`${this.config.apiBaseUrl}/users/${userId}/role`, { role })
+      .pipe(map((row) => this.toAppUser(row)));
   }
 
   listPanelHoles(panelId: number): Observable<Hole[]> {
@@ -737,6 +763,15 @@ export class CorrosionService {
       causeCodeDiscrepantWork: dto.cause_code_discrepant_work,
       whenDiscovered: dto.when_discovered,
       discoveredBy: dto.discovered_by,
+    };
+  }
+
+  private toAppUser(dto: AppUserDto): AppUser {
+    return {
+      id: dto.id,
+      username: dto.username,
+      role: dto.role,
+      isActive: dto.is_active,
     };
   }
 

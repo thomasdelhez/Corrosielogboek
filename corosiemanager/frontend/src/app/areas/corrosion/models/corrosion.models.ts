@@ -264,3 +264,10 @@ export interface LookupMdrOption {
   whenDiscovered: string | null;
   discoveredBy: string | null;
 }
+
+export interface AppUser {
+  id: number;
+  username: string;
+  role: 'engineer' | 'reviewer' | 'admin';
+  isActive: boolean;
+}

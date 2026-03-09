@@ -176,3 +176,10 @@ export interface CreatePanelInput {
   aircraftId: number;
   panelNumber: number;
 }
+
+export interface CreateAppUserInput {
+  username: string;
+  password: string;
+  role: 'engineer' | 'reviewer' | 'admin';
+  isActive?: boolean;
+}

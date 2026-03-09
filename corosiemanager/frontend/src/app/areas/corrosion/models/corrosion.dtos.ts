@@ -212,6 +212,13 @@ export interface LookupMdrOptionDto {
   discovered_by: string | null;
 }
 
+export interface AppUserDto {
+  id: number;
+  username: string;
+  role: 'engineer' | 'reviewer' | 'admin';
+  is_active: boolean;
+}
+
 export interface OrderingTrackerRowDto {
   hole_id: number;
   hole_number: number;

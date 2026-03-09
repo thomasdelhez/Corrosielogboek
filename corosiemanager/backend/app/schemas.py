@@ -430,6 +430,38 @@ class PanelCreateIn(BaseModel):
     panel_number: int = Field(ge=0)
 
 
+class AuthMeOut(BaseModel):
+    username: str
+    role: str
+
+
+class AuthMeUpdateIn(BaseModel):
+    current_password: str
+    new_username: str | None = None
+    new_password: str | None = None
+
+
+class AppUserOut(BaseModel):
+    id: int
+    username: str
+    role: str
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class AppUserCreateIn(BaseModel):
+    username: str
+    password: str
+    role: str
+    is_active: bool = True
+
+
+class AppUserRoleUpdateIn(BaseModel):
+    role: str
+
+
 class LoginIn(BaseModel):
     username: str
     password: str

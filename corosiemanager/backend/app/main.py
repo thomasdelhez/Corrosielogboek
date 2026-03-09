@@ -26,6 +26,11 @@ from .models import (
     Panel,
 )
 from .schemas import (
+    AuthMeOut,
+    AuthMeUpdateIn,
+    AppUserCreateIn,
+    AppUserOut,
+    AppUserRoleUpdateIn,
     AircraftCreateIn,
     CorrosionReportRowOut,
     HoleBatchCreateIn,
@@ -90,6 +95,7 @@ MDR_TRANSITIONS: dict[str, set[str]] = {
 }
 
 ROLE_LEVEL = {"engineer": 1, "reviewer": 2, "admin": 3}
+ALLOWED_USER_ROLES = {"engineer", "reviewer", "admin"}
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -188,6 +194,13 @@ def _audit(db: Session, action: str, entity: str, entity_id: int | None, usernam
     db.add(AuditEvent(action=action, entity=entity, entity_id=entity_id, username=username))
 
 
+def _validate_role_or_400(role: str) -> str:
+    role_norm = (role or "").strip().lower()
+    if role_norm not in ALLOWED_USER_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+    return role_norm
+
+
 @app.on_event("startup")
 def startup():
     if os.getenv("AUTO_CREATE_SCHEMA", "false").lower() == "true":
@@ -247,8 +260,87 @@ def logout(user=Depends(current_user), db: Session = Depends(get_db)):
 
 
 @app.get("/api/v1/auth/me")
-def me(user=Depends(current_user)):
+def me(user=Depends(current_user)) -> AuthMeOut:
     return {"username": user["username"], "role": user["role"]}
+
+
+@app.put("/api/v1/auth/me", response_model=AuthMeOut)
+def update_me(payload: AuthMeUpdateIn, user=Depends(current_user), db: Session = Depends(get_db)):
+    db_user = db.execute(select(AppUser).where(AppUser.username == user["username"], AppUser.is_active.is_(True))).scalar_one_or_none()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Current user not found")
+
+    if not payload.current_password or not pwd_context.verify(payload.current_password, db_user.password):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    new_username = (payload.new_username or "").strip()
+    new_password = payload.new_password or ""
+    if not new_username and not new_password:
+        raise HTTPException(status_code=400, detail="Provide new_username and/or new_password")
+
+    if new_username and new_username != db_user.username:
+        existing = db.execute(select(AppUser).where(AppUser.username == new_username)).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=409, detail="Username already exists")
+        old_username = db_user.username
+        db_user.username = new_username
+        sessions = db.execute(select(AuthSession).where(AuthSession.username == old_username, AuthSession.revoked.is_(False))).scalars().all()
+        for session in sessions:
+            session.username = new_username
+
+    if new_password:
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="new_password must be at least 6 characters")
+        db_user.password = pwd_context.hash(new_password)
+
+    _audit(db, "update_self", "app_user", db_user.id, user["username"])
+    db.commit()
+    return {"username": db_user.username, "role": db_user.role}
+
+
+@app.get("/api/v1/users", response_model=list[AppUserOut])
+def list_users(db: Session = Depends(get_db), _user=Depends(require_role("admin"))):
+    return db.execute(select(AppUser).order_by(AppUser.username.asc())).scalars().all()
+
+
+@app.post("/api/v1/users", response_model=AppUserOut, status_code=201)
+def create_user(payload: AppUserCreateIn, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
+    username = (payload.username or "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="username is required")
+    if not payload.password:
+        raise HTTPException(status_code=400, detail="password is required")
+
+    role = _validate_role_or_400(payload.role)
+    existing = db.execute(select(AppUser).where(AppUser.username == username)).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already exists")
+
+    row = AppUser(
+        username=username,
+        password=pwd_context.hash(payload.password),
+        role=role,
+        is_active=bool(payload.is_active),
+    )
+    db.add(row)
+    db.flush()
+    _audit(db, "create", "app_user", row.id, user["username"])
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.put("/api/v1/users/{user_id}/role", response_model=AppUserOut)
+def update_user_role(user_id: int, payload: AppUserRoleUpdateIn, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
+    row = db.get(AppUser, user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    row.role = _validate_role_or_400(payload.role)
+    _audit(db, "update_role", "app_user", row.id, user["username"])
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 @app.get("/api/v1/aircraft")
