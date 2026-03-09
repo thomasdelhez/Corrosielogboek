@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiErrorService } from '../../shared/services/api-error.service';
 import { ToastService } from '../../shared/services/toast.service';
@@ -8,7 +8,7 @@ import { AuthenticationService } from '../security/services/authentication.servi
 
 @Component({
   selector: 'app-login-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   template: `
     <main class="page">
       <div class="sky-grid"></div>
@@ -35,7 +35,6 @@ import { AuthenticationService } from '../security/services/authentication.servi
 
           <div class="actions">
             <button class="btn-primary" type="submit" [disabled]="loading()">{{ loading() ? 'Authenticeren...' : 'Login' }}</button>
-            <a routerLink="/" class="btn-secondary">Terug</a>
           </div>
         </form>
 
@@ -87,9 +86,8 @@ import { AuthenticationService } from '../security/services/authentication.servi
     input{padding:10px 11px;border:1px solid #cbd5e1;border-radius:11px;background:#fff;color:#0f172a}
     input:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px #93c5fd5c}
     .actions{display:flex;gap:10px;margin-top:12px}
-    .btn-primary,.btn-secondary{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;text-decoration:none}
+    .btn-primary{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;text-decoration:none}
     .btn-primary{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff}
-    .btn-secondary{background:#e2e8f0;color:#334155}
     small{display:block;margin-top:14px;color:#64748b}
     @keyframes drift{0%,100%{translate:0 0}50%{translate:16px -8px}}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}

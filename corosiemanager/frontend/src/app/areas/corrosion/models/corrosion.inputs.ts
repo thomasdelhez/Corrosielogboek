@@ -183,3 +183,11 @@ export interface CreateAppUserInput {
   role: 'engineer' | 'reviewer' | 'admin';
   isActive?: boolean;
 }
+
+export interface UserAuditFilterInput {
+  action?: string | null;
+  username?: string | null;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+  limit?: number | null;
+}

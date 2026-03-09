@@ -271,3 +271,20 @@ export interface AppUser {
   role: 'engineer' | 'reviewer' | 'admin';
   isActive: boolean;
 }
+
+export interface UserAuditEvent {
+  id: number;
+  action: string;
+  entity: string;
+  entityId: number | null;
+  details: string | null;
+  username: string;
+  createdAt: Date;
+}
+
+export interface GlobalSearchResult {
+  kind: string;
+  title: string;
+  subtitle: string | null;
+  route: string;
+}

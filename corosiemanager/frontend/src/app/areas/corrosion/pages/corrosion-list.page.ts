@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { RoutingService } from '../../../core/services/routing.service';
 import { HoleListComponent } from '../components/hole-list.component';
@@ -15,7 +15,7 @@ import { CorrosionService } from '../services/corrosion.service';
       <a class="back-link" routerLink="/">← Hoofdmenu</a>
       <section class="card">
         <header class="header">
-          <div>
+          <div class="header-copy">
             <h2>Corrosie overzicht</h2>
             <div class="flow-steps">
               <span class="step" [class.active]="!!selectedAircraft()">1. Aircraft</span>
@@ -34,7 +34,7 @@ import { CorrosionService } from '../services/corrosion.service';
             </p>
           </div>
 
-          <div style="display:grid;gap:8px;">
+          <div class="pickers">
             <label class="panel-picker">
               <span>Aircraft</span>
               <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
@@ -60,14 +60,22 @@ import { CorrosionService } from '../services/corrosion.service';
         } @else if (holes().length === 0) {
           <p class="empty">Nog geen holes gevonden voor dit panel.</p>
         } @else {
-          <div style="margin-bottom:10px;">
-            <input
-              type="text"
-              placeholder="Zoek op hole/status/MDR..."
-              [ngModel]="search()"
-              (ngModelChange)="search.set($event)"
-              style="width:100%;max-width:380px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;"
-            />
+          <div class="filter-bar">
+            <label class="search-box">
+              <span>Zoeken</span>
+              <input
+                type="text"
+                placeholder="Zoek op hole/status/MDR..."
+                [ngModel]="search()"
+                (ngModelChange)="search.set($event)"
+              />
+            </label>
+            <div class="filter-meta">
+              <span class="count-pill">{{ filteredHoles().length }} van {{ holes().length }}</span>
+              @if (search().trim()) {
+                <button class="btn-soft" type="button" (click)="search.set('')">Wissen</button>
+              }
+            </div>
           </div>
           <app-hole-list [holes]="filteredHoles()" (open)="openHole($event)" />
         }
@@ -75,9 +83,10 @@ import { CorrosionService } from '../services/corrosion.service';
     </main>
   `,
   styles: `
-    .page { max-width: 1000px; margin: 0 auto; padding: 24px; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); padding: 20px; }
+    .page { max-width: 1040px; margin: 0 auto; padding: 24px; }
+    .card { background: #fff; border: 1px solid #dbeafe; border-radius: 16px; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08); padding: 22px; }
     .header { margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; align-items: end; flex-wrap: wrap; }
+    .header-copy { display:grid; gap:6px; }
     .back-link { display:inline-block; margin-bottom:10px; color:#334155; text-decoration:none; font-weight:600; }
     .back-link:hover { text-decoration:underline; }
     h2 { margin: 0; font-size: 1.4rem; color: #0f172a; }
@@ -85,15 +94,32 @@ import { CorrosionService } from '../services/corrosion.service';
     .step{font-size:.78rem;color:#64748b;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px;background:#f8fafc}
     .step.active{color:#1d4ed8;border-color:#bfdbfe;background:#eff6ff}
     .subtitle { margin: 6px 0 0; color: #64748b; }
+    .pickers{display:grid;gap:8px}
     .panel-picker { display: grid; gap: 6px; color: #334155; font-weight: 600; }
     .panel-picker select { min-width: 290px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 10px; }
     .panel-picker select:disabled{opacity:.6;background:#f1f5f9}
+    .filter-bar{
+      margin: 4px 0 12px;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;
+      display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap;
+    }
+    .search-box{display:grid;gap:6px;font-weight:600;color:#334155}
+    .search-box input{width:100%;min-width:260px;max-width:420px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;background:#fff}
+    .filter-meta{display:flex;gap:8px;align-items:center}
+    .count-pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:.82rem}
+    .btn-soft{
+      border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer;
+    }
     .loading, .empty { margin: 0; color: #475569; padding: 10px 0; }
+    @media (max-width: 760px){
+      .panel-picker select{min-width:220px}
+      .search-box input{min-width:220px}
+    }
   `,
 })
 export class CorrosionListPage implements OnInit {
   private readonly corrosionService = inject(CorrosionService);
   private readonly routing = inject(RoutingService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly aircraftList = signal<Aircraft[]>([]);
   protected readonly selectedAircraftId = signal<number | null>(null);
@@ -122,15 +148,21 @@ export class CorrosionListPage implements OnInit {
 
     const aircraft = await firstValueFrom(this.corrosionService.listAircraft());
     this.aircraftList.set(aircraft);
+    const queryAircraftRaw = this.route.snapshot.queryParamMap.get('aircraftId');
+    const queryPanelRaw = this.route.snapshot.queryParamMap.get('panelId');
+    const queryAircraftId = queryAircraftRaw ? Number(queryAircraftRaw) : NaN;
+    const queryPanelId = queryPanelRaw ? Number(queryPanelRaw) : NaN;
+    const querySearch = this.route.snapshot.queryParamMap.get('q')?.trim() ?? '';
 
-    const firstAircraft = aircraft[0] ?? null;
-    if (!firstAircraft) {
+    const selectedAircraft = aircraft.find((a) => a.id === queryAircraftId) ?? aircraft[0] ?? null;
+    if (!selectedAircraft) {
       this.loading.set(false);
       return;
     }
 
-    this.selectedAircraftId.set(firstAircraft.id);
-    await this.loadPanels(firstAircraft.id);
+    this.selectedAircraftId.set(selectedAircraft.id);
+    await this.loadPanels(selectedAircraft.id, Number.isFinite(queryPanelId) ? queryPanelId : null);
+    this.search.set(querySearch);
   }
 
   async onAircraftChange(aircraftId: number): Promise<void> {
@@ -143,12 +175,12 @@ export class CorrosionListPage implements OnInit {
     await this.loadHoles(Number(panelId));
   }
 
-  private async loadPanels(aircraftId: number): Promise<void> {
+  private async loadPanels(aircraftId: number, preferredPanelId: number | null = null): Promise<void> {
     this.loading.set(true);
     const panels = await firstValueFrom(this.corrosionService.listPanels(aircraftId));
     this.panels.set(panels);
 
-    const preferred = panels.find((p) => p.holeCount > 0) ?? panels[0] ?? null;
+    const preferred = panels.find((p) => p.id === preferredPanelId) ?? panels.find((p) => p.holeCount > 0) ?? panels[0] ?? null;
     if (preferred) {
       this.selectedPanelId.set(preferred.id);
       await this.loadHoles(preferred.id);

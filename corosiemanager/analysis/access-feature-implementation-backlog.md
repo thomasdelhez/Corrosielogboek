@@ -165,8 +165,8 @@ Legenda prioriteit:
 
 - **Implementatie (geleverd)**:
   - Backend create-endpoints met uniqueness checks: `POST /api/v1/aircraft`, `POST /api/v1/panels`
-  - Frontend adminpagina `/admin/master-data` voor aircraft/panel aanmaak
-  - Route afgeschermd met admin guard
+  - Frontend adminpagina `/admin/aircraft-beheer` voor aircraft/panel aanmaak
+  - Route toegankelijk voor ingelogde gebruikers
 
 ---
 

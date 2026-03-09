@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthenticationService } from '../services/authentication.service';
-import { AuthorizationService } from '../services/authorization.service';
+import { PermissionService } from '../services/permission.service';
 
 export const requireLoginGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthenticationService);
@@ -21,7 +21,7 @@ export const requireLoginGuard: CanActivateFn = (_route, state) => {
 
 export const requireReviewerGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthenticationService);
-  const authorization = inject(AuthorizationService);
+  const permissions = inject(PermissionService);
   const router = inject(Router);
 
   return auth.validateStoredSession().pipe(
@@ -33,7 +33,7 @@ export const requireReviewerGuard: CanActivateFn = (_route, state) => {
       }
 
       const user = auth.currentUser();
-      if (authorization.hasRole(user, 'reviewer') || authorization.hasRole(user, 'admin')) {
+      if (permissions.canAccessReviewerArea(user)) {
         return true;
       }
 
@@ -44,7 +44,7 @@ export const requireReviewerGuard: CanActivateFn = (_route, state) => {
 
 export const requireAdminGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthenticationService);
-  const authorization = inject(AuthorizationService);
+  const permissions = inject(PermissionService);
   const router = inject(Router);
 
   return auth.validateStoredSession().pipe(
@@ -56,7 +56,7 @@ export const requireAdminGuard: CanActivateFn = (_route, state) => {
       }
 
       const user = auth.currentUser();
-      if (authorization.hasRole(user, 'admin')) {
+      if (permissions.canAccessAdminArea(user)) {
         return true;
       }
 

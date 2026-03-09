@@ -1,6 +1,7 @@
 import hashlib
 import os
 import secrets
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,13 +27,16 @@ from .models import (
     Panel,
 )
 from .schemas import (
+    AuditEventOut,
     AuthMeOut,
     AuthMeUpdateIn,
     AppUserCreateIn,
+    AppUserActiveUpdateIn,
     AppUserOut,
     AppUserRoleUpdateIn,
     AircraftCreateIn,
     CorrosionReportRowOut,
+    GlobalSearchResultOut,
     HoleBatchCreateIn,
     MdrPowerpointInfoRowOut,
     HoleBatchCreateOut,
@@ -190,8 +194,19 @@ def require_role(min_role: str):
     return _dep
 
 
-def _audit(db: Session, action: str, entity: str, entity_id: int | None, username: str):
-    db.add(AuditEvent(action=action, entity=entity, entity_id=entity_id, username=username))
+def require_any_roles(*roles: str):
+    allowed = {r.strip().lower() for r in roles if r and r.strip()}
+
+    def _dep(user=Depends(current_user)):
+        if user["role"] not in allowed:
+            raise HTTPException(status_code=403, detail=f"Requires one of roles: {', '.join(sorted(allowed))}")
+        return user
+
+    return _dep
+
+
+def _audit(db: Session, action: str, entity: str, entity_id: int | None, username: str, details: str | None = None):
+    db.add(AuditEvent(action=action, entity=entity, entity_id=entity_id, username=username, details=details))
 
 
 def _validate_role_or_400(role: str) -> str:
@@ -199,6 +214,15 @@ def _validate_role_or_400(role: str) -> str:
     if role_norm not in ALLOWED_USER_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
     return role_norm
+
+
+def _active_admin_count(db: Session) -> int:
+    return int(
+        db.execute(
+            select(func.count(AppUser.id)).where(AppUser.role == "admin", AppUser.is_active.is_(True))
+        ).scalar_one()
+        or 0
+    )
 
 
 @app.on_event("startup")
@@ -264,6 +288,128 @@ def me(user=Depends(current_user)) -> AuthMeOut:
     return {"username": user["username"], "role": user["role"]}
 
 
+@app.get("/api/v1/search", response_model=list[GlobalSearchResultOut])
+def global_search(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _user=Depends(current_user),
+):
+    query = q.strip()
+    if not query:
+        return []
+
+    pattern = f"%{query}%"
+    out: list[dict[str, str | None]] = []
+    seen: set[tuple[str, str]] = set()
+
+    aircraft_rows = (
+        db.execute(select(Aircraft).where(or_(Aircraft.an.ilike(pattern), Aircraft.serial_number.ilike(pattern))).limit(limit)).scalars().all()
+    )
+    for a in aircraft_rows:
+        route = f"/corrosion?aircraftId={a.id}"
+        key = ("aircraft", route)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "kind": "aircraft",
+                "title": f"Aircraft {a.an}",
+                "subtitle": f"Serial: {a.serial_number}" if a.serial_number else None,
+                "route": route,
+            }
+        )
+
+    panel_rows = (
+        db.execute(
+            select(Panel.id, Panel.panel_number, Panel.aircraft_id, Aircraft.an)
+            .join(Aircraft, Aircraft.id == Panel.aircraft_id, isouter=True)
+            .where(or_(cast(Panel.panel_number, String).ilike(pattern), Aircraft.an.ilike(pattern)))
+            .limit(limit)
+        )
+        .all()
+    )
+    for r in panel_rows:
+        route = f"/corrosion?aircraftId={r.aircraft_id}&panelId={r.id}"
+        key = ("panel", route)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "kind": "panel",
+                "title": f"Panel {r.panel_number}",
+                "subtitle": f"Aircraft: {r.an}" if r.an else None,
+                "route": route,
+            }
+        )
+
+    hole_rows = (
+        db.execute(
+            select(Hole.id, Hole.hole_number, Hole.mdr_code, Panel.panel_number, Aircraft.an)
+            .join(Panel, Panel.id == Hole.panel_id, isouter=True)
+            .join(Aircraft, Aircraft.id == Panel.aircraft_id, isouter=True)
+            .where(
+                or_(
+                    cast(Hole.hole_number, String).ilike(pattern),
+                    Hole.mdr_code.ilike(pattern),
+                    Aircraft.an.ilike(pattern),
+                    cast(Panel.panel_number, String).ilike(pattern),
+                )
+            )
+            .limit(limit)
+        )
+        .all()
+    )
+    for r in hole_rows:
+        route = f"/corrosion/{r.id}"
+        key = ("hole", route)
+        if key in seen:
+            continue
+        seen.add(key)
+        subtitle_parts: list[str] = []
+        if r.an:
+            subtitle_parts.append(f"Aircraft {r.an}")
+        if r.panel_number is not None:
+            subtitle_parts.append(f"Panel {r.panel_number}")
+        if r.mdr_code:
+            subtitle_parts.append(f"MDR {r.mdr_code}")
+        out.append(
+            {
+                "kind": "hole",
+                "title": f"Hole #{r.hole_number}",
+                "subtitle": " · ".join(subtitle_parts) if subtitle_parts else None,
+                "route": route,
+            }
+        )
+
+    mdr_rows = (
+        db.execute(
+            select(MdrCase.id, MdrCase.mdr_number, MdrCase.subject, MdrCase.status)
+            .where(or_(MdrCase.mdr_number.ilike(pattern), MdrCase.subject.ilike(pattern), MdrCase.status.ilike(pattern)))
+            .limit(limit)
+        )
+        .all()
+    )
+    for r in mdr_rows:
+        route = f"/mdr?focusMdr={r.id}"
+        key = ("mdr", route)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "kind": "mdr",
+                "title": f"MDR {r.mdr_number or f'#{r.id}'}",
+                "subtitle": " · ".join([p for p in [r.subject, r.status] if p]) or None,
+                "route": route,
+            }
+        )
+
+    return out[:limit]
+
+
 @app.put("/api/v1/auth/me", response_model=AuthMeOut)
 def update_me(payload: AuthMeUpdateIn, user=Depends(current_user), db: Session = Depends(get_db)):
     db_user = db.execute(select(AppUser).where(AppUser.username == user["username"], AppUser.is_active.is_(True))).scalar_one_or_none()
@@ -293,7 +439,12 @@ def update_me(payload: AuthMeUpdateIn, user=Depends(current_user), db: Session =
             raise HTTPException(status_code=400, detail="new_password must be at least 6 characters")
         db_user.password = pwd_context.hash(new_password)
 
-    _audit(db, "update_self", "app_user", db_user.id, user["username"])
+    change_parts: list[str] = []
+    if new_username and new_username != user["username"]:
+        change_parts.append(f"username:{user['username']}->{new_username}")
+    if new_password:
+        change_parts.append("password:changed")
+    _audit(db, "update_self", "app_user", db_user.id, user["username"], details=", ".join(change_parts) or None)
     db.commit()
     return {"username": db_user.username, "role": db_user.role}
 
@@ -301,6 +452,33 @@ def update_me(payload: AuthMeUpdateIn, user=Depends(current_user), db: Session =
 @app.get("/api/v1/users", response_model=list[AppUserOut])
 def list_users(db: Session = Depends(get_db), _user=Depends(require_role("admin"))):
     return db.execute(select(AppUser).order_by(AppUser.username.asc())).scalars().all()
+
+
+@app.get("/api/v1/users/audit-events", response_model=list[AuditEventOut])
+def list_user_audit_events(
+    db: Session = Depends(get_db),
+    _user=Depends(require_role("admin")),
+    limit: int = Query(default=100, ge=1, le=500),
+    action: str | None = Query(default=None),
+    username: str | None = Query(default=None),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
+):
+    stmt = select(AuditEvent).where(AuditEvent.entity == "app_user")
+    action_filter = (action or "").strip()
+    username_filter = (username or "").strip()
+    if action_filter:
+        stmt = stmt.where(AuditEvent.action == action_filter)
+    if username_filter:
+        username_pattern = f"%{username_filter}%"
+        target_username_pattern = f"%username:{username_filter}%"
+        stmt = stmt.where(or_(AuditEvent.username.ilike(username_pattern), AuditEvent.details.ilike(target_username_pattern)))
+    if date_from is not None:
+        stmt = stmt.where(AuditEvent.created_at >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(AuditEvent.created_at <= date_to)
+
+    return db.execute(stmt.order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc()).limit(limit)).scalars().all()
 
 
 @app.post("/api/v1/users", response_model=AppUserOut, status_code=201)
@@ -324,7 +502,7 @@ def create_user(payload: AppUserCreateIn, db: Session = Depends(get_db), user=De
     )
     db.add(row)
     db.flush()
-    _audit(db, "create", "app_user", row.id, user["username"])
+    _audit(db, "create", "app_user", row.id, user["username"], details=f"username:{row.username}, role:{row.role}")
     db.commit()
     db.refresh(row)
     return row
@@ -335,12 +513,61 @@ def update_user_role(user_id: int, payload: AppUserRoleUpdateIn, db: Session = D
     row = db.get(AppUser, user_id)
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
+    if row.username == user["username"]:
+        raise HTTPException(status_code=400, detail="Cannot change your own role from admin panel")
 
-    row.role = _validate_role_or_400(payload.role)
-    _audit(db, "update_role", "app_user", row.id, user["username"])
+    previous_role = row.role
+    next_role = _validate_role_or_400(payload.role)
+    if previous_role == "admin" and next_role != "admin" and row.is_active and _active_admin_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot remove role of the last active admin")
+
+    row.role = next_role
+    _audit(db, "update_role", "app_user", row.id, user["username"], details=f"role:{previous_role}->{row.role}")
     db.commit()
     db.refresh(row)
     return row
+
+
+@app.put("/api/v1/users/{user_id}/active", response_model=AppUserOut)
+def update_user_active(
+    user_id: int, payload: AppUserActiveUpdateIn, db: Session = Depends(get_db), user=Depends(require_role("admin"))
+):
+    row = db.get(AppUser, user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    if row.username == user["username"] and not payload.is_active:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+    if row.role == "admin" and row.is_active and not payload.is_active and _active_admin_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot deactivate the last active admin")
+
+    row.is_active = bool(payload.is_active)
+    if not row.is_active:
+        sessions = db.execute(select(AuthSession).where(AuthSession.username == row.username, AuthSession.revoked.is_(False))).scalars().all()
+        for session in sessions:
+            session.revoked = True
+    _audit(db, "set_active", "app_user", row.id, user["username"], details=f"is_active:{row.is_active}")
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@app.delete("/api/v1/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db), user=Depends(require_role("admin"))):
+    row = db.get(AppUser, user_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    if row.username == user["username"]:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    if row.role == "admin" and row.is_active and _active_admin_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last active admin")
+
+    sessions = db.execute(select(AuthSession).where(AuthSession.username == row.username)).scalars().all()
+    for session in sessions:
+        session.revoked = True
+    _audit(db, "delete", "app_user", row.id, user["username"], details=f"username:{row.username}, role:{row.role}")
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}
 
 
 @app.get("/api/v1/aircraft")
@@ -731,7 +958,7 @@ def _create_hole_row(db: Session, panel_id: int, payload: HoleCreate) -> Hole:
 
 
 @app.post("/api/v1/panels/{panel_id}/holes", response_model=HoleOut, status_code=201)
-def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))):
     _ensure_panel_exists(db, panel_id)
 
     existing = db.execute(
@@ -748,7 +975,9 @@ def create_hole(panel_id: int, payload: HoleCreate, db: Session = Depends(get_db
 
 
 @app.post("/api/v1/panels/{panel_id}/holes/batch", response_model=HoleBatchCreateOut, status_code=201)
-def create_holes_batch(panel_id: int, payload: HoleBatchCreateIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def create_holes_batch(
+    panel_id: int, payload: HoleBatchCreateIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     _ensure_panel_exists(db, panel_id)
 
     existing_numbers = set(
@@ -839,7 +1068,7 @@ def get_hole(hole_id: int, db: Session = Depends(get_db), _user=Depends(current_
 
 
 @app.put("/api/v1/holes/{hole_id}", response_model=HoleOut)
-def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))):
     hole = _get_hole_or_404(db, hole_id)
 
     hole.max_bp_diameter = payload.max_bp_diameter
@@ -872,7 +1101,9 @@ def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db)
 
 
 @app.put("/api/v1/holes/{hole_id}/steps", response_model=HoleOut)
-def replace_hole_steps(hole_id: int, payload: list[HoleStepIn], db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def replace_hole_steps(
+    hole_id: int, payload: list[HoleStepIn], db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     hole = _get_hole_or_404(db, hole_id)
 
     step_nos = [s.step_no for s in payload]
@@ -900,7 +1131,9 @@ def replace_hole_steps(hole_id: int, payload: list[HoleStepIn], db: Session = De
 
 
 @app.put("/api/v1/holes/{hole_id}/parts", response_model=HoleOut)
-def replace_hole_parts(hole_id: int, payload: list[HolePartIn], db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def replace_hole_parts(
+    hole_id: int, payload: list[HolePartIn], db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     hole = _get_hole_or_404(db, hole_id)
 
     slot_nos = [p.slot_no for p in payload]
@@ -938,7 +1171,7 @@ def list_mdr_cases(db: Session = Depends(get_db), panel_id: int | None = None, l
 
 
 @app.post("/api/v1/mdr-cases", response_model=MdrCaseOut, status_code=201)
-def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))):
     _validate_mdr_case_payload(payload)
     row = MdrCase(**payload.model_dump())
     db.add(row)
@@ -950,7 +1183,9 @@ def create_mdr_case(payload: MdrCaseIn, db: Session = Depends(get_db), user=Depe
 
 
 @app.put("/api/v1/mdr-cases/{mdr_case_id}", response_model=MdrCaseOut)
-def update_mdr_case(mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def update_mdr_case(
+    mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     _validate_mdr_case_payload(payload)
     row = db.get(MdrCase, mdr_case_id)
     if not row:
@@ -964,7 +1199,12 @@ def update_mdr_case(mdr_case_id: int, payload: MdrCaseIn, db: Session = Depends(
 
 
 @app.post("/api/v1/mdr-cases/{mdr_case_id}/transition", response_model=MdrCaseOut)
-def transition_mdr_case(mdr_case_id: int, payload: MdrStatusTransitionIn, db: Session = Depends(get_db), user=Depends(require_role("reviewer"))):
+def transition_mdr_case(
+    mdr_case_id: int,
+    payload: MdrStatusTransitionIn,
+    db: Session = Depends(get_db),
+    user=Depends(require_any_roles("reviewer", "admin")),
+):
     row = db.get(MdrCase, mdr_case_id)
     if not row:
         raise HTTPException(status_code=404, detail="MDR case not found")
@@ -1010,7 +1250,9 @@ def list_mdr_remarks(mdr_case_id: int, db: Session = Depends(get_db), _user=Depe
 
 
 @app.post("/api/v1/mdr-cases/{mdr_case_id}/remarks", response_model=MdrRemarkOut, status_code=201)
-def add_mdr_remark(mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def add_mdr_remark(
+    mdr_case_id: int, payload: MdrRemarkIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     if not db.get(MdrCase, mdr_case_id):
         raise HTTPException(status_code=404, detail="MDR case not found")
     row = MdrRemark(mdr_case_id=mdr_case_id, **payload.model_dump())
@@ -1354,7 +1596,9 @@ def list_ndi_dashboard(
 
 
 @app.post("/api/v1/holes/{hole_id}/ndi-status", response_model=HoleOut)
-def transition_ndi_status(hole_id: int, payload: NdiStatusTransitionIn, db: Session = Depends(get_db), user=Depends(require_role("reviewer"))):
+def transition_ndi_status(
+    hole_id: int, payload: NdiStatusTransitionIn, db: Session = Depends(get_db), user=Depends(require_any_roles("reviewer", "admin"))
+):
     hole = _get_hole_or_404(db, hole_id)
     to_status = (payload.to_status or "").strip()
     allowed = {"check_tracker", "action_needed", "report_needed", "finished"}
@@ -1387,7 +1631,9 @@ def list_ndi_reports(hole_id: int, db: Session = Depends(get_db), _user=Depends(
 
 
 @app.post("/api/v1/holes/{hole_id}/ndi-reports", response_model=NdiReportOut, status_code=201)
-def create_ndi_report(hole_id: int, payload: NdiReportIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def create_ndi_report(
+    hole_id: int, payload: NdiReportIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     hole = _get_hole_or_404(db, hole_id)
 
     data = payload.model_dump(exclude={"hole_id"})
@@ -1430,7 +1676,9 @@ def list_mdr_request_details(panel_id: int, db: Session = Depends(get_db), limit
 
 
 @app.post("/api/v1/panels/{panel_id}/mdr-request-details", response_model=MdrRequestDetailOut, status_code=201)
-def create_mdr_request_detail(panel_id: int, payload: MdrRequestDetailIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def create_mdr_request_detail(
+    panel_id: int, payload: MdrRequestDetailIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     panel = db.get(Panel, panel_id)
     if not panel:
         raise HTTPException(status_code=404, detail="Panel not found")
@@ -1446,7 +1694,9 @@ def create_mdr_request_detail(panel_id: int, payload: MdrRequestDetailIn, db: Se
 
 
 @app.put("/api/v1/mdr-request-details/{detail_id}", response_model=MdrRequestDetailOut)
-def update_mdr_request_detail(detail_id: int, payload: MdrRequestDetailIn, db: Session = Depends(get_db), user=Depends(require_role("engineer"))):
+def update_mdr_request_detail(
+    detail_id: int, payload: MdrRequestDetailIn, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))
+):
     row = db.get(MdrRequestDetail, detail_id)
     if not row:
         raise HTTPException(status_code=404, detail="MDR request detail not found")

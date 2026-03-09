@@ -1,7 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { AuthenticationService } from '../../../core/security/services/authentication.service';
+import { PermissionService } from '../../../core/security/services/permission.service';
 import { ApiErrorService } from '../../../shared/services/api-error.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { CreateMdrCaseInput, CreateMdrRemarkInput, MdrRequestDetailInput } from '../models/corrosion.inputs';
@@ -40,7 +42,7 @@ import { CorrosionService } from '../services/corrosion.service';
         </div>
 
         <div class="actions" style="margin-top:12px;">
-          @if (!creatingMode() && !editingId()) {
+          @if (!creatingMode() && !editingId() && canCreateOrEditMdr()) {
             <button class="btn-primary" type="button" (click)="startCreate()">+ Nieuwe MDR case</button>
           }
         </div>
@@ -74,52 +76,22 @@ import { CorrosionService } from '../services/corrosion.service';
               <label class="field full"><span>Subject</span><input [(ngModel)]="form.subject" name="subject" /></label>
             </div>
             <div class="actions">
-              <button class="btn-primary" type="submit">{{ editingId() ? 'Opslaan wijzigingen' : 'Aanmaken' }}</button>
+              <button class="btn-primary" type="submit" [disabled]="mdrInlineErrors().length > 0">{{ editingId() ? 'Opslaan wijzigingen' : 'Aanmaken' }}</button>
               <button class="btn-secondary" type="button" (click)="resetForm()">Annuleren</button>
             </div>
+            @if (mdrInlineErrors().length > 0) {
+              <ul class="inline-errors">
+                @for (err of mdrInlineErrors(); track err) {
+                  <li>{{ err }}</li>
+                }
+              </ul>
+            }
           </form>
         }
 
         @if (loading()) {
           <p class="state">Laden...</p>
         } @else {
-          <div class="queue-grid">
-            <section class="queue-card">
-              <h3>Awaiting Request ({{ awaiting().length }})</h3>
-              @if (awaiting().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of awaiting(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
-              }
-            </section>
-
-            <section class="queue-card">
-              <h3>Request ({{ requestQ().length }})</h3>
-              @if (requestQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of requestQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
-              }
-            </section>
-
-            <section class="queue-card">
-              <h3>Submit ({{ submitQ().length }})</h3>
-              @if (submitQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of submitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
-              }
-            </section>
-
-            <section class="queue-card">
-              <h3>Resubmit ({{ resubmitQ().length }})</h3>
-              @if (resubmitQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of resubmitQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
-              }
-            </section>
-
-            <section class="queue-card">
-              <h3>In Review ({{ inReviewQ().length }})</h3>
-              @if (inReviewQ().length === 0) { <p class="state">Leeg</p> } @else {
-                @for (m of inReviewQ(); track m.id) { <article class="case-row">{{ caseLabel(m) }} <div class="row-actions">@for (next of nextStatuses(m.status); track next) {<button class="btn-secondary inline" (click)="transition(m.id, next)">{{ next }}</button>}<button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button><button class="btn-secondary inline" (click)="selectCase(m)">Detail</button></div></article> }
-              }
-            </section>
-          </div>
-
           @if (selectedCase()) {
             <section class="queue-card" style="margin-top:14px;">
               <h3>Case detail #{{ selectedCase()!.id }}</h3>
@@ -138,16 +110,18 @@ import { CorrosionService } from '../services/corrosion.service';
                 <select [(ngModel)]="remarkForm.remarkIndex" style="width:90px;">
                   @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">V{{ i }}</option> }
                 </select>
-                <button class="btn-primary" type="button" (click)="addRemark()">Add remark</button>
+                @if (canCreateOrEditMdr()) {
+                  <button class="btn-primary" type="button" (click)="addRemark()">Add remark</button>
+                }
               </div>
 
               <h4 style="margin:10px 0 6px;">Request details (panel)</h4>
               <div class="actions">
-                @if (!editingDetailId()) {
+                @if (!editingDetailId() && canManageRequestDetails()) {
                   <button class="btn-secondary" type="button" (click)="startCreateDetail()">+ Request detail</button>
                 }
               </div>
-              @if (editingDetailId() || creatingDetailMode()) {
+              @if ((editingDetailId() || creatingDetailMode()) && canManageRequestDetails()) {
                 <div class="editor" style="margin-top:8px;">
                   <h4>{{ editingDetailId() ? 'Request detail wijzigen' : 'Nieuw request detail' }}</h4>
                   <div class="grid">
@@ -211,17 +185,28 @@ import { CorrosionService } from '../services/corrosion.service';
                     <label class="field full"><span>Technical Product Details Summary</span><textarea [(ngModel)]="requestDetailForm.technicalProductDetailsSummary" name="rd_tp_summary"></textarea></label>
                   </div>
                   <div class="actions">
-                    <button class="btn-primary" type="button" (click)="saveRequestDetail()">Opslaan request detail</button>
+                    <button class="btn-primary" type="button" (click)="saveRequestDetail()" [disabled]="requestDetailInlineErrors().length > 0">Opslaan request detail</button>
                     <button class="btn-secondary" type="button" (click)="resetRequestDetailForm()">Annuleren</button>
                   </div>
+                  @if (requestDetailInlineErrors().length > 0) {
+                    <ul class="inline-errors">
+                      @for (err of requestDetailInlineErrors(); track err) {
+                        <li>{{ err }}</li>
+                      }
+                    </ul>
+                  }
                 </div>
               }
               @if (requestDetails().length === 0) { <p class="state">Geen request details gevonden.</p> } @else {
                 @for (d of requestDetails(); track d.id) {
                   <p style="margin:4px 0;">
                     {{ d.tve ?? '-' }} · {{ d.partNumber ?? '-' }} · {{ d.problemStatement ?? '-' }}
-                    <button class="btn-secondary inline" (click)="startEditDetail(d)">Wijzigen</button>
-                    <button class="btn-danger inline" (click)="deleteRequestDetail(d.id)">Verwijder</button>
+                    @if (canManageRequestDetails()) {
+                      <button class="btn-secondary inline" (click)="startEditDetail(d)">Wijzigen</button>
+                    }
+                    @if (canDeleteRequestDetails()) {
+                      <button class="btn-danger inline" (click)="deleteRequestDetail(d.id)">Verwijder</button>
+                    }
                   </p>
                 }
               }
@@ -241,9 +226,13 @@ import { CorrosionService } from '../services/corrosion.service';
                     <td>{{ m.subject ?? '-' }}</td>
                     <td>{{ m.status ?? '-' }}</td>
                     <td>
-                      <button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button>
+                      @if (canCreateOrEditMdr()) {
+                        <button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button>
+                      }
                       <button class="btn-secondary inline" (click)="selectCase(m)">Detail</button>
-                      <button class="btn-danger inline" (click)="deleteMdr(m.id)">Verwijder</button>
+                      @if (canDeleteMdr()) {
+                        <button class="btn-danger inline" (click)="deleteMdr(m.id)">Verwijder</button>
+                      }
                     </td>
                   </tr>
                 }
@@ -265,7 +254,6 @@ import { CorrosionService } from '../services/corrosion.service';
     .btn-primary,.btn-secondary,.btn-danger{border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
     .btn-primary{background:#2563eb;color:#fff}.btn-secondary{background:#e2e8f0;color:#334155}.btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
     .inline{margin-right:6px;padding:6px 10px}
-    .queue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}
     .queue-card{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}
     .queue-card h3{margin:0 0 8px;font-size:1rem}
     .case-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #e5e7eb}
@@ -273,7 +261,7 @@ import { CorrosionService } from '../services/corrosion.service';
     .row-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
     .table-wrap{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left}
     .state{color:#64748b}
-    @media(max-width:900px){.queue-grid{grid-template-columns:1fr}}
+    .inline-errors{margin:10px 0 0;padding-left:18px;color:#b91c1c;display:grid;gap:4px}
     @media(max-width:760px){.filters,.grid{grid-template-columns:1fr}}
   `,
 })
@@ -281,6 +269,9 @@ export class MdrManagementPage implements OnInit {
   private readonly svc = inject(CorrosionService);
   private readonly apiErrors = inject(ApiErrorService);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthenticationService);
+  private readonly permissions = inject(PermissionService);
 
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
@@ -307,25 +298,11 @@ export class MdrManagementPage implements OnInit {
   protected requestDetailDateDueInput = '';
   protected requestDetailDateDiscoveredInput = '';
 
-  private readonly transitions: Record<string, string[]> = {
-    Draft: ['Awaiting Request', 'Request'],
-    'Awaiting Request': ['Request', 'Closed'],
-    Request: ['Submit', 'Resubmit', 'Closed'],
-    Submit: ['In Review', 'Resubmit', 'Closed'],
-    Resubmit: ['Submit', 'In Review', 'Closed'],
-    'In Review': ['Approved', 'Rejected', 'Resubmit', 'Closed'],
-    Approved: ['Closed'],
-    Rejected: ['Resubmit', 'Closed'],
-    Closed: [],
-  };
-
-  protected readonly awaiting = computed(() => this.mdrCases().filter((x) => x.status === 'Awaiting Request'));
-  protected readonly requestQ = computed(() => this.mdrCases().filter((x) => x.status === 'Request'));
-  protected readonly submitQ = computed(() => this.mdrCases().filter((x) => x.status === 'Submit'));
-  protected readonly resubmitQ = computed(() => this.mdrCases().filter((x) => x.status === 'Resubmit'));
-  protected readonly inReviewQ = computed(() => this.mdrCases().filter((x) => x.status === 'In Review'));
   protected readonly statusOptions = computed(() => {
-    const fromLookup = this.lookupStatusCodes().map((x) => x.statusCode).filter((x): x is string => !!x);
+    const allowed = new Set(this.mdrStatusOptions.map((s) => s.toLowerCase()));
+    const fromLookup = this.lookupStatusCodes()
+      .map((x) => x.statusCode?.trim())
+      .filter((x): x is string => !!x && allowed.has(x.toLowerCase()));
     return fromLookup.length ? fromLookup : this.mdrStatusOptions;
   });
   protected readonly lcnOptions = computed(() => Array.from(new Set(this.lookupMdrOptions().map((x) => x.lcn).filter((x): x is string => !!x))));
@@ -412,6 +389,9 @@ export class MdrManagementPage implements OnInit {
   };
 
   async ngOnInit(): Promise<void> {
+    const focusMdrId = Number(this.route.snapshot.queryParamMap.get('focusMdr'));
+    const openCreateFromMenu = this.route.snapshot.queryParamMap.get('action') === 'new-case';
+
     this.loading.set(true);
     const [statusCodes, mdrOptions] = await Promise.all([
       firstValueFrom(this.svc.listLookupStatusCodes()),
@@ -424,6 +404,12 @@ export class MdrManagementPage implements OnInit {
     if (aircraft[0]) {
       this.selectedAircraftId.set(aircraft[0].id);
       await this.onAircraftChange(aircraft[0].id);
+    }
+    if (Number.isFinite(focusMdrId) && focusMdrId > 0) {
+      await this.focusMdrCase(focusMdrId);
+    }
+    if (openCreateFromMenu && this.canCreateOrEditMdr()) {
+      this.startCreate();
     }
     this.loading.set(false);
   }
@@ -459,11 +445,13 @@ export class MdrManagementPage implements OnInit {
   }
 
   startCreate(): void {
+    if (!this.canCreateOrEditMdr()) return;
     this.resetForm();
     this.creatingMode.set(true);
   }
 
   startEdit(row: MdrCase): void {
+    if (!this.canCreateOrEditMdr()) return;
     this.creatingMode.set(false);
     this.editingId.set(row.id);
     this.form = {
@@ -536,6 +524,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   async save(): Promise<void> {
+    if (!this.canCreateOrEditMdr()) return;
     const panelId = this.selectedPanelId();
     if (!panelId) return;
 
@@ -580,6 +569,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   async transition(id: number, toStatus: string): Promise<void> {
+    if (!this.canTransitionMdr()) return;
     try {
       await firstValueFrom(this.svc.transitionMdrCase(id, toStatus));
       const panelId = this.selectedPanelId();
@@ -601,6 +591,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   async addRemark(): Promise<void> {
+    if (!this.canCreateOrEditMdr()) return;
     const selected = this.selectedCase();
     if (!selected || !this.remarkForm.remarkText.trim()) return;
     try {
@@ -619,11 +610,13 @@ export class MdrManagementPage implements OnInit {
   }
 
   startCreateDetail(): void {
+    if (!this.canManageRequestDetails()) return;
     this.resetRequestDetailForm();
     this.creatingDetailMode.set(true);
   }
 
   startEditDetail(row: MdrRequestDetail): void {
+    if (!this.canManageRequestDetails()) return;
     this.creatingDetailMode.set(false);
     this.editingDetailId.set(row.id);
     this.requestDetailForm = {
@@ -712,6 +705,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   async saveRequestDetail(): Promise<void> {
+    if (!this.canManageRequestDetails()) return;
     const panelId = this.selectedPanelId();
     if (!panelId) return;
     const payload: MdrRequestDetailInput = {
@@ -748,6 +742,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   async deleteRequestDetail(id: number): Promise<void> {
+    if (!this.canDeleteRequestDetails()) return;
     if (!confirm('Request detail verwijderen?')) return;
     await firstValueFrom(this.svc.deleteMdrRequestDetail(id));
     const panelId = this.selectedPanelId();
@@ -756,8 +751,24 @@ export class MdrManagementPage implements OnInit {
     }
   }
 
-  nextStatuses(status: string | null): string[] {
-    return this.transitions[status ?? 'Draft'] ?? [];
+  canCreateOrEditMdr(): boolean {
+    return this.permissions.canMdrEdit(this.auth.currentUser());
+  }
+
+  canTransitionMdr(): boolean {
+    return this.permissions.canMdrTransition(this.auth.currentUser());
+  }
+
+  canDeleteMdr(): boolean {
+    return this.permissions.canMdrDelete(this.auth.currentUser());
+  }
+
+  canManageRequestDetails(): boolean {
+    return this.permissions.canMdrRequestDetailEdit(this.auth.currentUser());
+  }
+
+  canDeleteRequestDetails(): boolean {
+    return this.permissions.canMdrRequestDetailDelete(this.auth.currentUser());
   }
 
   caseLabel(m: MdrCase): string {
@@ -765,6 +776,7 @@ export class MdrManagementPage implements OnInit {
   }
 
   async deleteMdr(id: number): Promise<void> {
+    if (!this.canDeleteMdr()) return;
     if (!confirm('MDR case verwijderen?')) return;
     await firstValueFrom(this.svc.deleteMdrCase(id));
     const panelId = this.selectedPanelId();
@@ -779,6 +791,36 @@ export class MdrManagementPage implements OnInit {
   private fromDateInput(value: string): Date | null {
     if (!value) return null;
     return new Date(`${value}T00:00:00`);
+  }
+
+  mdrInlineErrors(): string[] {
+    const panelId = this.selectedPanelId();
+    if (!panelId) return ['Selecteer eerst een panel.'];
+    const payload: CreateMdrCaseInput = {
+      ...this.form,
+      panelId,
+      panelNumber: this.panels().find((p) => p.id === panelId)?.panelNumber ?? this.form.panelNumber ?? null,
+      requestDate: this.fromDateInput(this.requestDateInput),
+      needDate: this.fromDateInput(this.needDateInput),
+      submitListDate: this.fromDateInput(this.submitListDateInput),
+      approvalDate: this.fromDateInput(this.approvalDateInput),
+    };
+    const msg = this.validateMdrCasePayload(payload);
+    return msg ? [msg] : [];
+  }
+
+  requestDetailInlineErrors(): string[] {
+    const panelId = this.selectedPanelId();
+    if (!panelId) return ['Selecteer eerst een panel.'];
+    const payload: MdrRequestDetailInput = {
+      ...this.requestDetailForm,
+      panelId,
+      panelNumber: this.panels().find((p) => p.id === panelId)?.panelNumber ?? null,
+      dateDueToField: this.fromDateInput(this.requestDetailDateDueInput),
+      dateDiscovered: this.fromDateInput(this.requestDetailDateDiscoveredInput),
+    };
+    const msg = this.validateRequestDetailPayload(payload);
+    return msg ? [msg] : [];
   }
 
   private validateMdrCasePayload(payload: CreateMdrCaseInput): string | null {
@@ -824,4 +866,23 @@ export class MdrManagementPage implements OnInit {
 
     return null;
   }
+
+  private async focusMdrCase(mdrCaseId: number): Promise<void> {
+    const allCases = await firstValueFrom(this.svc.listMdrCases());
+    const target = allCases.find((row) => row.id === mdrCaseId);
+    if (!target || !target.aircraftId || !target.panelId) return;
+
+    if (this.selectedAircraftId() !== target.aircraftId) {
+      await this.onAircraftChange(target.aircraftId);
+    }
+    if (this.selectedPanelId() !== target.panelId) {
+      await this.onPanelChange(target.panelId);
+    }
+
+    const row = this.mdrCases().find((x) => x.id === mdrCaseId);
+    if (row) {
+      await this.selectCase(row);
+    }
+  }
+
 }

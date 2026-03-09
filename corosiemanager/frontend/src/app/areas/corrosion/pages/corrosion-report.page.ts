@@ -19,7 +19,15 @@ import { CorrosionService } from '../services/corrosion.service';
         <div class="filters">
           <label class="field"><span>Aircraft</span><select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">@for (a of aircraft(); track a.id) {<option [ngValue]="a.id">{{ a.an }}</option>}</select></label>
           <label class="field"><span>Panel</span><select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)"><option [ngValue]="null">Alle panels</option>@for (p of panels(); track p.id) {<option [ngValue]="p.id">Panel {{ p.panelNumber }}</option>}</select></label>
-          <label class="field"><span>Status</span><input [ngModel]="inspectionStatus()" (ngModelChange)="inspectionStatus.set($event); reload()" placeholder="bijv. Clean" /></label>
+          <label class="field">
+            <span>Status</span>
+            <select [ngModel]="inspectionStatus()" (ngModelChange)="inspectionStatus.set($event); reload()">
+              <option value="">Alle statussen</option>
+              @for (opt of inspectionStatusOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          </label>
           <label class="field grow"><span>Zoeken</span><input [ngModel]="search()" (ngModelChange)="search.set($event); reload()" placeholder="hole/panel/MDR" /></label>
         </div>
 
@@ -69,6 +77,7 @@ export class CorrosionReportPage implements OnInit {
   protected readonly selectedAircraftId = signal<number | null>(null);
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly inspectionStatus = signal<string>('');
+  protected readonly inspectionStatusOptions = ['Clean', 'Rifled', 'Open', 'In Progress', 'Closed'];
   protected readonly search = signal<string>('');
   protected readonly loading = signal<boolean>(true);
 

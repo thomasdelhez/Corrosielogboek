@@ -10,7 +10,7 @@ Status: P1/P2/P3 baseline opgeleverd, nu focus op hardening en afronding.
   - [ ] `/inspection`
   - [ ] `/trackers`
   - [ ] `/installation`
-  - [ ] `/admin/master-data`
+  - [ ] `/admin/aircraft-beheer`
   - [ ] `/reports/corrosion-tracker`
 - [ ] Auth flow valideren:
   - [ ] login redirect/return URL

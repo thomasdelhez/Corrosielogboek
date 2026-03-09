@@ -226,6 +226,7 @@ class AuditEvent(Base):
     action: Mapped[str] = mapped_column(String(128), index=True)
     entity: Mapped[str] = mapped_column(String(64), index=True)
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
     username: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

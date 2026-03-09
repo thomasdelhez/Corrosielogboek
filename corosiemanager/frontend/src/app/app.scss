@@ -1,5 +1,42 @@
 :host {
-  display: block;
-  min-height: 100vh;
-  font-family: Inter, system-ui, sans-serif;
+  --bg0:#f8fafc;
+  --bg1:#eef2ff;
+  --bg2:#e2e8f0;
+  display:block;
+  min-height:100vh;
+  font-family:Inter,system-ui,sans-serif;
+  position:relative;
+  isolation:isolate;
+  background:linear-gradient(170deg,var(--bg0) 0%,var(--bg1) 48%,var(--bg2) 100%);
+}
+
+:host::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-2;
+  opacity:.2;
+  background-image:
+    linear-gradient(to right,#64748b1c 1px,transparent 1px),
+    linear-gradient(to bottom,#64748b1c 1px,transparent 1px);
+  background-size:36px 36px;
+  mask-image:radial-gradient(circle at 50% 10%,#000 20%,transparent 85%);
+}
+
+:host::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    radial-gradient(180px 180px at 12% 8%,#93c5fd66,transparent 70%),
+    radial-gradient(170px 170px at 88% 92%,#c4b5fd55,transparent 70%);
+  filter:blur(18px);
+}
+
+:host > *{
+  position:relative;
+  z-index:1;
 }

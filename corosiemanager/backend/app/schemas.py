@@ -375,8 +375,43 @@ class MdrRequestDetailIn(BaseModel):
         return self
 
 
-class MdrRequestDetailOut(MdrRequestDetailIn):
+class MdrRequestDetailOut(BaseModel):
     id: int
+    panel_id: int | None
+    tve: str | None
+    panel_number: int | None
+    task_type: str | None
+    fms_or_non_fms: str | None
+    releasability: str | None
+    technical_product_number: str | None
+    technical_product_title: str | None
+    submitter_name: str | None
+    location: str | None
+    mdr_type: str | None
+    serial_number: str | None
+    part_number: str | None
+    internal_reference_number: str | None
+    cr_ecp: str | None
+    discrepancy_type: str | None
+    cause_code_discrepant_work: str | None
+    resubmit_reason: str | None
+    defect_code: str | None
+    access_location: str | None
+    date_due_to_field: datetime | None
+    lcn: str | None
+    lcn_description: str | None
+    inspection_criteria: str | None
+    mgi_required: str | None
+    mgi_number: str | None
+    discovered_during: str | None
+    when_discovered: str | None
+    discovered_by: str | None
+    date_discovered: datetime | None
+    problem_statement: str | None
+    technical_product_details_summary: str | None
+    tms: str | None
+    email: str | None
+    confirm_email: str | None
 
     class Config:
         from_attributes = True
@@ -460,6 +495,30 @@ class AppUserCreateIn(BaseModel):
 
 class AppUserRoleUpdateIn(BaseModel):
     role: str
+
+
+class AppUserActiveUpdateIn(BaseModel):
+    is_active: bool
+
+
+class GlobalSearchResultOut(BaseModel):
+    kind: str
+    title: str
+    subtitle: str | None
+    route: str
+
+
+class AuditEventOut(BaseModel):
+    id: int
+    action: str
+    entity: str
+    entity_id: int | None
+    details: str | None
+    username: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class LoginIn(BaseModel):

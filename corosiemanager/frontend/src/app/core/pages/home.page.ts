@@ -1,13 +1,16 @@
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { CorrosionService } from '../../areas/corrosion/services/corrosion.service';
+import { GlobalSearchResult } from '../../areas/corrosion/models/corrosion.models';
 import { ToastService } from '../../shared/services/toast.service';
+import { PermissionService } from '../security/services/permission.service';
 import { AuthenticationService } from '../security/services/authentication.service';
-import { AuthorizationService } from '../security/services/authorization.service';
 
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     <main class="shell">
       <div class="bg-orb orb-a"></div>
@@ -22,8 +25,10 @@ import { AuthorizationService } from '../security/services/authorization.service
           </div>
           <div class="userbox">
             @if (isLoggedIn()) {
-              <span class="userpill">{{ userLabel() }}</span>
-              <a class="btn-soft" routerLink="/account">Mijn account</a>
+              <a class="account-link" routerLink="/account" aria-label="Open mijn account">
+                <span class="account-name">{{ userLabel() }}</span>
+                <span class="account-cta">Mijn account</span>
+              </a>
               <button class="btn-outline" (click)="logout()">Uitloggen</button>
             } @else {
               <a class="btn-primary" routerLink="/login">Naar login</a>
@@ -36,41 +41,74 @@ import { AuthorizationService } from '../security/services/authorization.service
           <p class="notice">{{ authMessage() }}</p>
         }
 
+        @if (isLoggedIn()) {
+          <section class="task-panel">
+            <div>
+              <p class="task-eyebrow">Jouw taken</p>
+              <h2 class="task-title">{{ roleHeading() }}</h2>
+              <ul class="task-list">
+                @for (item of roleTasks(); track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            </div>
+            <div class="quick-actions">
+              <p class="quick-title">Snelle acties</p>
+              @for (action of quickActions(); track action.label) {
+                <a class="btn-soft" [routerLink]="action.path" [queryParams]="action.queryParams ?? null">{{ action.label }}</a>
+              }
+            </div>
+          </section>
+        }
+
+        <section class="search-panel">
+          <p class="search-title">Zoek direct op aircraft, panel, hole of MDR</p>
+          <form class="search-form" (ngSubmit)="runGlobalSearch()">
+            <input [(ngModel)]="globalSearchQuery" name="globalSearchQuery" placeholder="Bijv. AN 10, panel 190, hole 123, MDR-001" />
+            <button class="btn-primary" type="submit" [disabled]="searchLoading()">{{ searchLoading() ? 'Zoeken...' : 'Zoeken' }}</button>
+          </form>
+          @if (searchResults().length > 0) {
+            <div class="search-results">
+              @for (result of searchResults(); track result.route + result.title) {
+                <button class="result-item" type="button" (click)="openSearchResult(result)">
+                  <span class="result-kind">{{ result.kind }}</span>
+                  <strong>{{ result.title }}</strong>
+                  @if (result.subtitle) {
+                    <span class="result-sub">{{ result.subtitle }}</span>
+                  }
+                </button>
+              }
+            </div>
+          } @else if (searchTried() && !searchLoading()) {
+            <p class="search-empty">Geen resultaten gevonden.</p>
+          }
+        </section>
+
         <section class="feature-grid">
           <article class="feature feature-wide">
             <h3>Aircraft & Panels</h3>
             <p>Selecteer aircraft, panel en beheer holes vanuit het centrale overzicht.</p>
-            <a class="btn-primary" routerLink="/corrosion">Open workflow</a>
-          </article>
-
-          <article class="feature">
-            <h3>Hole Repairs</h3>
-            <p>Bewerk hole details, steps en parts.</p>
             <div class="row">
-              <a class="btn-soft" routerLink="/corrosion">Overzicht</a>
-              <a class="btn-soft" routerLink="/batch-holes">Batch Create</a>
+              <a class="btn-primary" routerLink="/corrosion">Open workflow</a>
+              <a class="btn-soft" routerLink="/admin/aircraft-beheer">Aircraft beheer</a>
             </div>
           </article>
 
-          <article class="feature">
-            <h3>MDR Management</h3>
-            <p>Status, cases en request details.</p>
-            @if (canUseMdr()) {
+          @if (canUseMdr()) {
+            <article class="feature">
+              <h3>MDR Management</h3>
+              <p>Status, cases en request details.</p>
               <a class="btn-soft" routerLink="/mdr">Open MDR</a>
-            } @else {
-              <button class="btn-disabled" disabled>Reviewer/Admin vereist</button>
-            }
-          </article>
+            </article>
+          }
 
-          <article class="feature">
-            <h3>NDI Reports</h3>
-            <p>Bekijk en onderhoud NDI-workflow.</p>
-            @if (canUseNdi()) {
+          @if (canUseNdi()) {
+            <article class="feature">
+              <h3>NDI Reports</h3>
+              <p>Bekijk en onderhoud NDI-workflow.</p>
               <a class="btn-soft" routerLink="/ndi">Open NDI</a>
-            } @else {
-              <button class="btn-disabled" disabled>Reviewer/Admin vereist</button>
-            }
-          </article>
+            </article>
+          }
 
           <article class="feature">
             <h3>Ordering</h3>
@@ -88,18 +126,15 @@ import { AuthorizationService } from '../security/services/authorization.service
             </div>
           </article>
 
-          <article class="feature">
-            <h3>Admin</h3>
-            <p>Beheer aircraft en panel records.</p>
-            @if (canUseAdmin()) {
+          @if (canUseAdmin()) {
+            <article class="feature">
+              <h3>Admin</h3>
+              <p>Beheer gebruikers en rollen.</p>
               <div class="row">
-                <a class="btn-soft" routerLink="/admin/master-data">Master Data</a>
                 <a class="btn-soft" routerLink="/admin/users">User Control</a>
               </div>
-            } @else {
-              <button class="btn-disabled" disabled>Admin vereist</button>
-            }
-          </article>
+            </article>
+          }
 
           <article class="feature">
             <h3>Rapportage</h3>
@@ -145,14 +180,54 @@ import { AuthorizationService } from '../security/services/authorization.service
       background:#eff6ff;color:#1d4ed8;font-weight:600;
     }
     .userbox{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .userpill{
-      display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;
-      background:#e2e8f0;color:#0f172a;font-weight:700;font-size:.9rem;
+    .account-link{
+      display:flex;align-items:center;gap:10px;padding:7px 10px 7px 12px;border-radius:999px;
+      background:#e2e8f0;color:#0f172a;text-decoration:none;border:1px solid #cbd5e1;
+      transition:background .15s ease, border-color .15s ease;
+    }
+    .account-link:hover{background:#dbeafe;border-color:#93c5fd}
+    .account-name{font-weight:700;font-size:.9rem}
+    .account-cta{
+      display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;
+      background:#ffffff;color:#334155;font-weight:700;font-size:.78rem;
     }
 
     .feature-grid{
       display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
     }
+    .search-panel{
+      margin:0 4px 16px;padding:14px;border:1px solid #dbeafe;border-radius:14px;background:#ffffffb8;
+    }
+    .search-title{margin:0 0 8px;color:#0f172a;font-weight:700}
+    .search-form{display:flex;gap:8px;flex-wrap:wrap}
+    .search-form input{
+      flex:1;min-width:220px;border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff;
+    }
+    .search-results{margin-top:10px;display:grid;gap:8px}
+    .result-item{
+      text-align:left;border:1px solid #dbeafe;border-radius:10px;background:#f8fafc;padding:9px 10px;
+      display:grid;gap:3px;cursor:pointer;
+    }
+    .result-kind{
+      width:max-content;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+      padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1e40af;
+    }
+    .result-sub{color:#64748b}
+    .search-empty{margin:8px 0 0;color:#64748b}
+    .task-panel{
+      display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin:0 4px 16px;padding:14px;
+      border:1px solid #dbeafe;border-radius:14px;background:linear-gradient(130deg,#f8fafc 0%,#eff6ff 100%);
+    }
+    .task-eyebrow{
+      margin:0;color:#2563eb;font-size:.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+    }
+    .task-title{margin:5px 0 8px;font-size:1.15rem;color:#0f172a}
+    .task-list{margin:0;padding-left:18px;color:#334155;display:grid;gap:6px}
+    .quick-actions{
+      border:1px solid #dbeafe;border-radius:12px;background:#ffffffb3;padding:12px;
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .quick-title{margin:0 0 2px;font-size:.82rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
     .feature{
       border:1px solid #dbeafe;border-radius:14px;padding:14px;background:#f8fafc;
       transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
@@ -167,17 +242,17 @@ import { AuthorizationService } from '../security/services/authorization.service
     .feature p{margin:0 0 12px;color:#64748b;line-height:1.4}
     .row{display:flex;gap:8px;flex-wrap:wrap}
 
-    .btn-primary,.btn-soft,.btn-outline,.btn-disabled{
+    .btn-primary,.btn-soft,.btn-outline{
       border:0;border-radius:10px;padding:9px 12px;font-weight:700;text-decoration:none;display:inline-block;cursor:pointer;
     }
     .btn-primary{background:#2563eb;color:#fff}
     .btn-soft{background:#e2e8f0;color:#334155}
     .btn-outline{background:#fff;border:1px solid #cbd5e1;color:#334155}
-    .btn-disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed}
 
     @media (max-width:960px){
       .feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       .feature-wide{grid-column:span 2}
+      .task-panel{grid-template-columns:1fr}
     }
     @media (max-width:700px){
       .shell{padding:16px}
@@ -190,12 +265,32 @@ import { AuthorizationService } from '../security/services/authorization.service
 })
 export class HomePage {
   private readonly auth = inject(AuthenticationService);
+  private readonly corrosionService = inject(CorrosionService);
   private readonly toast = inject(ToastService);
-  private readonly authorization = inject(AuthorizationService);
+  private readonly permissions = inject(PermissionService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   protected readonly authMessage = signal<string>('');
+  protected readonly searchLoading = signal<boolean>(false);
+  protected readonly searchResults = signal<GlobalSearchResult[]>([]);
+  protected readonly searchTried = signal<boolean>(false);
+  protected readonly reviewerTasks = [
+    'Beoordeel open MDR-cases en werk statusovergangen bij.',
+    'Controleer NDI-rapporten op afwijkingen.',
+    'Deel bevindingen via remarks voor engineering.',
+  ];
+  protected readonly engineerTasks = [
+    'Werk hole repairs en panel-data bij.',
+    'Houd ordering en installatieflow actueel.',
+    'Verwerk inspectie-items in de juiste tracker.',
+  ];
+  protected readonly adminTasks = [
+    'Beheer gebruikers en roltoekenning.',
+    'Onderhoud aircraft- en panelgegevens.',
+    'Bewaak MDR/NDI-doorlooptijd en kwaliteitsstappen.',
+  ];
+  protected globalSearchQuery = '';
 
   constructor() {
     const reason = this.route.snapshot.queryParamMap.get('reason');
@@ -214,18 +309,60 @@ export class HomePage {
   }
 
   canUseMdr(): boolean {
-    const user = this.auth.currentUser();
-    return this.authorization.hasRole(user, 'reviewer') || this.authorization.hasRole(user, 'admin');
+    return this.permissions.canAccessReviewerArea(this.auth.currentUser());
   }
 
   canUseNdi(): boolean {
-    const user = this.auth.currentUser();
-    return this.authorization.hasRole(user, 'reviewer') || this.authorization.hasRole(user, 'admin');
+    return this.permissions.canAccessReviewerArea(this.auth.currentUser());
   }
 
   canUseAdmin(): boolean {
+    return this.permissions.canAccessAdminArea(this.auth.currentUser());
+  }
+
+  roleHeading(): string {
     const user = this.auth.currentUser();
-    return this.authorization.hasRole(user, 'admin');
+    if (this.permissions.isAdmin(user)) {
+      return 'Admin focus voor vandaag';
+    }
+    if (this.permissions.canAccessReviewerArea(user)) {
+      return 'Reviewer prioriteiten';
+    }
+    return 'Engineer werkpakket';
+  }
+
+  roleTasks(): string[] {
+    const user = this.auth.currentUser();
+    if (this.permissions.isAdmin(user)) {
+      return this.adminTasks;
+    }
+    if (this.permissions.canAccessReviewerArea(user)) {
+      return this.reviewerTasks;
+    }
+    return this.engineerTasks;
+  }
+
+  quickActions(): { label: string; path: string; queryParams?: Record<string, string> }[] {
+    const user = this.auth.currentUser();
+    if (this.permissions.isAdmin(user)) {
+      return [
+        { label: 'Gebruiker toevoegen', path: '/admin/users' },
+        { label: 'Aircraft beheer', path: '/admin/aircraft-beheer' },
+        { label: 'Nieuwe MDR', path: '/mdr', queryParams: { action: 'new-case' } },
+      ];
+    }
+    if (this.permissions.canAccessReviewerArea(user)) {
+      return [
+        { label: 'Open MDR queue', path: '/mdr' },
+        { label: 'Open NDI queue', path: '/ndi' },
+        { label: 'Open rapportage', path: '/reports/corrosion-tracker' },
+      ];
+    }
+    return [
+      { label: 'Open panel overzicht', path: '/corrosion' },
+      { label: 'Open inspectie', path: '/inspection' },
+      { label: 'Open ordering tracker', path: '/ordering' },
+    ];
   }
 
   async logout(): Promise<void> {
@@ -233,5 +370,26 @@ export class HomePage {
     this.authMessage.set('Uitgelogd');
     this.toast.info('Uitgelogd');
     await this.router.navigate(['/login'], { queryParams: { reason: 'login_required' } });
+  }
+
+  async runGlobalSearch(): Promise<void> {
+    const query = this.globalSearchQuery.trim();
+    this.searchTried.set(true);
+    if (!query) {
+      this.searchResults.set([]);
+      return;
+    }
+    this.searchLoading.set(true);
+    try {
+      const results = await firstValueFrom(this.corrosionService.globalSearch(query, 12));
+      this.searchResults.set(results);
+    } finally {
+      this.searchLoading.set(false);
+    }
+  }
+
+  async openSearchResult(result: GlobalSearchResult): Promise<void> {
+    this.searchResults.set([]);
+    await this.router.navigateByUrl(result.route);
   }
 }

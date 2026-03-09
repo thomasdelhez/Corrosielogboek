@@ -3,6 +3,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { AuthenticationService } from '../../../core/security/services/authentication.service';
+import { PermissionService } from '../../../core/security/services/permission.service';
 import { ApiErrorService } from '../../../shared/services/api-error.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { Aircraft, NdiQueueRow, PanelSummary } from '../models/corrosion.models';
@@ -86,17 +88,27 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
                     <td>{{ r.latestReportMethod ?? '-' }}</td>
                     <td class="actions">
                       @if (r.queueStatus === 'check_tracker') {
-                        <button class="btn" (click)="transition(r.holeId, 'report_needed')">To report needed</button>
+                        @if (canTransitionNdi()) {
+                          <button class="btn" (click)="transition(r.holeId, 'report_needed')">To report needed</button>
+                        }
                       }
                       @if (r.queueStatus === 'action_needed') {
-                        <button class="btn" (click)="transition(r.holeId, 'report_needed')">Action done</button>
+                        @if (canTransitionNdi()) {
+                          <button class="btn" (click)="transition(r.holeId, 'report_needed')">Action done</button>
+                        }
                       }
                       @if (r.queueStatus !== 'finished') {
-                        <button class="btn" (click)="quickAddReport(r.holeId, r.panelId)">+ Quick report</button>
-                        <button class="btn" (click)="transition(r.holeId, 'finished')">Mark finished</button>
+                        @if (canCreateNdiReport()) {
+                          <button class="btn" (click)="quickAddReport(r.holeId, r.panelId)">+ Quick report</button>
+                        }
+                        @if (canTransitionNdi()) {
+                          <button class="btn" (click)="transition(r.holeId, 'finished')">Mark finished</button>
+                        }
                       }
                       @if (r.queueStatus === 'finished') {
-                        <button class="btn" (click)="transition(r.holeId, 'check_tracker')">Reopen</button>
+                        @if (canTransitionNdi()) {
+                          <button class="btn" (click)="transition(r.holeId, 'check_tracker')">Reopen</button>
+                        }
                       }
                       <a [routerLink]="['/corrosion', r.holeId]" class="link">Open hole</a>
                     </td>
@@ -129,6 +141,8 @@ export class NdiReportsPage implements OnInit {
   private readonly svc = inject(CorrosionService);
   private readonly apiErrors = inject(ApiErrorService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthenticationService);
+  private readonly permissions = inject(PermissionService);
 
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
@@ -200,7 +214,16 @@ export class NdiReportsPage implements OnInit {
     return 'Finished';
   }
 
+  canTransitionNdi(): boolean {
+    return this.permissions.canNdiTransition(this.auth.currentUser());
+  }
+
+  canCreateNdiReport(): boolean {
+    return this.permissions.canNdiReportCreate(this.auth.currentUser());
+  }
+
   async transition(holeId: number, toStatus: 'check_tracker' | 'action_needed' | 'report_needed' | 'finished'): Promise<void> {
+    if (!this.canTransitionNdi()) return;
     try {
       await firstValueFrom(this.svc.transitionNdiStatus(holeId, toStatus));
       this.message.set(`NDI status bijgewerkt: ${this.queueLabel(toStatus)}`);
@@ -216,6 +239,7 @@ export class NdiReportsPage implements OnInit {
   }
 
   async quickAddReport(holeId: number, panelId: number): Promise<void> {
+    if (!this.canCreateNdiReport()) return;
     try {
       await firstValueFrom(
         this.svc.createNdiReport(holeId, {

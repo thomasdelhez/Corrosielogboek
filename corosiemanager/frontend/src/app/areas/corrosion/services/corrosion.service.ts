@@ -21,6 +21,8 @@ import {
   NdiReportDto,
   OrderingTrackerRowDto,
   PanelSummaryDto,
+  GlobalSearchResultDto,
+  UserAuditEventDto,
   UpdateHoleInputDto,
   UpdateHolePartInputDto,
   UpdateHoleStepInputDto,
@@ -36,6 +38,7 @@ import {
   CreatePanelInput,
   CreateNdiReportInput,
   MdrRequestDetailInput,
+  UserAuditFilterInput,
   UpdateHoleInput,
   UpdateHolePartInput,
   UpdateHoleStepInput,
@@ -60,6 +63,8 @@ import {
   NdiReport,
   OrderingTrackerRow,
   PanelSummary,
+  GlobalSearchResult,
+  UserAuditEvent,
 } from '../models/corrosion.models';
 
 @Injectable({ providedIn: 'root' })
@@ -118,6 +123,34 @@ export class CorrosionService {
     return this.http
       .put<AppUserDto>(`${this.config.apiBaseUrl}/users/${userId}/role`, { role })
       .pipe(map((row) => this.toAppUser(row)));
+  }
+
+  setUserActive(userId: number, isActive: boolean): Observable<AppUser> {
+    return this.http
+      .put<AppUserDto>(`${this.config.apiBaseUrl}/users/${userId}/active`, { is_active: isActive })
+      .pipe(map((row) => this.toAppUser(row)));
+  }
+
+  deleteUser(userId: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/users/${userId}`);
+  }
+
+  listUserAuditEvents(filters?: UserAuditFilterInput): Observable<UserAuditEvent[]> {
+    return this.http
+      .get<UserAuditEventDto[]>(`${this.config.apiBaseUrl}/users/audit-events`, {
+        limit: filters?.limit ?? 100,
+        action: filters?.action ?? undefined,
+        username: filters?.username ?? undefined,
+        date_from: filters?.dateFrom ? filters.dateFrom.toISOString() : undefined,
+        date_to: filters?.dateTo ? filters.dateTo.toISOString() : undefined,
+      })
+      .pipe(map((rows) => rows.map((row) => this.toUserAuditEvent(row))));
+  }
+
+  globalSearch(query: string, limit = 20): Observable<GlobalSearchResult[]> {
+    return this.http
+      .get<GlobalSearchResultDto[]>(`${this.config.apiBaseUrl}/search`, { q: query, limit })
+      .pipe(map((rows) => rows.map((row) => this.toGlobalSearchResult(row))));
   }
 
   listPanelHoles(panelId: number): Observable<Hole[]> {
@@ -772,6 +805,27 @@ export class CorrosionService {
       username: dto.username,
       role: dto.role,
       isActive: dto.is_active,
+    };
+  }
+
+  private toUserAuditEvent(dto: UserAuditEventDto): UserAuditEvent {
+    return {
+      id: dto.id,
+      action: dto.action,
+      entity: dto.entity,
+      entityId: dto.entity_id,
+      details: dto.details,
+      username: dto.username,
+      createdAt: new Date(dto.created_at),
+    };
+  }
+
+  private toGlobalSearchResult(dto: GlobalSearchResultDto): GlobalSearchResult {
+    return {
+      kind: dto.kind,
+      title: dto.title,
+      subtitle: dto.subtitle,
+      route: dto.route,
     };
   }
 

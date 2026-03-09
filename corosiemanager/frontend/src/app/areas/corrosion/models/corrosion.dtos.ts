@@ -219,6 +219,23 @@ export interface AppUserDto {
   is_active: boolean;
 }
 
+export interface UserAuditEventDto {
+  id: number;
+  action: string;
+  entity: string;
+  entity_id: number | null;
+  details: string | null;
+  username: string;
+  created_at: string;
+}
+
+export interface GlobalSearchResultDto {
+  kind: string;
+  title: string;
+  subtitle: string | null;
+  route: string;
+}
+
 export interface OrderingTrackerRowDto {
   hole_id: number;
   hole_number: number;
