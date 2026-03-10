@@ -1,0 +1,79 @@
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Corrosie workflow"
+            title="Aircraft en panels"
+            subtitle="Selecteer het juiste aircraft en panel, filter de holes en spring direct naar detailwerk."
+          />
+
+          <section class="selector-grid">
+            <article class="selector-card">
+              <p class="selector-label">Aircraft</p>
+              <label class="ui-field">
+                <span>Kies aircraft</span>
+                <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+                  @for (aircraft of aircraftList(); track aircraft.id) {
+                    <option [ngValue]="aircraft.id">{{ aircraft.an }}{{ aircraft.serialNumber ? ' (' + aircraft.serialNumber + ')' : '' }}</option>
+                  }
+                </select>
+              </label>
+            </article>
+
+            <article class="selector-card">
+              <p class="selector-label">Panel</p>
+              <label class="ui-field">
+                <span>Kies panel</span>
+                <select [disabled]="panels().length === 0" [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+                  @for (panel of panels(); track panel.id) {
+                    <option [ngValue]="panel.id">Panel {{ panel.panelNumber }} ({{ panel.holeCount }})</option>
+                  }
+                </select>
+              </label>
+            </article>
+          </section>
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <div class="filter-bar">
+                <label class="ui-field search-box">
+                  <span>Zoeken</span>
+                  <input
+                    [(ngModel)]="searchTerm"
+                    name="search"
+                    placeholder="Zoek op hole, status of MDR-code"
+                  />
+                </label>
+
+                <div class="filter-meta">
+                  <span class="ui-chip brand">{{ filteredHoles().length }} van {{ holes().length }}</span>
+                  @if (selectedAircraft()) {
+                    <span class="ui-chip">{{ selectedAircraft()!.an }}</span>
+                  }
+                  @if (selectedPanel()) {
+                    <span class="ui-chip">Panel {{ selectedPanel()!.panelNumber }}</span>
+                  }
+                </div>
+              </div>
+
+              @if (loading()) {
+                <div class="ui-banner info"><span>Gegevens laden...</span></div>
+              } @else if (loadError()) {
+                <div class="ui-banner error">
+                  <span>{{ loadError() }}</span>
+                  <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+                </div>
+              } @else if (holes().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen holes"
+                  title="Nog geen holes beschikbaar voor dit panel"
+                  description="Kies een ander panel of laad de brondata opnieuw als je hier wel records verwacht."
+                />
+              } @else {
+                <app-hole-list [holes]="filteredHoles()" (open)="openHole($event)" />
+              }
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>

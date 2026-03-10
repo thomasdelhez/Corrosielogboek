@@ -1,0 +1,27 @@
+    .field{display:grid;gap:7px;font-weight:600;color:var(--color-ink)}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--color-line-strong);border-radius:14px;padding:11px 13px;background:#fff;color:var(--color-ink-strong)}
+    .field.full{grid-column:1/-1}
+    textarea{min-height:84px;resize:vertical}
+    .editor{padding:18px;border-radius:18px;border:1px solid var(--color-line);background:linear-gradient(180deg,#fff,#f6f9fc);box-shadow:var(--shadow-panel)}
+    .nested-editor{margin-top:8px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .actions.no-top{margin-top:0}
+    .btn-primary,.btn-secondary,.btn-danger{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;border-radius:999px;border:1px solid transparent;font-weight:700;cursor:pointer
+    }
+    .btn-primary{background:var(--surface-brand);color:#fff;box-shadow:0 10px 24px rgba(21,94,239,.22)}
+    .btn-secondary{background:var(--surface-subtle);color:var(--color-ink);border-color:var(--color-line)}
+    .btn-danger{background:var(--color-danger-soft);color:var(--color-danger-ink);border-color:rgba(163,59,54,.18)}
+    .inline{min-height:34px;padding:0 12px;margin-left:6px}
+    .queue-card{padding:18px;border-radius:18px;border:1px solid var(--color-line);background:#fff;box-shadow:var(--shadow-panel)}
+    .queue-card h3{margin:0 0 8px;font-size:1.05rem;color:var(--color-ink-strong)}
+    .detail-row{margin:4px 0;color:var(--color-ink)}
+    .remark-input{flex:1;min-width:260px}
+    .remark-index{width:90px}
+    .table-wrap{border:1px solid var(--color-line);border-radius:18px;overflow:auto;background:#fff}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 14px;border-bottom:1px solid rgba(38,68,96,.08);text-align:left}
+    th{background:#f5f8fb;color:var(--color-ink-muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em}
+    .inline-errors{margin:10px 0 0;padding-left:18px;color:#b91c1c;display:grid;gap:4px}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}}
