@@ -1,8 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
+import { StatusPillComponent } from '../../../shared/components/status-pill.component';
 import { ApiErrorService } from '../../../shared/services/api-error.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { AppUser, UserAuditEvent } from '../models/corrosion.models';
@@ -10,161 +12,202 @@ import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
   selector: 'app-admin-users-page',
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [FormsModule, DatePipe, PageHeaderComponent, EmptyStateComponent, StatusPillComponent],
   template: `
-    <main class="page">
-      <a routerLink="/" class="back">← Hoofdmenu</a>
-      <section class="card">
-        <h2>Admin — User Control</h2>
-        <p class="subtitle">Alleen admins kunnen users aanmaken en rollen toekennen.</p>
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Beheer"
+            title="Gebruikersbeheer"
+            subtitle="Beheer accounts, rollen en activatie zonder losse beheerflows of onduidelijke tabelacties."
+            backLink="/"
+            backLabel="Hoofdmenu"
+          />
 
-        <section class="subcard">
-          <h3>Nieuwe user</h3>
-          <div class="grid">
-            <label class="field">
-              <span>Username</span>
-              <input [(ngModel)]="newUsername" />
-            </label>
-            <label class="field">
-              <span>Password</span>
-              <input [(ngModel)]="newPassword" type="password" />
-            </label>
-            <label class="field">
-              <span>Rol</span>
-              <select [(ngModel)]="newRole">
-                @for (role of roles; track role) {
-                  <option [value]="role">{{ role }}</option>
-                }
-              </select>
-            </label>
-          </div>
-          <button class="btn-primary" type="button" (click)="createUser()">User aanmaken</button>
-        </section>
-
-        <section class="subcard" style="margin-top:12px;">
-          <h3>Bestaande users</h3>
-          @if (loading()) {
-            <p class="state">Laden...</p>
-          } @else if (users().length === 0) {
-            <p class="state">Geen users gevonden.</p>
-          } @else {
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>ID</th><th>Username</th><th>Rol</th><th>Actief</th><th>Acties</th></tr>
-                </thead>
-                <tbody>
-                  @for (user of users(); track user.id) {
-                    <tr>
-                      <td>{{ user.id }}</td>
-                      <td>{{ user.username }}</td>
-                      <td>
-                        <select [ngModel]="roleDraft(user)" (ngModelChange)="setRoleDraft(user.id, $event)">
-                          @for (role of roles; track role) {
-                            <option [value]="role">{{ role }}</option>
-                          }
-                        </select>
-                      </td>
-                      <td>
-                        <select [ngModel]="activeDraft(user)" (ngModelChange)="setActiveDraft(user.id, $event)">
-                          <option [ngValue]="true">Ja</option>
-                          <option [ngValue]="false">Nee</option>
-                        </select>
-                      </td>
-                      <td>
-                        <div class="actions">
-                          <button class="btn-secondary" type="button" (click)="saveUserChanges(user)" [disabled]="isRowBusy(user.id) || !hasRowChanges(user)">
-                            {{ isRowBusy(user.id) ? 'Bezig...' : 'Opslaan' }}
-                          </button>
-                          <button class="btn-danger" type="button" (click)="deleteUser(user)" [disabled]="isRowBusy(user.id)">
-                            {{ isRowBusy(user.id) ? 'Bezig...' : 'Verwijder' }}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+          @if (loadError()) {
+            <div class="ui-banner error">
+              <span>{{ loadError() }}</span>
+              <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
             </div>
           }
-        </section>
 
-        <section class="subcard" style="margin-top:12px;">
-          <h3>Auditlog userbeheer</h3>
-          <div class="grid">
-            <label class="field">
-              <span>Actie</span>
-              <select [(ngModel)]="auditAction" (ngModelChange)="onAuditFilterChange()">
-                <option value="">Alle acties</option>
-                @for (action of auditActionOptions; track action) {
-                  <option [value]="action">{{ action }}</option>
-                }
-              </select>
-            </label>
-            <label class="field">
-              <span>Gebruiker</span>
-              <input [(ngModel)]="auditUsername" (ngModelChange)="onAuditFilterChange()" placeholder="admin" />
-            </label>
-            <label class="field">
-              <span>Van datum</span>
-              <input [(ngModel)]="auditDateFrom" (ngModelChange)="onAuditFilterChange()" type="datetime-local" />
-            </label>
-            <label class="field">
-              <span>Tot datum</span>
-              <input [(ngModel)]="auditDateTo" (ngModelChange)="onAuditFilterChange()" type="datetime-local" />
-            </label>
-            <label class="field">
-              <span>Max regels</span>
-              <input [(ngModel)]="auditLimit" (ngModelChange)="onAuditFilterChange()" type="number" min="1" max="500" />
-            </label>
-          </div>
-          <div class="actions">
-            <button class="btn-secondary" type="button" (click)="resetAuditFilters()">Reset filters</button>
-          </div>
-          @if (loading()) {
-            <p class="state">Laden...</p>
-          } @else if (auditEvents().length === 0) {
-            <p class="state">Nog geen audit events.</p>
-          } @else {
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>Wanneer</th><th>Wie</th><th>Actie</th><th>User ID</th><th>Details</th></tr>
-                </thead>
-                <tbody>
-                  @for (event of auditEvents(); track event.id) {
-                    <tr>
-                      <td>{{ event.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
-                      <td>{{ event.username }}</td>
-                      <td>{{ event.action }}</td>
-                      <td>{{ event.entityId ?? '-' }}</td>
-                      <td>{{ event.details ?? '-' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+          <section class="ui-filter-grid">
+            <article class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <p class="ui-filter-label">Nieuwe user</p>
+                <div class="ui-form-grid">
+                  <label class="ui-field">
+                    <span>Username</span>
+                    <input [(ngModel)]="newUsername" />
+                  </label>
+                  <label class="ui-field">
+                    <span>Password</span>
+                    <input [(ngModel)]="newPassword" type="password" />
+                  </label>
+                  <label class="ui-field full">
+                    <span>Rol</span>
+                    <select [(ngModel)]="newRole">
+                      @for (role of roles; track role) {
+                        <option [value]="role">{{ role }}</option>
+                      }
+                    </select>
+                  </label>
+                </div>
+                <div class="ui-actions">
+                  <button class="ui-btn" type="button" (click)="createUser()">User aanmaken</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <p class="ui-filter-label">Audit filters</p>
+                <div class="ui-form-grid">
+                  <label class="ui-field">
+                    <span>Actie</span>
+                    <select [(ngModel)]="auditAction" (ngModelChange)="onAuditFilterChange()">
+                      <option value="">Alle acties</option>
+                      @for (action of auditActionOptions; track action) {
+                        <option [value]="action">{{ action }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="ui-field">
+                    <span>Gebruiker</span>
+                    <input [(ngModel)]="auditUsername" (ngModelChange)="onAuditFilterChange()" placeholder="admin" />
+                  </label>
+                  <label class="ui-field">
+                    <span>Van datum</span>
+                    <input [(ngModel)]="auditDateFrom" (ngModelChange)="onAuditFilterChange()" type="datetime-local" />
+                  </label>
+                  <label class="ui-field">
+                    <span>Tot datum</span>
+                    <input [(ngModel)]="auditDateTo" (ngModelChange)="onAuditFilterChange()" type="datetime-local" />
+                  </label>
+                  <label class="ui-field full">
+                    <span>Max regels</span>
+                    <input [(ngModel)]="auditLimit" (ngModelChange)="onAuditFilterChange()" type="number" min="1" max="500" />
+                  </label>
+                </div>
+                <div class="ui-actions">
+                  <button class="ui-btn-secondary" type="button" (click)="resetAuditFilters()">Reset filters</button>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <app-page-header title="Bestaande users" subtitle="Wijzig rollen en activatie direct in het overzicht." />
+
+              @if (loading()) {
+                <div class="ui-banner info"><span>Users laden...</span></div>
+              } @else if (users().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen users"
+                  title="Nog geen users gevonden"
+                  description="Maak hierboven de eerste gebruiker aan of laad de pagina opnieuw."
+                />
+              } @else {
+                <div class="ui-table-wrap">
+                  <table class="ui-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Rol</th>
+                        <th>Status</th>
+                        <th>Acties</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (user of users(); track user.id) {
+                        <tr>
+                          <td>{{ user.id }}</td>
+                          <td>{{ user.username }}</td>
+                          <td>
+                            <select [ngModel]="roleDraft(user)" (ngModelChange)="setRoleDraft(user.id, $event)">
+                              @for (role of roles; track role) {
+                                <option [value]="role">{{ role }}</option>
+                              }
+                            </select>
+                          </td>
+                          <td>
+                            <div class="status-stack">
+                              <app-status-pill [label]="activeDraft(user) ? 'Actief' : 'Inactief'" [state]="activeDraft(user) ? 'approved' : 'rejected'" />
+                              <select [ngModel]="activeDraft(user)" (ngModelChange)="setActiveDraft(user.id, $event)">
+                                <option [ngValue]="true">Ja</option>
+                                <option [ngValue]="false">Nee</option>
+                              </select>
+                            </div>
+                          </td>
+                          <td>
+                            <div class="ui-actions row-actions">
+                              <button class="ui-btn-secondary" type="button" (click)="saveUserChanges(user)" [disabled]="isRowBusy(user.id) || !hasRowChanges(user)">
+                                {{ isRowBusy(user.id) ? 'Bezig...' : 'Opslaan' }}
+                              </button>
+                              <button class="ui-btn-danger" type="button" (click)="deleteUser(user)" [disabled]="isRowBusy(user.id)">
+                                {{ isRowBusy(user.id) ? 'Bezig...' : 'Verwijder' }}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
             </div>
-          }
-        </section>
+          </section>
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <app-page-header title="Auditlog userbeheer" subtitle="Recente user-acties en wijzigingen voor beheercontrole." />
+
+              @if (loading()) {
+                <div class="ui-banner info"><span>Auditlog laden...</span></div>
+              } @else if (auditEvents().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen auditregels"
+                  title="Nog geen user-audit events"
+                  description="Pas filters aan of voer eerst een gebruikerswijziging uit om auditregels te zien."
+                />
+              } @else {
+                <div class="ui-table-wrap">
+                  <table class="ui-table">
+                    <thead>
+                      <tr>
+                        <th>Wanneer</th>
+                        <th>Wie</th>
+                        <th>Actie</th>
+                        <th>User ID</th>
+                        <th>Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (event of auditEvents(); track event.id) {
+                        <tr>
+                          <td>{{ event.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
+                          <td>{{ event.username }}</td>
+                          <td><app-status-pill [label]="event.action" [state]="event.action" /></td>
+                          <td>{{ event.entityId ?? '-' }}</td>
+                          <td>{{ event.details ?? '-' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
       </section>
     </main>
   `,
   styles: `
-    .page{max-width:980px;margin:0 auto;padding:24px}.back{text-decoration:none;color:#334155;font-weight:600}
-    .card{border:1px solid #e2e8f0;border-radius:14px;padding:20px;background:#fff}.subtitle{color:#64748b}
-    .subcard{border:1px solid #e2e8f0;border-radius:12px;padding:12px}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
-    .field{display:grid;gap:6px;font-weight:600;color:#334155}
-    input,select{padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px}
-    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-    .btn-primary,.btn-secondary,.btn-danger{border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
-    .btn-primary{background:#2563eb;color:#fff}.btn-secondary{background:#e2e8f0;color:#334155}
-    .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
-    .btn-secondary:disabled,.btn-danger:disabled{opacity:.5;cursor:not-allowed}
-    .table-wrap{border:1px solid #e2e8f0;border-radius:12px;overflow:auto}
-    table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left}
-    .state{color:#64748b}
-    @media(max-width:820px){.grid{grid-template-columns:1fr}}
+    .status-stack{display:grid;gap:8px;min-width:140px}
+    .row-actions{justify-content:flex-start}
   `,
 })
 export class AdminUsersPage implements OnInit {
@@ -178,6 +221,7 @@ export class AdminUsersPage implements OnInit {
   protected readonly activeDrafts = signal<Record<number, boolean>>({});
   protected readonly busyRows = signal<Record<number, boolean>>({});
   protected readonly loading = signal<boolean>(true);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly roles: Array<'engineer' | 'reviewer' | 'admin'> = ['engineer', 'reviewer', 'admin'];
   protected readonly auditActionOptions = ['create', 'update_role', 'set_active', 'delete', 'update_self'];
 
@@ -257,8 +301,7 @@ export class AdminUsersPage implements OnInit {
 
     const previousRole = user.role;
     const previousActive = user.isActive;
-    this.users.update((rows) => rows.map((r) => (r.id === user.id ? { ...r, role: nextRole } : r)));
-    this.users.update((rows) => rows.map((r) => (r.id === user.id ? { ...r, isActive: nextActive } : r)));
+    this.users.update((rows) => rows.map((r) => (r.id === user.id ? { ...r, role: nextRole, isActive: nextActive } : r)));
     this.busyRows.update((rows) => ({ ...rows, [user.id]: true }));
     try {
       let updated = user;
@@ -274,8 +317,7 @@ export class AdminUsersPage implements OnInit {
       this.toast.success('Gebruiker bijgewerkt.');
       await this.loadAuditEvents();
     } catch (e: unknown) {
-      this.users.update((rows) => rows.map((r) => (r.id === user.id ? { ...r, role: previousRole } : r)));
-      this.users.update((rows) => rows.map((r) => (r.id === user.id ? { ...r, isActive: previousActive } : r)));
+      this.users.update((rows) => rows.map((r) => (r.id === user.id ? { ...r, role: previousRole, isActive: previousActive } : r)));
       this.roleDrafts.update((drafts) => ({ ...drafts, [user.id]: previousRole }));
       this.activeDrafts.update((drafts) => ({ ...drafts, [user.id]: previousActive }));
       this.toast.error(this.apiErrors.toUserMessage(e, 'Gebruiker bijwerken mislukt'));
@@ -317,14 +359,17 @@ export class AdminUsersPage implements OnInit {
     await this.loadAuditEvents();
   }
 
-  private async reload(): Promise<void> {
+  async reload(): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
     try {
       const rows = await firstValueFrom(this.svc.listUsers());
       this.users.set(rows);
       this.roleDrafts.set(Object.fromEntries(rows.map((u) => [u.id, u.role])) as Record<number, 'engineer' | 'reviewer' | 'admin'>);
       this.activeDrafts.set(Object.fromEntries(rows.map((u) => [u.id, u.isActive])) as Record<number, boolean>);
       await this.loadAuditEvents();
+    } catch (e: unknown) {
+      this.loadError.set(this.apiErrors.toUserMessage(e, 'Gebruikersbeheer laden mislukt'));
     } finally {
       this.loading.set(false);
     }

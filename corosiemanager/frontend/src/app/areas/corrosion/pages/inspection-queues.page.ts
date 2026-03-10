@@ -2,6 +2,11 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
+import { StatusPillComponent } from '../../../shared/components/status-pill.component';
+import { ApiErrorService } from '../../../shared/services/api-error.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { Aircraft, InspectionQueueRow, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
@@ -9,85 +14,122 @@ type InspectionQueue = 'all' | 'to_be_inspected' | 'marked_as_corroded' | 'marke
 
 @Component({
   selector: 'app-inspection-queues-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PageHeaderComponent, EmptyStateComponent, StatusPillComponent],
   template: `
-    <main class="page">
-      <a routerLink="/" class="back">← Hoofdmenu</a>
-      <section class="card">
-        <h2>Inspectie Queues</h2>
-        <p class="subtitle">To be inspected, marked as corroded, rifled en clean.</p>
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Queue control"
+            title="Inspectie queues"
+            subtitle="Volg alle inspectie-uitkomsten per aircraft en panel vanuit één consistent dashboard."
+            backLink="/"
+            backLabel="Hoofdmenu"
+          />
 
-        <div class="filters">
-          <label class="field">
-            <span>Aircraft</span>
-            <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
-              @for (a of aircraft(); track a.id) { <option [ngValue]="a.id">{{ a.an }}</option> }
-            </select>
-          </label>
+          <section class="ui-filter-grid">
+            <article class="ui-filter-card">
+              <p class="ui-filter-label">Context</p>
+              <div class="ui-grid two">
+                <label class="ui-field">
+                  <span>Aircraft</span>
+                  <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+                    @for (a of aircraft(); track a.id) {
+                      <option [ngValue]="a.id">{{ a.an }}</option>
+                    }
+                  </select>
+                </label>
 
-          <label class="field">
-            <span>Panel</span>
-            <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
-              <option [ngValue]="null">Alle panels</option>
-              @for (p of panels(); track p.id) { <option [ngValue]="p.id">Panel {{ p.panelNumber }}</option> }
-            </select>
-          </label>
+                <label class="ui-field">
+                  <span>Panel</span>
+                  <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+                    <option [ngValue]="null">Alle panels</option>
+                    @for (p of panels(); track p.id) {
+                      <option [ngValue]="p.id">Panel {{ p.panelNumber }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+            </article>
 
-          <label class="field grow">
-            <span>Zoeken</span>
-            <input [ngModel]="search()" (ngModelChange)="search.set($event); reload()" placeholder="Hole, panel, AN of status" />
-          </label>
-        </div>
+            <article class="ui-filter-card">
+              <p class="ui-filter-label">Zoeken</p>
+              <label class="ui-field">
+                <span>Filter op hole, panel, aircraft of status</span>
+                <input [ngModel]="search()" (ngModelChange)="search.set($event); reload()" placeholder="Hole, panel, AN of status" />
+              </label>
+            </article>
+          </section>
 
-        <div class="queue-tabs">
-          <button [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles ({{ allRows().length }})</button>
-          <button [class.active]="queue() === 'to_be_inspected'" (click)="setQueue('to_be_inspected')">To be inspected ({{ toInspectCount() }})</button>
-          <button [class.active]="queue() === 'marked_as_corroded'" (click)="setQueue('marked_as_corroded')">Corroded ({{ corrodedCount() }})</button>
-          <button [class.active]="queue() === 'marked_as_rifled'" (click)="setQueue('marked_as_rifled')">Rifled ({{ rifledCount() }})</button>
-          <button [class.active]="queue() === 'marked_as_clean'" (click)="setQueue('marked_as_clean')">Clean ({{ cleanCount() }})</button>
-        </div>
+          <section class="ui-queue-bar">
+            <button class="ui-queue-chip" type="button" [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles <span>{{ allRows().length }}</span></button>
+            <button class="ui-queue-chip" type="button" [class.active]="queue() === 'to_be_inspected'" (click)="setQueue('to_be_inspected')">To be inspected <span>{{ toInspectCount() }}</span></button>
+            <button class="ui-queue-chip" type="button" [class.active]="queue() === 'marked_as_corroded'" (click)="setQueue('marked_as_corroded')">Corroded <span>{{ corrodedCount() }}</span></button>
+            <button class="ui-queue-chip" type="button" [class.active]="queue() === 'marked_as_rifled'" (click)="setQueue('marked_as_rifled')">Rifled <span>{{ rifledCount() }}</span></button>
+            <button class="ui-queue-chip" type="button" [class.active]="queue() === 'marked_as_clean'" (click)="setQueue('marked_as_clean')">Clean <span>{{ cleanCount() }}</span></button>
+          </section>
 
-        @if (loading()) {
-          <p class="state">Laden...</p>
-        } @else if (rows().length === 0) {
-          <p class="state">Geen resultaten.</p>
-        } @else {
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Aircraft</th><th>Panel</th><th>Hole</th><th>Queue</th><th>Inspection status</th><th></th></tr></thead>
-              <tbody>
-                @for (r of rows(); track r.holeId) {
-                  <tr>
-                    <td>{{ r.aircraftAn ?? '-' }}</td>
-                    <td>{{ r.panelNumber }}</td>
-                    <td>#{{ r.holeNumber }}</td>
-                    <td>{{ queueLabel(r.queueStatus) }}</td>
-                    <td>{{ r.inspectionStatus ?? '-' }}</td>
-                    <td><a [routerLink]="['/corrosion', r.holeId]" class="link">Open hole</a></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+          <div class="ui-summary-row">
+            <span class="ui-chip">To inspect {{ toInspectCount() }}</span>
+            <span class="ui-chip">Corroded {{ corrodedCount() }}</span>
+            <span class="ui-chip">Rifled {{ rifledCount() }}</span>
+            <span class="ui-chip">Clean {{ cleanCount() }}</span>
           </div>
-        }
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              @if (loading()) {
+                <div class="ui-banner info"><span>Inspectie queues laden...</span></div>
+              } @else if (loadError()) {
+                <div class="ui-banner error">
+                  <span>{{ loadError() }}</span>
+                  <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+                </div>
+              } @else if (rows().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen resultaten"
+                  title="Geen inspectie-items gevonden"
+                  description="Pas je filters aan of kies een andere queue om resultaten te tonen."
+                />
+              } @else {
+                <div class="ui-table-wrap">
+                  <table class="ui-table">
+                    <thead>
+                      <tr>
+                        <th>Aircraft</th>
+                        <th>Panel</th>
+                        <th>Hole</th>
+                        <th>Queue</th>
+                        <th>Inspection status</th>
+                        <th>Actie</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of rows(); track r.holeId) {
+                        <tr>
+                          <td>{{ r.aircraftAn ?? '-' }}</td>
+                          <td>{{ r.panelNumber }}</td>
+                          <td>#{{ r.holeNumber }}</td>
+                          <td><app-status-pill [label]="queueLabel(r.queueStatus)" [state]="r.queueStatus" /></td>
+                          <td>{{ r.inspectionStatus ?? '-' }}</td>
+                          <td><a [routerLink]="['/corrosion', r.holeId]" class="ui-btn-ghost">Open hole</a></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
       </section>
     </main>
-  `,
-  styles: `
-    .page{max-width:1180px;margin:0 auto;padding:24px}.back{text-decoration:none;color:#334155;font-weight:600}
-    .card{border:1px solid #e2e8f0;border-radius:14px;padding:20px;background:#fff}.subtitle{color:#64748b}
-    .filters{display:flex;gap:10px;flex-wrap:wrap}.field{display:grid;gap:6px;font-weight:600;color:#334155}.grow{flex:1;min-width:220px}
-    input,select{padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px}
-    .queue-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-    .queue-tabs button{border:1px solid #cbd5e1;background:#f8fafc;padding:6px 10px;border-radius:999px;font-weight:700;cursor:pointer}
-    .queue-tabs button.active{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
-    .table-wrap{border:1px solid #e2e8f0;border-radius:12px;overflow:auto}
-    table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
-    .state{color:#64748b}.link{text-decoration:none;color:#2563eb;font-weight:700}
   `,
 })
 export class InspectionQueuesPage implements OnInit {
   private readonly svc = inject(CorrosionService);
+  private readonly apiErrors = inject(ApiErrorService);
+  private readonly toast = inject(ToastService);
 
   protected readonly aircraft = signal<Aircraft[]>([]);
   protected readonly panels = signal<PanelSummary[]>([]);
@@ -98,6 +140,7 @@ export class InspectionQueuesPage implements OnInit {
   protected readonly queue = signal<InspectionQueue>('all');
   protected readonly search = signal<string>('');
   protected readonly loading = signal<boolean>(true);
+  protected readonly loadError = signal<string | null>(null);
 
   protected readonly toInspectCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'to_be_inspected').length);
   protected readonly corrodedCount = computed(() => this.allRows().filter((x) => x.queueStatus === 'marked_as_corroded').length);
@@ -134,20 +177,28 @@ export class InspectionQueuesPage implements OnInit {
 
   async reload(): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
     const filters = {
       aircraftId: this.selectedAircraftId(),
       panelId: this.selectedPanelId(),
       q: this.search().trim() || null,
     };
 
-    const [allRows, rows] = await Promise.all([
-      firstValueFrom(this.svc.listInspectionDashboard({ ...filters, queue: 'all' })),
-      firstValueFrom(this.svc.listInspectionDashboard({ ...filters, queue: this.queue() })),
-    ]);
+    try {
+      const [allRows, rows] = await Promise.all([
+        firstValueFrom(this.svc.listInspectionDashboard({ ...filters, queue: 'all' })),
+        firstValueFrom(this.svc.listInspectionDashboard({ ...filters, queue: this.queue() })),
+      ]);
 
-    this.allRows.set(allRows);
-    this.rows.set(rows);
-    this.loading.set(false);
+      this.allRows.set(allRows);
+      this.rows.set(rows);
+    } catch (e: unknown) {
+      const msg = this.apiErrors.toUserMessage(e, 'Inspectie queues laden mislukt');
+      this.loadError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   queueLabel(queue: InspectionQueueRow['queueStatus']): string {
