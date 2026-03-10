@@ -1,4 +1,4 @@
-# F35 Corrosie Logboek Backend (MVP scaffold)
+# F35 Corrosie Logboek Backend
 
 ## Run locally
 
@@ -7,6 +7,7 @@ cd corosiemanager/backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 uvicorn app.main:app --reload --port 8001
 ```
 
@@ -15,6 +16,14 @@ Environment variables:
 - `DATABASE_URL` (default: `postgresql+psycopg://corrosie:corrosie@localhost:5432/corrosie`)
 - `ALLOWED_ORIGINS` (default: `http://127.0.0.1:4200,http://localhost:4200`)
 - `AUTO_CREATE_SCHEMA` (default: `false`; set `true` only for local bootstrap)
+- `SEED_DEMO_USERS` (default: `true`; disable outside local development)
+- `SESSION_TTL_HOURS` (default: `12`)
+- `LOG_LEVEL` (default: `INFO`)
+
+Health endpoints:
+
+- `GET /health`
+- `GET /ready`
 
 ## Database migrations (Alembic)
 
@@ -40,7 +49,7 @@ alembic revision --autogenerate -m "describe change"
 alembic upgrade head
 ```
 
-## Access import script (v1+)
+## Access import script
 
 Imports Access data into MVP tables:
 - core: `aircraft`, `panel`, `hole`, `hole_step`, `hole_part`
@@ -55,6 +64,7 @@ python scripts/import_access.py --accdb "../Tier 2 MDR Tool V3.0 - kopie.accdb"
 ```
 
 By default the script truncates core tables first. Use `--append` to keep existing rows.
+Use `--dry-run` to validate an import without committing any changes.
 
 Note: the importer deduplicates `AircraftNrT` records by `AN` (Access source can contain duplicates).
 If a hole references a panel ID not present in `PanelNrT`, the importer creates a placeholder panel row.
@@ -72,6 +82,13 @@ Quick API sanity check:
 ```bash
 cd corosiemanager/backend
 bash scripts/smoke_api.sh http://127.0.0.1:8002
+```
+
+## Tests
+
+```bash
+cd corosiemanager/backend
+python -m unittest
 ```
 
 ## First implemented endpoints
