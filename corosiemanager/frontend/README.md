@@ -9,6 +9,13 @@ npm ci
 ng serve
 ```
 
+Windows PowerShell:
+
+```powershell
+npm ci
+npm start
+```
+
 Open `http://localhost:4200/` once the dev server is running.
 
 ## Runtime config
@@ -20,7 +27,7 @@ The app reads its API base URL from:
 
 Example:
 
-```bash
+```json
 {
   "apiBaseUrl": "http://127.0.0.1:8002/api/v1"
 }
@@ -46,4 +53,12 @@ Run the API locally on port `8002` so the default config works:
 cd ../backend
 source .venv/bin/activate
 .venv/bin/uvicorn app.main:app --reload --port 8002
+```
+
+Windows PowerShell:
+
+```powershell
+cd ..\backend
+.venv\Scripts\Activate.ps1
+.venv\Scripts\uvicorn app.main:app --reload --port 8002
 ```

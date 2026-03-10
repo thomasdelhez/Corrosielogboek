@@ -1,9 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../../core/security/services/authentication.service';
 import { PermissionService } from '../../../core/security/services/permission.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
+import { StatusPillComponent } from '../../../shared/components/status-pill.component';
 import { ApiErrorService } from '../../../shared/services/api-error.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../models/corrosion.inputs';
@@ -12,52 +15,53 @@ import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
   selector: 'app-corrosion-detail-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, PageHeaderComponent, StatusPillComponent, EmptyStateComponent],
   template: `
-    <main class="page">
-      <a class="back-link" routerLink="/corrosion">← Terug naar overzicht</a>
-      <section class="card">
-        <header class="card-header">
-          <div>
-            <h2>Hole detail</h2>
-            <p class="subtitle">Werk kerngegevens, steps en parts bij op één plek.</p>
-          </div>
-          @if (hole(); as h) {
-            <div class="badge-wrap">
-              <span class="badge">Hole #{{ h.holeNumber }}</span>
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Corrosie detail"
+            title="Hole detail"
+            subtitle="Werk kerngegevens, steps en parts gecontroleerd bij vanuit één detailweergave."
+            backLink="/corrosion"
+            backLabel="Terug naar overzicht"
+          >
+            @if (hole(); as h) {
+              <span class="ui-chip brand">Hole #{{ h.holeNumber }}</span>
               @if (h.inspectionStatus) {
-                <span class="badge badge-soft">{{ h.inspectionStatus }}</span>
+                <app-status-pill [label]="h.inspectionStatus" [state]="h.inspectionStatus" />
               }
-            </div>
-          }
-        </header>
+            }
+          </app-page-header>
 
         @if (hole()) {
           @if (hole(); as h) {
             <section class="meta-strip">
-              <span class="meta-pill">MDR: {{ h.mdrCode || '-' }}</span>
-              <span class="meta-pill">Versie: {{ h.mdrVersion || '-' }}</span>
-              <span class="meta-pill">Fit: {{ h.fit || '-' }}</span>
-              <span class="meta-pill">Final size: {{ h.finalHoleSize ?? '-' }}</span>
+              <span class="ui-chip">MDR: {{ h.mdrCode || '-' }}</span>
+              <span class="ui-chip">Versie: {{ h.mdrVersion || '-' }}</span>
+              <span class="ui-chip">Fit: {{ h.fit || '-' }}</span>
+              <span class="ui-chip">Final size: {{ h.finalHoleSize ?? '-' }}</span>
             </section>
           }
-          <form class="form" (ngSubmit)="saveCore()">
+          <form class="ui-section" (ngSubmit)="saveCore()">
+            <div class="ui-section-inner">
             <div class="section-head">
               <h3>Kerngegevens</h3>
             </div>
             @if (!canEditHole()) {
-              <p class="readonly-note">Alleen engineer/admin kan hole-data wijzigen.</p>
+              <p class="ui-banner warning">Alleen engineer/admin kan hole-data wijzigen.</p>
             }
             <fieldset [disabled]="!canEditHole()">
-              <div class="grid">
-                <label class="field"><span>Max BP diameter</span><input [(ngModel)]="form.maxBpDiameter" name="maxBpDiameter" type="number" /></label>
-                <label class="field"><span>Final hole size</span><input [(ngModel)]="form.finalHoleSize" name="finalHoleSize" type="number" /></label>
-                <label class="field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
-                <label class="field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
-                <label class="field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
-                <label class="field"><span>TOTAL StackUp Length</span><input [(ngModel)]="form.totalStackupLength" name="totalStackupLength" type="text" /></label>
-                <label class="field"><span>Stack up</span><input [(ngModel)]="form.stackUp" name="stackUp" type="number" /></label>
-                <label class="field">
+              <div class="ui-grid two">
+                <label class="ui-field"><span>Max BP diameter</span><input [(ngModel)]="form.maxBpDiameter" name="maxBpDiameter" type="number" /></label>
+                <label class="ui-field"><span>Final hole size</span><input [(ngModel)]="form.finalHoleSize" name="finalHoleSize" type="number" /></label>
+                <label class="ui-field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
+                <label class="ui-field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
+                <label class="ui-field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
+                <label class="ui-field"><span>TOTAL StackUp Length</span><input [(ngModel)]="form.totalStackupLength" name="totalStackupLength" type="text" /></label>
+                <label class="ui-field"><span>Stack up</span><input [(ngModel)]="form.stackUp" name="stackUp" type="number" /></label>
+                <label class="ui-field">
                   <span>Sleeve/Bushings</span>
                   <select [(ngModel)]="form.sleeveBushings" name="sleeveBushings">
                     <option [ngValue]="null">-- Selecteer --</option>
@@ -66,7 +70,7 @@ import { CorrosionService } from '../services/corrosion.service';
                     }
                   </select>
                 </label>
-                <label class="field">
+                <label class="ui-field">
                   <span>Nutplate Inspection</span>
                   <select [(ngModel)]="form.nutplateInspection" name="nutplateInspection">
                     <option [ngValue]="null">-- Selecteer --</option>
@@ -75,7 +79,7 @@ import { CorrosionService } from '../services/corrosion.service';
                     }
                   </select>
                 </label>
-                <label class="field">
+                <label class="ui-field">
                   <span>Nutplate Surface Corrosion</span>
                   <select [(ngModel)]="form.nutplateSurfaceCorrosion" name="nutplateSurfaceCorrosion">
                     <option [ngValue]="null">-- Selecteer --</option>
@@ -84,9 +88,9 @@ import { CorrosionService } from '../services/corrosion.service';
                     }
                   </select>
                 </label>
-                <label class="field"><span>TOTAL Structure Thickness</span><input [(ngModel)]="form.totalStructureThickness" name="totalStructureThickness" type="text" /></label>
-                <label class="field"><span>FlexHone</span><input [(ngModel)]="form.flexhone" name="flexhone" type="text" /></label>
-                <label class="field">
+                <label class="ui-field"><span>TOTAL Structure Thickness</span><input [(ngModel)]="form.totalStructureThickness" name="totalStructureThickness" type="text" /></label>
+                <label class="ui-field"><span>FlexHone</span><input [(ngModel)]="form.flexhone" name="flexhone" type="text" /></label>
+                <label class="ui-field">
                   <span>Inspection status</span>
                   <select [(ngModel)]="form.inspectionStatus" name="inspectionStatus">
                     <option [ngValue]="null">-- Selecteer status --</option>
@@ -95,26 +99,28 @@ import { CorrosionService } from '../services/corrosion.service';
                     }
                   </select>
                 </label>
-                <label class="field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
-                <label class="field"><span>NDI inspection date</span><input [(ngModel)]="ndiInspectionDateInput" name="ndiInspectionDateInput" type="date" /></label>
-                <label class="field"><span><input [(ngModel)]="form.ndiFinished" name="ndiFinished" type="checkbox" /> NDI Finished</span></label>
-                <label class="field"><span><input [(ngModel)]="form.mdrResubmit" name="mdrResubmit" type="checkbox" /> MDR Resubmit</span></label>
-                <label class="field"><span><input [(ngModel)]="form.countersinked" name="countersinked" type="checkbox" /> Countersinked</span></label>
-                <label class="field"><span><input [(ngModel)]="form.clean" name="clean" type="checkbox" /> Clean</span></label>
-                <label class="field"><span><input [(ngModel)]="form.cutSleeveBushing" name="cutSleeveBushing" type="checkbox" /> Cut Sleeve/Bushing</span></label>
-                <label class="field"><span><input [(ngModel)]="form.installed" name="installed" type="checkbox" /> Installed</span></label>
-                <label class="field"><span><input [(ngModel)]="form.primer" name="primer" type="checkbox" /> Primer</span></label>
-                <label class="field"><span><input [(ngModel)]="form.surfaceCorrosion" name="surfaceCorrosion" type="checkbox" /> Surface Corrosion</span></label>
-                <label class="field"><span><input [(ngModel)]="form.flexndi" name="flexndi" type="checkbox" /> FlexNDI</span></label>
+                <label class="ui-field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
+                <label class="ui-field"><span>NDI inspection date</span><input [(ngModel)]="ndiInspectionDateInput" name="ndiInspectionDateInput" type="date" /></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.ndiFinished" name="ndiFinished" type="checkbox" /> NDI Finished</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.mdrResubmit" name="mdrResubmit" type="checkbox" /> MDR Resubmit</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.countersinked" name="countersinked" type="checkbox" /> Countersinked</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.clean" name="clean" type="checkbox" /> Clean</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.cutSleeveBushing" name="cutSleeveBushing" type="checkbox" /> Cut Sleeve/Bushing</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.installed" name="installed" type="checkbox" /> Installed</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.primer" name="primer" type="checkbox" /> Primer</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.surfaceCorrosion" name="surfaceCorrosion" type="checkbox" /> Surface Corrosion</span></label>
+                <label class="ui-field"><span><input [(ngModel)]="form.flexndi" name="flexndi" type="checkbox" /> FlexNDI</span></label>
               </div>
-              <div class="actions"><button class="btn-primary" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan kern' }}</button></div>
+              <div class="ui-actions"><button class="ui-btn" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan kern' }}</button></div>
             </fieldset>
+            </div>
           </form>
 
-          <section class="subcard">
+          <section class="ui-section">
+            <div class="ui-section-inner">
             <div class="section-head">
               <h3>Steps</h3>
-              <span class="count-pill">{{ stepInputs.length }}</span>
+              <span class="ui-chip">{{ stepInputs.length }}</span>
             </div>
             <fieldset [disabled]="!canEditHole()">
               @for (s of stepInputs; track $index; let i = $index) {
@@ -130,20 +136,22 @@ import { CorrosionService } from '../services/corrosion.service';
                   <label class="check-inline"><input [(ngModel)]="s.reamFlag" [name]="'ream'+i" type="checkbox" /> Ream</label>
                   <label><input [(ngModel)]="s.mdrFlag" [name]="'mdr'+i" type="checkbox" /> MDR</label>
                   <label><input [(ngModel)]="s.ndiFlag" [name]="'ndi'+i" type="checkbox" /> NDI</label>
-                  <button class="btn-danger" type="button" (click)="removeStep(i)">Verwijder</button>
+                  <button class="ui-btn-danger" type="button" (click)="removeStep(i)">Verwijder</button>
                 </div>
               }
-              <div class="actions">
-                <button class="btn-secondary" type="button" (click)="addStep()">+ Step</button>
-                <button class="btn-primary" type="button" (click)="saveSteps()" [disabled]="savingSteps()">{{ savingSteps() ? 'Opslaan...' : 'Opslaan steps' }}</button>
+              <div class="ui-actions">
+                <button class="ui-btn-secondary" type="button" (click)="addStep()">+ Step</button>
+                <button class="ui-btn" type="button" (click)="saveSteps()" [disabled]="savingSteps()">{{ savingSteps() ? 'Opslaan...' : 'Opslaan steps' }}</button>
               </div>
             </fieldset>
+            </div>
           </section>
 
-          <section class="subcard">
+          <section class="ui-section">
+            <div class="ui-section-inner">
             <div class="section-head">
               <h3>Parts</h3>
-              <span class="count-pill">{{ partInputs.length }}</span>
+              <span class="ui-chip">{{ partInputs.length }}</span>
             </div>
             <p class="subtitle parts-note">Maximaal 4 parts per hole (slots 1 t/m 4).</p>
             <fieldset [disabled]="!canEditHole()">
@@ -172,66 +180,43 @@ import { CorrosionService } from '../services/corrosion.service';
                   </select>
                   <label class="check-inline"><input [(ngModel)]="p.orderedFlag" [name]="'ordered'+i" type="checkbox" /> Ordered</label>
                   <label class="check-inline"><input [(ngModel)]="p.deliveredFlag" [name]="'delivered'+i" type="checkbox" /> Delivered</label>
-                  <button class="btn-danger" type="button" (click)="removePart(i)">Verwijder</button>
+                  <button class="ui-btn-danger" type="button" (click)="removePart(i)">Verwijder</button>
                 </div>
               }
-              <div class="actions">
-                <button class="btn-secondary" type="button" (click)="addPart()" [disabled]="partInputs.length >= 4">+ Part</button>
-                <button class="btn-primary" type="button" (click)="saveParts()" [disabled]="savingParts()">{{ savingParts() ? 'Opslaan...' : 'Opslaan parts' }}</button>
+              <div class="ui-actions">
+                <button class="ui-btn-secondary" type="button" (click)="addPart()" [disabled]="partInputs.length >= 4">+ Part</button>
+                <button class="ui-btn" type="button" (click)="saveParts()" [disabled]="savingParts()">{{ savingParts() ? 'Opslaan...' : 'Opslaan parts' }}</button>
               </div>
             </fieldset>
+            </div>
           </section>
 
         } @else {
           @if (loadError()) {
-            <div class="load-error">
-              <p>{{ loadError() }}</p>
-              <button class="btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+            <div class="ui-banner error">
+              <span>{{ loadError() }}</span>
+              <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
             </div>
           } @else {
-            <p>Laden...</p>
+            <app-empty-state eyebrow="Laden" title="Hole wordt geladen" description="De detaildata wordt opgehaald. Dit duurt meestal maar kort." />
           }
         }
+        </div>
       </section>
     </main>
   `,
   styles: `
-    .page{max-width:1040px;margin:0 auto;padding:24px}
-    .back-link{display:inline-block;margin-bottom:10px;color:#334155;text-decoration:none;font-weight:600}
-    .card,.subcard{background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:20px}
-    .subcard{margin-top:14px;background:#f8fafc}
-    .card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
     .subtitle{margin:6px 0 0;color:#64748b}
     .parts-note{margin:6px 0 12px}
-    .badge-wrap{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
-    .field{display:grid;gap:6px;font-weight:600;color:#334155}
     fieldset{border:0;padding:0;margin:0;min-width:0}
-    input,select{border:1px solid #cbd5e1;border-radius:10px;padding:9px 10px;background:#fff}
+    input,select{border:1px solid var(--color-line-strong);border-radius:14px;padding:10px 12px;background:#fff}
     .row-grid{display:grid;grid-template-columns:80px 120px minmax(130px,1fr) 90px 90px 90px 110px;gap:8px;margin-bottom:8px;align-items:center}
     .row-grid.parts{grid-template-columns:56px minmax(150px,1.6fr) 82px 96px 96px minmax(140px,1.2fr) 92px 98px 96px}
     .check-inline{display:flex;align-items:center;gap:6px;font-weight:600;color:#334155;white-space:nowrap;font-size:.92rem}
-    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-    .btn-primary{background:#2563eb;color:#fff;border:0;border-radius:10px;padding:8px 12px;font-weight:700}
-    .btn-primary:disabled{opacity:.55;cursor:not-allowed}
-    .btn-secondary{background:#e2e8f0;border:0;border-radius:10px;padding:8px 12px;font-weight:700;color:#334155}
-    .btn-secondary:disabled{opacity:.55;cursor:not-allowed}
-    .btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:7px 10px}
-    .btn-danger.inline{margin-left:8px;padding:4px 8px}
-    .badge{background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:4px 10px}
-    .badge-soft{background:#f1f5f9;color:#334155}
     .meta-strip{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
-    .meta-pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#f1f5f9;color:#334155;font-size:.85rem;font-weight:700}
     .section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
     .section-head h3{margin:0}
-    .count-pill{display:inline-block;padding:4px 9px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:.8rem;font-weight:700}
-    .message{color:#15803d;font-weight:600}
-    .readonly-note{margin:6px 0 10px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;padding:8px 10px;border-radius:10px;font-weight:600}
-    .load-error{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;border-radius:12px}
-    .details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-    .detail-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc}
-    .detail-card h5{margin:0 0 6px 0}.detail-card p{margin:2px 0}
-    @media(max-width:900px){.grid,.row-grid,.row-grid.parts,.details-grid{grid-template-columns:1fr}}
+    @media(max-width:900px){.row-grid,.row-grid.parts{grid-template-columns:1fr}}
   `,
 })
 export class CorrosionDetailPage implements OnInit {
