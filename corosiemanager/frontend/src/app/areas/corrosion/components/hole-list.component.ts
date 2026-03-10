@@ -1,11 +1,13 @@
 import { Component, input, output } from '@angular/core';
 import { Hole } from '../models/corrosion.models';
+import { StatusPillComponent } from '../../../shared/components/status-pill.component';
 
 @Component({
   selector: 'app-hole-list',
+  imports: [StatusPillComponent],
   template: `
-    <div class="table-wrap">
-      <table>
+    <div class="ui-table-wrap">
+      <table class="ui-table">
         <thead>
           <tr>
             <th>Hole</th>
@@ -17,11 +19,30 @@ import { Hole } from '../models/corrosion.models';
         <tbody>
           @for (item of holes(); track item.id) {
             <tr>
-              <td>#{{ item.holeNumber }}</td>
-              <td>{{ item.inspectionStatus ?? '-' }}</td>
-              <td>{{ item.mdrCode ?? '-' }}</td>
+              <td>
+                <div class="hole-meta">
+                  <strong>#{{ item.holeNumber }}</strong>
+                  @if (item.finalHoleSize) {
+                    <span class="ui-meta">Final {{ item.finalHoleSize }}</span>
+                  }
+                </div>
+              </td>
+              <td>
+                @if (item.inspectionStatus) {
+                  <app-status-pill [label]="item.inspectionStatus" [state]="item.inspectionStatus" />
+                } @else {
+                  <span class="ui-meta">Nog niet gezet</span>
+                }
+              </td>
+              <td>
+                @if (item.mdrCode) {
+                  <span class="ui-chip brand">{{ item.mdrCode }}</span>
+                } @else {
+                  <span class="ui-meta">Geen MDR</span>
+                }
+              </td>
               <td class="actions-col">
-                <button class="btn-link" (click)="open.emit(item.id)">Open</button>
+                <button class="ui-btn-ghost" (click)="open.emit(item.id)">Open detail</button>
               </td>
             </tr>
           }
@@ -30,60 +51,8 @@ import { Hole } from '../models/corrosion.models';
     </div>
   `,
   styles: `
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-    }
-
-    thead {
-      background: #f8fafc;
-    }
-
-    th,
-    td {
-      text-align: left;
-      padding: 12px 14px;
-      border-bottom: 1px solid #eef2f7;
-      color: #1e293b;
-      font-size: 0.95rem;
-    }
-
-    th {
-      color: #334155;
-      font-weight: 700;
-      font-size: 0.88rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-
-    tbody tr:hover {
-      background: #f8fbff;
-    }
-
-    .actions-col {
-      width: 120px;
-    }
-
-    .btn-link {
-      border: 1px solid #bfdbfe;
-      background: #eff6ff;
-      color: #1d4ed8;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .btn-link:hover {
-      background: #dbeafe;
-    }
+    .actions-col { width: 160px; }
+    .hole-meta{display:grid;gap:4px}
   `,
 })
 export class HoleListComponent {

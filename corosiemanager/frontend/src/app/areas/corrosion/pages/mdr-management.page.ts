@@ -1,9 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../../core/security/services/authentication.service';
 import { PermissionService } from '../../../core/security/services/permission.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
+import { StatusPillComponent } from '../../../shared/components/status-pill.component';
 import { ApiErrorService } from '../../../shared/services/api-error.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { CreateMdrCaseInput, CreateMdrRemarkInput, MdrRequestDetailInput } from '../models/corrosion.inputs';
@@ -12,43 +15,63 @@ import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
   selector: 'app-mdr-management-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, PageHeaderComponent, EmptyStateComponent, StatusPillComponent],
   template: `
-    <main class="page">
-      <a routerLink="/" class="back">← Hoofdmenu</a>
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Review"
+            title="MDR management"
+            subtitle="Beheer cases, request details, statusovergangen en remarks vanuit één consistente reviewflow."
+          />
 
-      <section class="card">
-        <h2>MDR Management</h2>
-        <p class="subtitle">MDR dashboard met queue-overzicht en gecontroleerde status-overgangen.</p>
+          <section class="ui-filter-grid">
+            <article class="ui-filter-card">
+              <p class="ui-filter-label">Context</p>
+              <div class="ui-grid two">
+                <label class="field">
+                  <span>Aircraft</span>
+                  <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+                    @for (a of aircraft(); track a.id) {
+                      <option [ngValue]="a.id">{{ a.an }}</option>
+                    }
+                  </select>
+                </label>
 
-        <div class="filters">
-          <label class="field">
-            <span>Aircraft</span>
-            <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
-              @for (a of aircraft(); track a.id) {
-                <option [ngValue]="a.id">{{ a.an }}</option>
-              }
-            </select>
-          </label>
+                <label class="field">
+                  <span>Panel</span>
+                  <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+                    @for (p of panels(); track p.id) {
+                      <option [ngValue]="p.id">Panel {{ p.panelNumber }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+            </article>
 
-          <label class="field">
-            <span>Panel</span>
-            <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
-              @for (p of panels(); track p.id) {
-                <option [ngValue]="p.id">Panel {{ p.panelNumber }}</option>
-              }
-            </select>
-          </label>
-        </div>
+            <article class="ui-filter-card">
+              <p class="ui-filter-label">Acties</p>
+              <div class="actions no-top">
+                @if (!creatingMode() && !editingId() && canCreateOrEditMdr()) {
+                  <button class="btn-primary" type="button" (click)="startCreate()">Nieuwe MDR case</button>
+                }
+                <span class="ui-chip">Cases {{ mdrCases().length }}</span>
+                @if (selectedCase()) {
+                  <span class="ui-chip brand">Actieve case #{{ selectedCase()!.id }}</span>
+                }
+              </div>
+            </article>
+          </section>
 
-        <div class="actions" style="margin-top:12px;">
-          @if (!creatingMode() && !editingId() && canCreateOrEditMdr()) {
-            <button class="btn-primary" type="button" (click)="startCreate()">+ Nieuwe MDR case</button>
+          @if (message()) {
+            <div class="ui-banner" [class.error]="messageType() === 'error'" [class.info]="messageType() !== 'error'">
+              <span>{{ message() }}</span>
+            </div>
           }
-        </div>
 
-        @if (creatingMode() || editingId()) {
-          <form class="editor" (ngSubmit)="save()">
+          @if (creatingMode() || editingId()) {
+            <form class="editor" (ngSubmit)="save()">
             <h3>{{ editingId() ? 'MDR case wijzigen' : 'Nieuwe MDR case' }}</h3>
             <div class="grid">
               <label class="field"><span>MDR Number</span><input [(ngModel)]="form.mdrNumber" name="mdrNumber" /></label>
@@ -86,28 +109,28 @@ import { CorrosionService } from '../services/corrosion.service';
                 }
               </ul>
             }
-          </form>
-        }
+            </form>
+          }
 
-        @if (loading()) {
-          <p class="state">Laden...</p>
-        } @else {
-          @if (selectedCase()) {
-            <section class="queue-card" style="margin-top:14px;">
+          @if (loading()) {
+            <div class="ui-banner info"><span>MDR dashboard laden...</span></div>
+          } @else {
+            @if (selectedCase()) {
+              <section class="queue-card">
               <h3>Case detail #{{ selectedCase()!.id }}</h3>
-              <p><strong>MDR:</strong> {{ selectedCase()!.mdrNumber ?? '-' }} · <strong>Status:</strong> {{ selectedCase()!.status ?? '-' }}</p>
+              <p><strong>MDR:</strong> {{ selectedCase()!.mdrNumber ?? '-' }} · <strong>Status:</strong> <app-status-pill [label]="selectedCase()!.status ?? '-'" [state]="selectedCase()!.status" /></p>
               <p><strong>Subject:</strong> {{ selectedCase()!.subject ?? '-' }}</p>
 
               <h4 style="margin:10px 0 6px;">Remarks</h4>
-              @if (remarks().length === 0) { <p class="state">Nog geen remarks</p> } @else {
+              @if (remarks().length === 0) { <app-empty-state eyebrow="Remarks" title="Nog geen remarks" description="Voeg een remark toe om opmerkingen en reviewcontext vast te leggen." /> } @else {
                 @for (r of remarks(); track r.id) {
-                  <p style="margin:4px 0;"><strong>V{{ r.remarkIndex }}:</strong> {{ r.remarkText }}</p>
+                  <p class="detail-row"><strong>V{{ r.remarkIndex }}:</strong> {{ r.remarkText }}</p>
                 }
               }
 
               <div class="actions">
-                <input style="flex:1;min-width:260px;" [(ngModel)]="remarkForm.remarkText" placeholder="Nieuwe remark" />
-                <select [(ngModel)]="remarkForm.remarkIndex" style="width:90px;">
+                <input class="remark-input" [(ngModel)]="remarkForm.remarkText" placeholder="Nieuwe remark" />
+                <select [(ngModel)]="remarkForm.remarkIndex" class="remark-index">
                   @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">V{{ i }}</option> }
                 </select>
                 @if (canCreateOrEditMdr()) {
@@ -122,7 +145,7 @@ import { CorrosionService } from '../services/corrosion.service';
                 }
               </div>
               @if ((editingDetailId() || creatingDetailMode()) && canManageRequestDetails()) {
-                <div class="editor" style="margin-top:8px;">
+                <div class="editor nested-editor">
                   <h4>{{ editingDetailId() ? 'Request detail wijzigen' : 'Nieuw request detail' }}</h4>
                   <div class="grid">
                     <label class="field"><span>TVE</span><input [(ngModel)]="requestDetailForm.tve" name="rd_tve" /></label>
@@ -197,9 +220,9 @@ import { CorrosionService } from '../services/corrosion.service';
                   }
                 </div>
               }
-              @if (requestDetails().length === 0) { <p class="state">Geen request details gevonden.</p> } @else {
+              @if (requestDetails().length === 0) { <app-empty-state eyebrow="Request details" title="Geen request details gevonden" description="Maak een request detail aan om panel-specifieke MDR-data vast te leggen." /> } @else {
                 @for (d of requestDetails(); track d.id) {
-                  <p style="margin:4px 0;">
+                  <p class="detail-row">
                     {{ d.tve ?? '-' }} · {{ d.partNumber ?? '-' }} · {{ d.problemStatement ?? '-' }}
                     @if (canManageRequestDetails()) {
                       <button class="btn-secondary inline" (click)="startEditDetail(d)">Wijzigen</button>
@@ -210,11 +233,18 @@ import { CorrosionService } from '../services/corrosion.service';
                   </p>
                 }
               }
-            </section>
-          }
+              </section>
+            }
 
-          <div class="table-wrap" style="margin-top:14px;">
-            <table>
+            @if (mdrCases().length === 0) {
+              <app-empty-state
+                eyebrow="Geen cases"
+                title="Nog geen MDR-cases voor dit panel"
+                description="Maak een nieuwe MDR-case aan of kies een ander panel."
+              />
+            } @else {
+              <div class="table-wrap">
+                <table>
               <thead>
                 <tr><th>ID</th><th>MDR Number</th><th>Subject</th><th>Status</th><th>Acties</th></tr>
               </thead>
@@ -224,7 +254,7 @@ import { CorrosionService } from '../services/corrosion.service';
                     <td>#{{ m.id }}</td>
                     <td>{{ m.mdrNumber ?? '-' }}</td>
                     <td>{{ m.subject ?? '-' }}</td>
-                    <td>{{ m.status ?? '-' }}</td>
+                    <td><app-status-pill [label]="m.status ?? '-'" [state]="m.status" /></td>
                     <td>
                       @if (canCreateOrEditMdr()) {
                         <button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button>
@@ -237,32 +267,42 @@ import { CorrosionService } from '../services/corrosion.service';
                   </tr>
                 }
               </tbody>
-            </table>
-          </div>
-        }
+                </table>
+              </div>
+            }
+          }
+        </div>
       </section>
     </main>
   `,
   styles: `
-    .page{max-width:1150px;margin:0 auto;padding:24px}.back{text-decoration:none;color:#334155;font-weight:600}
-    .card{border:1px solid #e2e8f0;border-radius:14px;padding:20px;background:#fff}.subtitle{color:#64748b}
-    .filters{display:grid;grid-template-columns:repeat(2,minmax(0,260px));gap:10px;margin:10px 0}
-    .field{display:grid;gap:6px;font-weight:600;color:#334155} input,select,textarea{padding:9px 10px;border:1px solid #cbd5e1;border-radius:10px}
+    .field{display:grid;gap:7px;font-weight:600;color:var(--color-ink)}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--color-line-strong);border-radius:14px;padding:11px 13px;background:#fff;color:var(--color-ink-strong)}
+    .field.full{grid-column:1/-1}
     textarea{min-height:84px;resize:vertical}
-    .editor{margin:12px 0;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field.full{grid-column:1/-1}
+    .editor{padding:18px;border-radius:18px;border:1px solid var(--color-line);background:linear-gradient(180deg,#fff,#f6f9fc);box-shadow:var(--shadow-panel)}
+    .nested-editor{margin-top:8px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
     .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-    .btn-primary,.btn-secondary,.btn-danger{border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
-    .btn-primary{background:#2563eb;color:#fff}.btn-secondary{background:#e2e8f0;color:#334155}.btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
-    .inline{margin-right:6px;padding:6px 10px}
-    .queue-card{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}
-    .queue-card h3{margin:0 0 8px;font-size:1rem}
-    .case-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #e5e7eb}
-    .case-row:first-of-type{border-top:0}
-    .row-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
-    .table-wrap{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;text-align:left}
-    .state{color:#64748b}
+    .actions.no-top{margin-top:0}
+    .btn-primary,.btn-secondary,.btn-danger{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;border-radius:999px;border:1px solid transparent;font-weight:700;cursor:pointer
+    }
+    .btn-primary{background:var(--surface-brand);color:#fff;box-shadow:0 10px 24px rgba(21,94,239,.22)}
+    .btn-secondary{background:var(--surface-subtle);color:var(--color-ink);border-color:var(--color-line)}
+    .btn-danger{background:var(--color-danger-soft);color:var(--color-danger-ink);border-color:rgba(163,59,54,.18)}
+    .inline{min-height:34px;padding:0 12px;margin-left:6px}
+    .queue-card{padding:18px;border-radius:18px;border:1px solid var(--color-line);background:#fff;box-shadow:var(--shadow-panel)}
+    .queue-card h3{margin:0 0 8px;font-size:1.05rem;color:var(--color-ink-strong)}
+    .detail-row{margin:4px 0;color:var(--color-ink)}
+    .remark-input{flex:1;min-width:260px}
+    .remark-index{width:90px}
+    .table-wrap{border:1px solid var(--color-line);border-radius:18px;overflow:auto;background:#fff}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 14px;border-bottom:1px solid rgba(38,68,96,.08);text-align:left}
+    th{background:#f5f8fb;color:var(--color-ink-muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em}
     .inline-errors{margin:10px 0 0;padding-left:18px;color:#b91c1c;display:grid;gap:4px}
-    @media(max-width:760px){.filters,.grid{grid-template-columns:1fr}}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}}
   `,
 })
 export class MdrManagementPage implements OnInit {

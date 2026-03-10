@@ -1,8 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { RoutingService } from '../../../core/services/routing.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { ApiErrorService } from '../../../shared/services/api-error.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { HoleListComponent } from '../components/hole-list.component';
@@ -11,112 +13,98 @@ import { CorrosionService } from '../services/corrosion.service';
 
 @Component({
   selector: 'app-corrosion-list-page',
-  imports: [HoleListComponent, FormsModule, RouterLink],
+  imports: [HoleListComponent, FormsModule, PageHeaderComponent, EmptyStateComponent],
   template: `
-    <main class="page">
-      <a class="back-link" routerLink="/">← Hoofdmenu</a>
-      <section class="card">
-        <header class="header">
-          <div class="header-copy">
-            <h2>Corrosie overzicht</h2>
-            <p class="subtitle">
-              @if (selectedAircraft()) {
-                {{ selectedAircraft()!.an }}
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Corrosie workflow"
+            title="Aircraft en panels"
+            subtitle="Selecteer het juiste aircraft en panel, filter de holes en spring direct naar detailwerk."
+          />
+
+          <section class="selector-grid">
+            <article class="selector-card">
+              <p class="selector-label">Aircraft</p>
+              <label class="ui-field">
+                <span>Kies aircraft</span>
+                <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+                  @for (aircraft of aircraftList(); track aircraft.id) {
+                    <option [ngValue]="aircraft.id">{{ aircraft.an }}{{ aircraft.serialNumber ? ' (' + aircraft.serialNumber + ')' : '' }}</option>
+                  }
+                </select>
+              </label>
+            </article>
+
+            <article class="selector-card">
+              <p class="selector-label">Panel</p>
+              <label class="ui-field">
+                <span>Kies panel</span>
+                <select [disabled]="panels().length === 0" [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+                  @for (panel of panels(); track panel.id) {
+                    <option [ngValue]="panel.id">Panel {{ panel.panelNumber }} ({{ panel.holeCount }})</option>
+                  }
+                </select>
+              </label>
+            </article>
+          </section>
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <div class="filter-bar">
+                <label class="ui-field search-box">
+                  <span>Zoeken</span>
+                  <input
+                    [(ngModel)]="searchTerm"
+                    name="search"
+                    placeholder="Zoek op hole, status of MDR-code"
+                  />
+                </label>
+
+                <div class="filter-meta">
+                  <span class="ui-chip brand">{{ filteredHoles().length }} van {{ holes().length }}</span>
+                  @if (selectedAircraft()) {
+                    <span class="ui-chip">{{ selectedAircraft()!.an }}</span>
+                  }
+                  @if (selectedPanel()) {
+                    <span class="ui-chip">Panel {{ selectedPanel()!.panelNumber }}</span>
+                  }
+                </div>
+              </div>
+
+              @if (loading()) {
+                <div class="ui-banner info"><span>Gegevens laden...</span></div>
+              } @else if (loadError()) {
+                <div class="ui-banner error">
+                  <span>{{ loadError() }}</span>
+                  <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+                </div>
+              } @else if (holes().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen holes"
+                  title="Nog geen holes beschikbaar voor dit panel"
+                  description="Kies een ander panel of laad de brondata opnieuw als je hier wel records verwacht."
+                />
               } @else {
-                Selecteer eerst een aircraft
-              }
-              @if (selectedPanel()) {
-                · Panel {{ selectedPanel()!.panelNumber }}
-              }
-            </p>
-          </div>
-        </header>
-
-        <section class="control-strip">
-          <label class="panel-picker">
-            <span>Aircraft</span>
-            <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
-              @for (aircraft of aircraftList(); track aircraft.id) {
-                <option [ngValue]="aircraft.id">{{ aircraft.an }}{{ aircraft.serialNumber ? ' (' + aircraft.serialNumber + ')' : '' }}</option>
-              }
-            </select>
-          </label>
-
-          <label class="panel-picker">
-            <span>Panel</span>
-            <select [disabled]="panels().length === 0" [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
-              @for (panel of panels(); track panel.id) {
-                <option [ngValue]="panel.id">Panel {{ panel.panelNumber }} ({{ panel.holeCount }})</option>
-              }
-            </select>
-          </label>
-        </section>
-
-        @if (loading()) {
-          <p class="loading">Laden...</p>
-        } @else if (loadError()) {
-          <div class="error-box">
-            <p>{{ loadError() }}</p>
-            <button class="btn-soft" type="button" (click)="reload()">Opnieuw proberen</button>
-          </div>
-        } @else if (holes().length === 0) {
-          <p class="empty">Nog geen holes gevonden voor dit panel.</p>
-        } @else {
-          <div class="filter-bar">
-            <label class="search-box">
-              <span>Zoeken</span>
-              <input
-                type="text"
-                placeholder="Zoek op hole/status/MDR..."
-                [ngModel]="search()"
-                (ngModelChange)="search.set($event)"
-              />
-            </label>
-            <div class="filter-meta">
-              <span class="count-pill">{{ filteredHoles().length }} van {{ holes().length }}</span>
-              @if (search().trim()) {
-                <button class="btn-soft" type="button" (click)="search.set('')">Wissen</button>
+                <app-hole-list [holes]="filteredHoles()" (open)="openHole($event)" />
               }
             </div>
-          </div>
-          <app-hole-list [holes]="filteredHoles()" (open)="openHole($event)" />
-        }
+          </section>
+        </div>
       </section>
     </main>
   `,
   styles: `
-    .page { max-width: 1040px; margin: 0 auto; padding: 24px; }
-    .card { background: #fff; border: 1px solid #dbeafe; border-radius: 16px; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08); padding: 22px; }
-    .header { margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .header-copy { display:grid; gap:6px; }
-    .back-link { display:inline-block; margin-bottom:10px; color:#334155; text-decoration:none; font-weight:600; }
-    .back-link:hover { text-decoration:underline; }
-    h2 { margin: 0; font-size: 1.4rem; color: #0f172a; }
-    .subtitle { margin: 6px 0 0; color: #64748b; }
-    .control-strip{
-      margin:0 0 14px;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;
-      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+    .selector-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .selector-card{
+      padding:18px;border-radius:18px;background:linear-gradient(180deg,#fff,#f6f9fc);border:1px solid var(--color-line);box-shadow:var(--shadow-panel);
     }
-    .panel-picker { display: grid; gap: 6px; color: #334155; font-weight: 600; }
-    .panel-picker select { width:100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 10px; }
-    .panel-picker select:disabled{opacity:.6;background:#f1f5f9}
-    .filter-bar{
-      margin: 4px 0 12px;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;
-      display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap;
-    }
-    .search-box{display:grid;gap:6px;font-weight:600;color:#334155}
-    .search-box input{width:100%;min-width:260px;max-width:420px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;background:#fff}
-    .filter-meta{display:flex;gap:8px;align-items:center}
-    .count-pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:.82rem}
-    .btn-soft{
-      border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer;
-    }
-    .loading, .empty { margin: 0; color: #475569; padding: 10px 0; }
-    .error-box{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;border-radius:12px}
-    @media (max-width: 760px){
-      .control-strip{grid-template-columns:1fr}
-      .search-box input{min-width:220px}
-    }
+    .selector-label{margin:0 0 10px;color:var(--color-brand);font-size:.76rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+    .filter-bar{display:flex;justify-content:space-between;gap:16px;align-items:end;flex-wrap:wrap}
+    .search-box{min-width:min(100%, 360px)}
+    .filter-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    @media (max-width:900px){.selector-grid{grid-template-columns:1fr}}
   `,
 })
 export class CorrosionListPage implements OnInit {
@@ -148,6 +136,14 @@ export class CorrosionListPage implements OnInit {
       );
     });
   });
+
+  protected get searchTerm(): string {
+    return this.search();
+  }
+
+  protected set searchTerm(value: string) {
+    this.search.set(value);
+  }
 
   async ngOnInit(): Promise<void> {
     await this.reload();
