@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -17,7 +18,15 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db import SessionLocal
+from app.logging import configure_logging, logger
 from app.models import Aircraft, Hole, HolePart, HoleStep, LookupMdrOption, LookupStatusCode, MdrCase, MdrRequestDetail, NdiReport, Panel
+
+configure_logging()
+
+
+def ensure_mdb_export_available() -> None:
+    if shutil.which("mdb-export") is None:
+        raise SystemExit("Missing dependency: `mdb-export` is not available in PATH. Install mdbtools first.")
 
 
 def mdb_export_count(accdb: str, table: str) -> int:
@@ -31,6 +40,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--accdb", required=True)
     args = parser.parse_args()
+    ensure_mdb_export_available()
+    logger.info("verify_import_started accdb=%s", args.accdb)
 
     src = {
         "AircraftNrT": mdb_export_count(args.accdb, "AircraftNrT"),
