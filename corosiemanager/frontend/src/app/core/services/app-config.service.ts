@@ -13,6 +13,9 @@ export class AppConfigService {
 
   async load(): Promise<void> {
     const config = await firstValueFrom(this.http.get<AppConfig>('assets/config/config.json'));
+    if (!config?.apiBaseUrl || typeof config.apiBaseUrl !== 'string') {
+      throw new Error('Invalid frontend config: apiBaseUrl is required');
+    }
     this._config.set(config);
   }
 

@@ -183,7 +183,14 @@ import { CorrosionService } from '../services/corrosion.service';
           </section>
 
         } @else {
-          <p>Laden...</p>
+          @if (loadError()) {
+            <div class="load-error">
+              <p>{{ loadError() }}</p>
+              <button class="btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+            </div>
+          } @else {
+            <p>Laden...</p>
+          }
         }
       </section>
     </main>
@@ -220,6 +227,7 @@ import { CorrosionService } from '../services/corrosion.service';
     .count-pill{display:inline-block;padding:4px 9px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:.8rem;font-weight:700}
     .message{color:#15803d;font-weight:600}
     .readonly-note{margin:6px 0 10px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;padding:8px 10px;border-radius:10px;font-weight:600}
+    .load-error{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;border-radius:12px}
     .details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
     .detail-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc}
     .detail-card h5{margin:0 0 6px 0}.detail-card p{margin:2px 0}
@@ -245,6 +253,7 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly savingCore = signal(false);
   protected readonly savingSteps = signal(false);
   protected readonly savingParts = signal(false);
+  protected readonly loadError = signal<string | null>(null);
 
   protected readonly inspectionStatusOptions = ['Clean', 'Rifled', 'Open', 'In Progress', 'Closed'];
   protected readonly partStatusOptions = ['Open', 'In Progress @EST', 'Ordered @981', 'Received @LSE', 'Delivered @Floor', 'Closed'];
@@ -284,9 +293,20 @@ export class CorrosionDetailPage implements OnInit {
   protected partInputs: UpdateHolePartInput[] = [];
   protected ndiInspectionDateInput = '';
   async ngOnInit(): Promise<void> {
+    await this.reload();
+  }
+
+  async reload(): Promise<void> {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    const hole = await firstValueFrom(this.corrosionService.getHole(id));
-    this.applyHole(hole);
+    this.loadError.set(null);
+    try {
+      const hole = await firstValueFrom(this.corrosionService.getHole(id));
+      this.applyHole(hole);
+    } catch (error) {
+      const message = this.apiErrors.toUserMessage(error, 'Hole laden mislukt');
+      this.loadError.set(message);
+      this.toast.error(message);
+    }
   }
 
   canEditHole(): boolean {

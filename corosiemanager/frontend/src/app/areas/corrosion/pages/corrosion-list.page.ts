@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { RoutingService } from '../../../core/services/routing.service';
+import { ApiErrorService } from '../../../shared/services/api-error.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { HoleListComponent } from '../components/hole-list.component';
 import { Aircraft, Hole, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
@@ -52,6 +54,11 @@ import { CorrosionService } from '../services/corrosion.service';
 
         @if (loading()) {
           <p class="loading">Laden...</p>
+        } @else if (loadError()) {
+          <div class="error-box">
+            <p>{{ loadError() }}</p>
+            <button class="btn-soft" type="button" (click)="reload()">Opnieuw proberen</button>
+          </div>
         } @else if (holes().length === 0) {
           <p class="empty">Nog geen holes gevonden voor dit panel.</p>
         } @else {
@@ -105,6 +112,7 @@ import { CorrosionService } from '../services/corrosion.service';
       border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer;
     }
     .loading, .empty { margin: 0; color: #475569; padding: 10px 0; }
+    .error-box{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;border-radius:12px}
     @media (max-width: 760px){
       .control-strip{grid-template-columns:1fr}
       .search-box input{min-width:220px}
@@ -115,6 +123,8 @@ export class CorrosionListPage implements OnInit {
   private readonly corrosionService = inject(CorrosionService);
   private readonly routing = inject(RoutingService);
   private readonly route = inject(ActivatedRoute);
+  private readonly apiErrors = inject(ApiErrorService);
+  private readonly toast = inject(ToastService);
 
   protected readonly aircraftList = signal<Aircraft[]>([]);
   protected readonly selectedAircraftId = signal<number | null>(null);
@@ -122,6 +132,7 @@ export class CorrosionListPage implements OnInit {
   protected readonly selectedPanelId = signal<number | null>(null);
   protected readonly holes = signal<Hole[]>([]);
   protected readonly loading = signal<boolean>(true);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly search = signal<string>('');
 
   protected selectedAircraft = () => this.aircraftList().find((a) => a.id === this.selectedAircraftId()) ?? null;
@@ -139,39 +150,65 @@ export class CorrosionListPage implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    await this.reload();
+  }
+
+  async reload(): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
+    try {
+      const aircraft = await firstValueFrom(this.corrosionService.listAircraft());
+      this.aircraftList.set(aircraft);
+      const queryAircraftRaw = this.route.snapshot.queryParamMap.get('aircraftId');
+      const queryPanelRaw = this.route.snapshot.queryParamMap.get('panelId');
+      const queryAircraftId = queryAircraftRaw ? Number(queryAircraftRaw) : NaN;
+      const queryPanelId = queryPanelRaw ? Number(queryPanelRaw) : NaN;
+      const querySearch = this.route.snapshot.queryParamMap.get('q')?.trim() ?? '';
 
-    const aircraft = await firstValueFrom(this.corrosionService.listAircraft());
-    this.aircraftList.set(aircraft);
-    const queryAircraftRaw = this.route.snapshot.queryParamMap.get('aircraftId');
-    const queryPanelRaw = this.route.snapshot.queryParamMap.get('panelId');
-    const queryAircraftId = queryAircraftRaw ? Number(queryAircraftRaw) : NaN;
-    const queryPanelId = queryPanelRaw ? Number(queryPanelRaw) : NaN;
-    const querySearch = this.route.snapshot.queryParamMap.get('q')?.trim() ?? '';
+      const selectedAircraft = aircraft.find((a) => a.id === queryAircraftId) ?? aircraft[0] ?? null;
+      if (!selectedAircraft) {
+        this.loading.set(false);
+        return;
+      }
 
-    const selectedAircraft = aircraft.find((a) => a.id === queryAircraftId) ?? aircraft[0] ?? null;
-    if (!selectedAircraft) {
+      this.selectedAircraftId.set(selectedAircraft.id);
+      await this.loadPanels(selectedAircraft.id, Number.isFinite(queryPanelId) ? queryPanelId : null);
+      this.search.set(querySearch);
+    } catch (error) {
+      const message = this.apiErrors.toUserMessage(error, 'Overzicht laden mislukt');
+      this.loadError.set(message);
+      this.toast.error(message);
       this.loading.set(false);
-      return;
     }
-
-    this.selectedAircraftId.set(selectedAircraft.id);
-    await this.loadPanels(selectedAircraft.id, Number.isFinite(queryPanelId) ? queryPanelId : null);
-    this.search.set(querySearch);
   }
 
   async onAircraftChange(aircraftId: number): Promise<void> {
     this.selectedAircraftId.set(Number(aircraftId));
-    await this.loadPanels(Number(aircraftId));
+    try {
+      await this.loadPanels(Number(aircraftId));
+    } catch (error) {
+      const message = this.apiErrors.toUserMessage(error, 'Panels laden mislukt');
+      this.loadError.set(message);
+      this.loading.set(false);
+      this.toast.error(message);
+    }
   }
 
   async onPanelChange(panelId: number): Promise<void> {
     this.selectedPanelId.set(Number(panelId));
-    await this.loadHoles(Number(panelId));
+    try {
+      await this.loadHoles(Number(panelId));
+    } catch (error) {
+      const message = this.apiErrors.toUserMessage(error, 'Holes laden mislukt');
+      this.loadError.set(message);
+      this.loading.set(false);
+      this.toast.error(message);
+    }
   }
 
   private async loadPanels(aircraftId: number, preferredPanelId: number | null = null): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
     const panels = await firstValueFrom(this.corrosionService.listPanels(aircraftId));
     this.panels.set(panels);
 
@@ -187,6 +224,7 @@ export class CorrosionListPage implements OnInit {
   }
 
   private async loadHoles(panelId: number): Promise<void> {
+    this.loadError.set(null);
     const holes = await firstValueFrom(this.corrosionService.listPanelHoles(panelId));
     this.holes.set(holes);
     this.loading.set(false);

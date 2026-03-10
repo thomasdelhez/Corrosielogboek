@@ -7,7 +7,7 @@ export class HttpService {
   constructor(private readonly http: HttpClient) {}
 
   get<T>(url: string, params?: Record<string, string | number | boolean | undefined>): Observable<T> {
-    return this.http.get<T>(url, { params: this.buildParams(params), headers: this.defaultHeaders() });
+    return this.http.get<T>(url, { params: this.buildParams(params) });
   }
 
   post<T>(url: string, body: unknown): Observable<T> {
@@ -23,12 +23,7 @@ export class HttpService {
   }
 
   private defaultHeaders(): HttpHeaders {
-    const token = localStorage.getItem('auth_token');
-    let headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    if (token) {
-      headers = headers.set('Authorization', `Bearer ${token}`);
-    }
-    return headers;
+    return new HttpHeaders({ 'Content-Type': 'application/json' });
   }
 
   private buildParams(input?: Record<string, string | number | boolean | undefined>): HttpParams {
