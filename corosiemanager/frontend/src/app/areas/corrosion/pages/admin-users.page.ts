@@ -21,8 +21,6 @@ import { CorrosionService } from '../services/corrosion.service';
             eyebrow="Beheer"
             title="Gebruikersbeheer"
             subtitle="Beheer accounts, rollen en activatie zonder losse beheerflows of onduidelijke tabelacties."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           @if (loadError()) {
@@ -126,21 +124,24 @@ import { CorrosionService } from '../services/corrosion.service';
                         <tr>
                           <td>{{ user.id }}</td>
                           <td>{{ user.username }}</td>
-                          <td>
-                            <select [ngModel]="roleDraft(user)" (ngModelChange)="setRoleDraft(user.id, $event)">
-                              @for (role of roles; track role) {
-                                <option [value]="role">{{ role }}</option>
-                              }
-                            </select>
+                          <td class="form-cell">
+                            <label class="table-field">
+                              <span class="table-label">Rol</span>
+                              <select [ngModel]="roleDraft(user)" (ngModelChange)="setRoleDraft(user.id, $event)">
+                                @for (role of roles; track role) {
+                                  <option [value]="role">{{ role }}</option>
+                                }
+                              </select>
+                            </label>
                           </td>
-                          <td>
-                            <div class="status-stack">
-                              <app-status-pill [label]="activeDraft(user) ? 'Actief' : 'Inactief'" [state]="activeDraft(user) ? 'approved' : 'rejected'" />
+                          <td class="form-cell">
+                            <label class="table-field">
+                              <span class="table-label">Actief</span>
                               <select [ngModel]="activeDraft(user)" (ngModelChange)="setActiveDraft(user.id, $event)">
                                 <option [ngValue]="true">Ja</option>
                                 <option [ngValue]="false">Nee</option>
                               </select>
-                            </div>
+                            </label>
                           </td>
                           <td>
                             <div class="ui-actions row-actions">
@@ -206,7 +207,24 @@ import { CorrosionService } from '../services/corrosion.service';
     </main>
   `,
   styles: `
-    .status-stack{display:grid;gap:8px;min-width:140px}
+    .form-cell{min-width:180px}
+    .table-field{display:grid;gap:6px;min-width:160px}
+    .table-field select{
+      width:100%;
+      min-height:42px;
+      border:1px solid var(--color-line-strong);
+      border-radius:14px;
+      padding:0 12px;
+      background:#fff;
+      color:var(--color-ink-strong);
+    }
+    .table-label{
+      color:var(--color-ink-muted);
+      font-size:.72rem;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
     .row-actions{justify-content:flex-start}
   `,
 })

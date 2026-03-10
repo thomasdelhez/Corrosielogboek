@@ -23,8 +23,6 @@ type TrackerQueue = 'all' | 'max_bp' | 'flexhone' | 'reaming_steps';
             eyebrow="Queue control"
             title="Hole trackers"
             subtitle="Bekijk MaxBP, Flexhone en reaming steps in hetzelfde overzicht en open direct de juiste hole."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           <section class="ui-filter-grid">
@@ -65,12 +63,6 @@ type TrackerQueue = 'all' | 'max_bp' | 'flexhone' | 'reaming_steps';
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'flexhone'" (click)="setQueue('flexhone')">Flexhone <span>{{ flexhoneCount() }}</span></button>
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'reaming_steps'" (click)="setQueue('reaming_steps')">Reaming <span>{{ reamingCount() }}</span></button>
           </section>
-
-          <div class="ui-summary-row">
-            <span class="ui-chip">MaxBP {{ maxBpCount() }}</span>
-            <span class="ui-chip">Flexhone {{ flexhoneCount() }}</span>
-            <span class="ui-chip">Reaming {{ reamingCount() }}</span>
-          </div>
 
           <section class="ui-section">
             <div class="ui-section-inner ui-stack-md">

@@ -23,8 +23,6 @@ type InspectionQueue = 'all' | 'to_be_inspected' | 'marked_as_corroded' | 'marke
             eyebrow="Queue control"
             title="Inspectie queues"
             subtitle="Volg alle inspectie-uitkomsten per aircraft en panel vanuit één consistent dashboard."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           <section class="ui-filter-grid">
@@ -68,13 +66,6 @@ type InspectionQueue = 'all' | 'to_be_inspected' | 'marked_as_corroded' | 'marke
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'marked_as_rifled'" (click)="setQueue('marked_as_rifled')">Rifled <span>{{ rifledCount() }}</span></button>
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'marked_as_clean'" (click)="setQueue('marked_as_clean')">Clean <span>{{ cleanCount() }}</span></button>
           </section>
-
-          <div class="ui-summary-row">
-            <span class="ui-chip">To inspect {{ toInspectCount() }}</span>
-            <span class="ui-chip">Corroded {{ corrodedCount() }}</span>
-            <span class="ui-chip">Rifled {{ rifledCount() }}</span>
-            <span class="ui-chip">Clean {{ cleanCount() }}</span>
-          </div>
 
           <section class="ui-section">
             <div class="ui-section-inner ui-stack-md">

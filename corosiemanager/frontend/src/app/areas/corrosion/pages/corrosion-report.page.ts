@@ -20,8 +20,6 @@ import { CorrosionService } from '../services/corrosion.service';
             eyebrow="Rapportage"
             title="Corrosion tracker report"
             subtitle="Filter, bekijk en exporteer corrosion- en MDR-overzichten vanuit één rapportagescherm."
-            backLink="/"
-            backLabel="Hoofdmenu"
           >
             <button class="ui-btn-secondary" type="button" (click)="exportCsv()">Export corrosion CSV</button>
             <button class="ui-btn-secondary" type="button" (click)="exportMdrCsv()">Export MDR PPT CSV</button>

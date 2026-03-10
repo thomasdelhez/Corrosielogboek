@@ -20,8 +20,6 @@ import { CorrosionService } from '../services/corrosion.service';
             eyebrow="Beheer"
             title="Aircraft beheer"
             subtitle="Beheer aircraft, panels en batch hole-creates in een opgeruimde administratieve flow."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           @if (message()) {

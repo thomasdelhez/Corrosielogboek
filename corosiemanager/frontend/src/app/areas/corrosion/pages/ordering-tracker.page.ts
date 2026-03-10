@@ -23,8 +23,6 @@ type QueueFilter = 'all' | 'ordering_overview' | 'order_needed' | 'order_status'
             eyebrow="Supply"
             title="Ordering tracker"
             subtitle="Volg bestellingen, leveringen en created holes zonder van scherm te wisselen."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           <section class="ui-filter-grid">
@@ -69,13 +67,6 @@ type QueueFilter = 'all' | 'ordering_overview' | 'order_needed' | 'order_status'
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'delivery_status'" (click)="setQueue('delivery_status')">Delivery status <span>{{ queueCounts().delivery_status }}</span></button>
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'created_holes'" (click)="setQueue('created_holes')">Created holes <span>{{ queueCounts().created_holes }}</span></button>
           </section>
-
-          <div class="ui-summary-row">
-            <span class="ui-chip">Order needed {{ queueCounts().order_needed }}</span>
-            <span class="ui-chip">Order in progress {{ queueCounts().order_status }}</span>
-            <span class="ui-chip">Delivery in progress {{ queueCounts().delivery_status }}</span>
-            <span class="ui-chip">Created {{ queueCounts().created_holes }}</span>
-          </div>
 
           <section class="ui-section">
             <div class="ui-section-inner ui-stack-md">

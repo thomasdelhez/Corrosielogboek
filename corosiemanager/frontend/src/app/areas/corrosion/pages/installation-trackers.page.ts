@@ -23,8 +23,6 @@ type InstallationQueue = 'all' | 'ready_for_installation' | 'finished_installati
             eyebrow="Queue control"
             title="Installatie trackers"
             subtitle="Volg ready-for-installation en finished-installation holes in een rustiger workflowscherm."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           <section class="ui-filter-grid">
@@ -64,11 +62,6 @@ type InstallationQueue = 'all' | 'ready_for_installation' | 'finished_installati
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'ready_for_installation'" (click)="setQueue('ready_for_installation')">Ready <span>{{ readyCount() }}</span></button>
             <button class="ui-queue-chip" type="button" [class.active]="queue() === 'finished_installation'" (click)="setQueue('finished_installation')">Finished <span>{{ finishedCount() }}</span></button>
           </section>
-
-          <div class="ui-summary-row">
-            <span class="ui-chip">Ready {{ readyCount() }}</span>
-            <span class="ui-chip">Finished {{ finishedCount() }}</span>
-          </div>
 
           <section class="ui-section">
             <div class="ui-section-inner ui-stack-md">

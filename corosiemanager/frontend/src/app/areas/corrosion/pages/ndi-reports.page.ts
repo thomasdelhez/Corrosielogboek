@@ -70,13 +70,6 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
             <button class="queue-chip" [class.active]="queue() === 'finished'" (click)="setQueue('finished')">Finished <span>{{ finishedCount() }}</span></button>
           </section>
 
-          <div class="summary-row">
-            <span class="ui-chip">Check {{ checkCount() }}</span>
-            <span class="ui-chip">Action {{ actionCount() }}</span>
-            <span class="ui-chip">Report {{ reportCount() }}</span>
-            <span class="ui-chip">Finished {{ finishedCount() }}</span>
-          </div>
-
           @if (message()) {
             <div class="ui-banner" [class.error]="messageType() === 'error'" [class.info]="messageType() !== 'error'">
               <span>{{ message() }}</span>
@@ -172,7 +165,6 @@ type NdiQueue = 'all' | 'check_tracker' | 'action_needed' | 'report_needed' | 'f
       display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:var(--surface-subtle);font-size:.8rem;
     }
     .queue-chip.active{background:var(--color-brand-soft);border-color:rgba(21,94,239,.18);color:var(--color-brand)}
-    .summary-row{display:flex;gap:10px;flex-wrap:wrap}
     .ndi-table td,.ndi-table th{white-space:nowrap}
     .row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     @media (max-width:980px){.filter-grid{grid-template-columns:1fr}}

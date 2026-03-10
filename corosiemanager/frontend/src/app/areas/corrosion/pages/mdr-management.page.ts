@@ -24,8 +24,6 @@ import { CorrosionService } from '../services/corrosion.service';
             eyebrow="Review"
             title="MDR management"
             subtitle="Beheer cases, request details, statusovergangen en remarks vanuit één consistente reviewflow."
-            backLink="/"
-            backLabel="Hoofdmenu"
           />
 
           <section class="ui-filter-grid">
