@@ -17,6 +17,7 @@ import argparse
 import csv
 import io
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -32,6 +33,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db import SessionLocal
+from app.logging import configure_logging, logger
 from app.models import (
     Aircraft,
     Hole,
@@ -45,6 +47,17 @@ from app.models import (
     NdiReport,
     Panel,
 )
+
+configure_logging()
+
+
+def log_phase(message: str) -> None:
+    logger.info("import_phase %s", message)
+
+
+def ensure_mdb_export_available() -> None:
+    if shutil.which("mdb-export") is None:
+        raise SystemExit("Missing dependency: `mdb-export` is not available in PATH. Install mdbtools first.")
 
 
 def mdb_export_rows(db_path: str, table: str) -> list[dict[str, str]]:
@@ -528,53 +541,74 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Import Access corrosion data into PostgreSQL")
     parser.add_argument("--accdb", required=True, help="Path to .accdb file")
     parser.add_argument("--append", action="store_true", help="Do not truncate core tables before import")
+    parser.add_argument("--dry-run", action="store_true", help="Validate and execute import, then roll back instead of committing")
     args = parser.parse_args()
 
     if not os.path.exists(args.accdb):
         raise SystemExit(f"ACCDB not found: {args.accdb}")
+    ensure_mdb_export_available()
 
     with SessionLocal() as session:
-        if not args.append:
-            truncate_core(session)
-            session.commit()
+        try:
+            if not args.append:
+                log_phase("truncating target tables")
+                truncate_core(session)
 
-        aircraft_ids = import_aircraft(session, args.accdb)
-        panel_ids = import_panels(session, args.accdb, aircraft_ids)
-        session.commit()  # persist parent tables first
+            log_phase("importing aircraft")
+            aircraft_ids = import_aircraft(session, args.accdb)
+            log_phase("importing panels")
+            panel_ids = import_panels(session, args.accdb, aircraft_ids)
+            session.flush()
 
-        import_holes(session, args.accdb, panel_ids)
-        import_mdr(session, args.accdb, aircraft_ids, panel_ids)
-        import_ndi_reports(session, args.accdb, panel_ids)
-        import_mdr_list(session, args.accdb, panel_ids)
-        import_lookup_status_codes(session, args.accdb)
-        import_lookup_mdr_options(session, args.accdb)
-        reset_sequences(session)
-        session.commit()
+            log_phase("importing holes")
+            import_holes(session, args.accdb, panel_ids)
+            log_phase("importing MDR cases")
+            import_mdr(session, args.accdb, aircraft_ids, panel_ids)
+            log_phase("importing NDI reports")
+            import_ndi_reports(session, args.accdb, panel_ids)
+            log_phase("importing MDR request details")
+            import_mdr_list(session, args.accdb, panel_ids)
+            log_phase("importing lookup tables")
+            import_lookup_status_codes(session, args.accdb)
+            import_lookup_mdr_options(session, args.accdb)
+            log_phase("resetting sequences")
+            reset_sequences(session)
+            session.flush()
 
-        aircraft_count = session.scalar(select(func.count()).select_from(Aircraft))
-        panel_count = session.scalar(select(func.count()).select_from(Panel))
-        hole_count = session.scalar(select(func.count()).select_from(Hole))
-        step_count = session.scalar(select(func.count()).select_from(HoleStep))
-        part_count = session.scalar(select(func.count()).select_from(HolePart))
-        mdr_count = session.scalar(select(func.count()).select_from(MdrCase))
-        remark_count = session.scalar(select(func.count()).select_from(MdrRemark))
-        ndi_count = session.scalar(select(func.count()).select_from(NdiReport))
-        mdr_detail_count = session.scalar(select(func.count()).select_from(MdrRequestDetail))
-        status_code_count = session.scalar(select(func.count()).select_from(LookupStatusCode))
-        mdr_option_count = session.scalar(select(func.count()).select_from(LookupMdrOption))
+            aircraft_count = session.scalar(select(func.count()).select_from(Aircraft))
+            panel_count = session.scalar(select(func.count()).select_from(Panel))
+            hole_count = session.scalar(select(func.count()).select_from(Hole))
+            step_count = session.scalar(select(func.count()).select_from(HoleStep))
+            part_count = session.scalar(select(func.count()).select_from(HolePart))
+            mdr_count = session.scalar(select(func.count()).select_from(MdrCase))
+            remark_count = session.scalar(select(func.count()).select_from(MdrRemark))
+            ndi_count = session.scalar(select(func.count()).select_from(NdiReport))
+            mdr_detail_count = session.scalar(select(func.count()).select_from(MdrRequestDetail))
+            status_code_count = session.scalar(select(func.count()).select_from(LookupStatusCode))
+            mdr_option_count = session.scalar(select(func.count()).select_from(LookupMdrOption))
 
-        print("Import complete")
-        print(f"Aircraft:     {aircraft_count}")
-        print(f"Panels:       {panel_count}")
-        print(f"Holes:        {hole_count}")
-        print(f"Steps:        {step_count}")
-        print(f"Parts:        {part_count}")
-        print(f"MDR cases:    {mdr_count}")
-        print(f"MDR remarks:  {remark_count}")
-        print(f"NDI reports:  {ndi_count}")
-        print(f"MDR details:  {mdr_detail_count}")
-        print(f"Status codes: {status_code_count}")
-        print(f"MDR options:  {mdr_option_count}")
+            if args.dry_run:
+                session.rollback()
+                print("Import dry-run complete; transaction rolled back")
+            else:
+                session.commit()
+                print("Import complete")
+
+            print(f"Aircraft:     {aircraft_count}")
+            print(f"Panels:       {panel_count}")
+            print(f"Holes:        {hole_count}")
+            print(f"Steps:        {step_count}")
+            print(f"Parts:        {part_count}")
+            print(f"MDR cases:    {mdr_count}")
+            print(f"MDR remarks:  {remark_count}")
+            print(f"NDI reports:  {ndi_count}")
+            print(f"MDR details:  {mdr_detail_count}")
+            print(f"Status codes: {status_code_count}")
+            print(f"MDR options:  {mdr_option_count}")
+        except Exception:
+            session.rollback()
+            logger.exception("import_failed accdb=%s", args.accdb)
+            raise
 
 
 if __name__ == "__main__":

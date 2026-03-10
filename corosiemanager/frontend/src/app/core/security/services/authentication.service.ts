@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { AppConfigService } from '../../services/app-config.service';
 import { HttpService } from '../../../shared/services/http.service';
+import { AuthStorageService } from './auth-storage.service';
 
 export interface AuthenticatedUser {
   username: string;
@@ -33,6 +34,7 @@ export interface UpdateOwnAccountInput {
 export class AuthenticationService {
   private readonly http = inject(HttpService);
   private readonly config = inject(AppConfigService);
+  private readonly storage = inject(AuthStorageService);
 
   private readonly _user$ = new BehaviorSubject<AuthenticatedUser | null>(null);
   readonly user$ = this._user$.asObservable();
@@ -46,11 +48,9 @@ export class AuthenticationService {
   }
 
   restoreFromStorage(): void {
-    const username = localStorage.getItem('auth_username');
-    const role = localStorage.getItem('auth_role');
-    const token = localStorage.getItem('auth_token');
-    if (username && role && token) {
-      this.setUser({ username, roles: [role] });
+    const session = this.storage.read();
+    if (session) {
+      this.setUser({ username: session.username, roles: [session.role] });
     }
   }
 
@@ -59,15 +59,14 @@ export class AuthenticationService {
       return of(true);
     }
 
-    const token = localStorage.getItem('auth_token');
+    const token = this.storage.token();
     if (!token) {
       return of(false);
     }
 
     return this.http.get<MeResponse>(`${this.config.apiBaseUrl}/auth/me`).pipe(
       tap((me) => {
-        localStorage.setItem('auth_username', me.username);
-        localStorage.setItem('auth_role', me.role);
+        this.storage.updateProfile(me.username, me.role);
         this.setUser({ username: me.username, roles: [me.role] });
       }),
       map(() => true),
@@ -83,16 +82,14 @@ export class AuthenticationService {
       .post<LoginResponse>(`${this.config.apiBaseUrl}/auth/login`, { username, password })
       .pipe(
         tap((res) => {
-          localStorage.setItem('auth_token', res.token);
-          localStorage.setItem('auth_username', res.username);
-          localStorage.setItem('auth_role', res.role);
+          this.storage.write({ token: res.token, username: res.username, role: res.role });
           this.setUser({ username: res.username, roles: [res.role] });
         }),
       );
   }
 
   logout(): Observable<LogoutResponse> {
-    const hasToken = !!localStorage.getItem('auth_token');
+    const hasToken = !!this.storage.token();
     const request = hasToken
       ? this.http.post<LogoutResponse>(`${this.config.apiBaseUrl}/auth/logout`, {})
       : of({ ok: true });
@@ -114,17 +111,14 @@ export class AuthenticationService {
       .pipe(
         map((res) => ({ username: res.username, roles: [res.role] })),
         tap((user) => {
-          localStorage.setItem('auth_username', user.username);
-          localStorage.setItem('auth_role', user.roles[0]);
+          this.storage.updateProfile(user.username, user.roles[0]);
           this.setUser(user);
         }),
       );
   }
 
   clearSession(): void {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_username');
-    localStorage.removeItem('auth_role');
+    this.storage.clear();
     this.setUser(null);
   }
 }

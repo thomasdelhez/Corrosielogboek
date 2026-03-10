@@ -59,14 +59,14 @@ import { CorrosionService } from '../services/corrosion.service';
                       <td>{{ user.id }}</td>
                       <td>{{ user.username }}</td>
                       <td>
-                        <select [ngModel]="roleDrafts()[user.id] ?? user.role" (ngModelChange)="setRoleDraft(user.id, $event)">
+                        <select [ngModel]="roleDraft(user)" (ngModelChange)="setRoleDraft(user.id, $event)">
                           @for (role of roles; track role) {
                             <option [value]="role">{{ role }}</option>
                           }
                         </select>
                       </td>
                       <td>
-                        <select [ngModel]="activeDrafts()[user.id] ?? user.isActive" (ngModelChange)="setActiveDraft(user.id, $event)">
+                        <select [ngModel]="activeDraft(user)" (ngModelChange)="setActiveDraft(user.id, $event)">
                           <option [ngValue]="true">Ja</option>
                           <option [ngValue]="false">Nee</option>
                         </select>
@@ -225,6 +225,14 @@ export class AdminUsersPage implements OnInit {
 
   setActiveDraft(userId: number, isActive: boolean): void {
     this.activeDrafts.update((d) => ({ ...d, [userId]: isActive }));
+  }
+
+  roleDraft(user: AppUser): 'engineer' | 'reviewer' | 'admin' {
+    return this.roleDrafts()[user.id] || user.role;
+  }
+
+  activeDraft(user: AppUser): boolean {
+    return this.activeDrafts()[user.id] ?? user.isActive;
   }
 
   isRowBusy(userId: number): boolean {

@@ -1,9 +1,13 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Aircraft(Base):
@@ -58,7 +62,7 @@ class Hole(Base):
     flexhone: Mapped[str | None] = mapped_column(String(255), nullable=True)
     flexndi: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     steps: Mapped[list["HoleStep"]] = relationship(back_populates="hole", cascade="all, delete-orphan")
     parts: Mapped[list["HolePart"]] = relationship(back_populates="hole", cascade="all, delete-orphan")
@@ -228,7 +232,7 @@ class AuditEvent(Base):
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     username: Mapped[str] = mapped_column(String(255), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class AuthSession(Base):
@@ -239,4 +243,5 @@ class AuthSession(Base):
     username: Mapped[str] = mapped_column(String(255), index=True)
     role: Mapped[str] = mapped_column(String(64), index=True)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)

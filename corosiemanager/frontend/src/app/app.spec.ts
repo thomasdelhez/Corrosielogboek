@@ -1,11 +1,22 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { App } from './app';
+import { AuthenticationService } from './core/security/services/authentication.service';
 
 describe('App', () => {
+  const authService = {
+    restoreFromStorage: vi.fn(),
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      providers: [{ provide: AuthenticationService, useValue: authService }],
     }).compileComponents();
+  });
+
+  beforeEach(() => {
+    authService.restoreFromStorage.mockClear();
   });
 
   it('should create the app', () => {
@@ -14,10 +25,8 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
-    const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, frontend');
+  it('restores auth session on boot', () => {
+    TestBed.createComponent(App);
+    expect(authService.restoreFromStorage).toHaveBeenCalledTimes(1);
   });
 });

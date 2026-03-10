@@ -1,7 +1,6 @@
 import hashlib
-import os
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +8,10 @@ from passlib.context import CryptContext
 from sqlalchemy import String, case, cast, func, inspect, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from .config import settings
 from .db import Base, engine, get_db
+from .errors import register_exception_handlers
+from .logging import configure_logging, log_requests, logger
 from .models import (
     AuthSession,
     Aircraft,
@@ -68,21 +70,19 @@ from .schemas import (
     PanelCreateIn,
 )
 
-app = FastAPI(title="F35 Corrosie Logboek API", version="0.2.1")
+configure_logging()
 
-allowed_origins = [
-    origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:4200,http://localhost:4200").split(",")
-    if origin.strip()
-]
+app = FastAPI(title=settings.app_name, version=settings.app_version)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+register_exception_handlers(app)
+app.middleware("http")(log_requests)
 
 MDR_ALLOWED_STATUSES = {"Draft", "Awaiting Request", "Request", "Submit", "Resubmit", "In Review", "Approved", "Rejected", "Closed", "Submitted"}
 MDR_TRANSITIONS: dict[str, set[str]] = {
@@ -101,6 +101,10 @@ MDR_TRANSITIONS: dict[str, set[str]] = {
 ROLE_LEVEL = {"engineer": 1, "reviewer": 2, "admin": 3}
 ALLOWED_USER_ROLES = {"engineer", "reviewer", "admin"}
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _has_text(value: str | None) -> bool:
@@ -166,12 +170,31 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _session_expiry() -> datetime:
+    return _utcnow() + timedelta(hours=settings.session_ttl_hours)
+
+
+def _revoke_expired_sessions(db: Session) -> bool:
+    expired_sessions = db.execute(
+        select(AuthSession).where(AuthSession.revoked.is_(False), AuthSession.expires_at <= _utcnow())
+    ).scalars().all()
+    for session in expired_sessions:
+        session.revoked = True
+    return bool(expired_sessions)
+
+
 def _require_user(authorization: str | None, db: Session) -> dict[str, str]:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid bearer token")
     token = authorization.split(" ", 1)[1].strip()
+    if _revoke_expired_sessions(db):
+        db.commit()
     session = db.execute(
-        select(AuthSession).where(AuthSession.token_hash == _token_hash(token), AuthSession.revoked.is_(False))
+        select(AuthSession).where(
+            AuthSession.token_hash == _token_hash(token),
+            AuthSession.revoked.is_(False),
+            AuthSession.expires_at > _utcnow(),
+        )
     ).scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
@@ -227,15 +250,17 @@ def _active_admin_count(db: Session) -> int:
 
 @app.on_event("startup")
 def startup():
-    if os.getenv("AUTO_CREATE_SCHEMA", "false").lower() == "true":
+    if settings.auto_create_schema:
         Base.metadata.create_all(bind=engine)
 
     if not inspect(engine).has_table("app_user"):
         return
 
     with Session(engine) as db:
+        if _revoke_expired_sessions(db):
+            db.commit()
         existing = db.execute(select(AppUser).limit(1)).scalar_one_or_none()
-        if not existing:
+        if not existing and settings.seed_demo_users:
             db.add_all(
                 [
                     AppUser(username="engineer", password=pwd_context.hash("engineer"), role="engineer"),
@@ -244,6 +269,7 @@ def startup():
                 ]
             )
             db.commit()
+            logger.warning("seeded_demo_users enabled; disable SEED_DEMO_USERS outside local development")
         else:
             users = db.execute(select(AppUser)).scalars().all()
             changed = False
@@ -257,18 +283,33 @@ def startup():
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "service": settings.app_name, "version": settings.app_version}
+
+
+@app.get("/ready")
+def ready(db: Session = Depends(get_db)):
+    db.execute(select(1))
+    return {"ok": True, "database": "ready"}
 
 
 @app.post("/api/v1/auth/login", response_model=LoginOut)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
+    _revoke_expired_sessions(db)
     user = db.execute(
         select(AppUser).where(AppUser.username == payload.username, AppUser.is_active.is_(True))
     ).scalar_one_or_none()
     if not user or not pwd_context.verify(payload.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = secrets.token_urlsafe(32)
-    db.add(AuthSession(token_hash=_token_hash(token), username=user.username, role=user.role, revoked=False))
+    db.add(
+        AuthSession(
+            token_hash=_token_hash(token),
+            username=user.username,
+            role=user.role,
+            revoked=False,
+            expires_at=_session_expiry(),
+        )
+    )
     db.commit()
     return {"token": token, "username": user.username, "role": user.role}
 
@@ -1515,6 +1556,16 @@ def list_ndi_dashboard(
     q: str | None = None,
     limit: int = Query(default=300, ge=1, le=1000),
 ):
+    latest_report_ids = (
+        select(
+            NdiReport.hole_id.label("hole_id"),
+            func.max(NdiReport.id).label("latest_report_id"),
+        )
+        .where(NdiReport.hole_id.is_not(None))
+        .group_by(NdiReport.hole_id)
+        .subquery()
+    )
+
     stmt = (
         select(
             Hole.id.label("hole_id"),
@@ -1527,9 +1578,14 @@ def list_ndi_dashboard(
             Hole.ndi_name_initials.label("ndi_name_initials"),
             Hole.ndi_inspection_date.label("ndi_inspection_date"),
             Hole.ndi_finished.label("ndi_finished"),
+            latest_report_ids.c.latest_report_id.label("latest_report_id"),
+            NdiReport.method.label("latest_report_method"),
+            NdiReport.tools.label("latest_report_tools"),
         )
         .join(Panel, Panel.id == Hole.panel_id)
         .outerjoin(Aircraft, Aircraft.id == Panel.aircraft_id)
+        .outerjoin(latest_report_ids, latest_report_ids.c.hole_id == Hole.id)
+        .outerjoin(NdiReport, NdiReport.id == latest_report_ids.c.latest_report_id)
     )
 
     if aircraft_id is not None:
@@ -1551,13 +1607,6 @@ def list_ndi_dashboard(
 
     out = []
     for r in base_rows:
-        latest_report = db.execute(
-            select(NdiReport)
-            .where(NdiReport.hole_id == r.hole_id)
-            .order_by(NdiReport.id.desc())
-            .limit(1)
-        ).scalar_one_or_none()
-
         inspection = (r.inspection_status or "").strip().lower()
         action_needed = inspection in {"corroded", "rifled", "markedascorroded", "markedasrifled"}
         finished = bool(r.ndi_finished)
@@ -1566,7 +1615,7 @@ def list_ndi_dashboard(
             queue_status = "finished"
         elif action_needed:
             queue_status = "action_needed"
-        elif r.ndi_name_initials or latest_report:
+        elif r.ndi_name_initials or r.latest_report_id:
             queue_status = "report_needed"
         else:
             queue_status = "check_tracker"
@@ -1585,9 +1634,9 @@ def list_ndi_dashboard(
                 "inspection_status": r.inspection_status,
                 "ndi_name_initials": r.ndi_name_initials,
                 "ndi_inspection_date": r.ndi_inspection_date,
-                "latest_report_id": latest_report.id if latest_report else None,
-                "latest_report_method": latest_report.method if latest_report else None,
-                "latest_report_tools": latest_report.tools if latest_report else None,
+                "latest_report_id": r.latest_report_id,
+                "latest_report_method": r.latest_report_method,
+                "latest_report_tools": r.latest_report_tools,
                 "queue_status": queue_status,
             }
         )
