@@ -1,0 +1,21 @@
+    <header class="page-header">
+      <div class="copy">
+        @if (eyebrow()) {
+          <p class="eyebrow">{{ eyebrow() }}</p>
+        }
+        <div class="heading-row">
+          @if (backLink()) {
+            <a class="back-link" [routerLink]="backLink()!">{{ backLabel() }}</a>
+          }
+          <div>
+            <h1>{{ title() }}</h1>
+            @if (subtitle()) {
+              <p class="subtitle">{{ subtitle() }}</p>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <ng-content />
+      </div>
+    </header>

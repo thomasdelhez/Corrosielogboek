@@ -1,0 +1,151 @@
+    <main class="ui-page">
+      <section class="hero ui-surface">
+        <div class="ui-surface-inner">
+          <app-page-header
+            eyebrow="F35 Corrosie Logboek"
+            title="Operationeel overzicht"
+            subtitle="Navigeer direct naar de juiste werkstroom, zoek door onderhoudsdata en houd focus op de volgende actie."
+          >
+            @if (!isLoggedIn()) {
+              <a class="ui-btn" routerLink="/login">Naar login</a>
+            }
+          </app-page-header>
+
+          @if (authMessage()) {
+            <div class="ui-banner info hero-message">
+              <span>{{ authMessage() }}</span>
+            </div>
+          }
+
+          @if (!isLoggedIn()) {
+            <div class="hero-message">
+              <app-empty-state
+                eyebrow="Toegang"
+                title="Log in om werkstromen te openen"
+                description="Na het inloggen krijg je directe toegang tot modules, zoekfunctie en detailschermen."
+              >
+                <a class="ui-btn" routerLink="/login">Login openen</a>
+              </app-empty-state>
+            </div>
+          }
+
+          <section class="search-strip">
+            <div class="search-head">
+              <div>
+                <p class="card-label">Direct zoeken</p>
+                <h2>Aircraft, panel, hole of MDR</h2>
+              </div>
+              <p class="ui-meta">Gebruik één zoekveld om direct naar de juiste case of workflow te springen.</p>
+            </div>
+            <form class="search-form" (ngSubmit)="runGlobalSearch()">
+              <input
+                class="ui-input"
+                [(ngModel)]="globalSearchQuery"
+                name="globalSearchQuery"
+                placeholder="Bijv. AN 10, panel 190, hole 123, MDR-001"
+              />
+              <button class="ui-btn-secondary" type="submit" [disabled]="searchLoading()">
+                {{ searchLoading() ? 'Zoeken...' : 'Zoeken' }}
+              </button>
+            </form>
+            @if (searchResults().length > 0) {
+              <div class="search-results">
+                @for (result of searchResults(); track result.route + result.title) {
+                  <button class="result-item" type="button" (click)="openSearchResult(result)">
+                    <app-status-pill [label]="result.kind" state="brand" />
+                    <strong>{{ result.title }}</strong>
+                    @if (result.subtitle) {
+                      <span class="ui-meta">{{ result.subtitle }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            } @else if (searchTried() && !searchLoading()) {
+              <app-empty-state
+                eyebrow="Zoekresultaten"
+                title="Geen resultaten gevonden"
+                description="Probeer een andere aircraftcode, hole, panelnummer of MDR-referentie."
+              />
+            }
+          </section>
+        </div>
+      </section>
+
+      <section class="feature-grid">
+        <article class="feature feature-primary ui-section">
+          <div class="ui-section-inner">
+            <p class="card-label">Core workflow</p>
+            <h3>Aircraft & Panels</h3>
+            <p>Selecteer aircraft, open panels en beheer holes vanuit het centrale overzicht.</p>
+            <div class="ui-actions">
+              <a class="ui-btn" routerLink="/corrosion">Open workflow</a>
+              <a class="ui-btn-secondary" routerLink="/admin/aircraft-beheer">Aircraft beheer</a>
+            </div>
+          </div>
+        </article>
+
+        @if (canUseMdr()) {
+          <article class="feature ui-section">
+            <div class="ui-section-inner">
+              <p class="card-label">Review</p>
+              <h3>MDR Management</h3>
+              <p>Status, cases en request details in één reviewflow.</p>
+              <a class="ui-btn-secondary" routerLink="/mdr">Open MDR</a>
+            </div>
+          </article>
+        }
+
+        @if (canUseNdi()) {
+          <article class="feature ui-section">
+            <div class="ui-section-inner">
+              <p class="card-label">Review</p>
+              <h3>NDI Reports</h3>
+              <p>Onderhoud de NDI-workflow en werk rapporten gecontroleerd bij.</p>
+              <a class="ui-btn-secondary" routerLink="/ndi">Open NDI</a>
+            </div>
+          </article>
+        }
+
+        <article class="feature ui-section">
+          <div class="ui-section-inner">
+            <p class="card-label">Supply</p>
+            <h3>Ordering</h3>
+            <p>Volg onderdelen, orderstatus en leverstatus zonder contextwissels.</p>
+            <a class="ui-btn-secondary" routerLink="/ordering">Open tracker</a>
+          </div>
+        </article>
+
+        <article class="feature ui-section">
+          <div class="ui-section-inner">
+            <p class="card-label">Queue control</p>
+            <h3>Inspectie & Installatie</h3>
+            <p>Werk inspectie, trackers en installatie in samenhang af.</p>
+            <div class="ui-actions">
+              <a class="ui-btn-secondary" routerLink="/inspection">Inspectie</a>
+              <a class="ui-btn-secondary" routerLink="/trackers">Trackers</a>
+              <a class="ui-btn-secondary" routerLink="/installation">Installatie</a>
+            </div>
+          </div>
+        </article>
+
+        @if (canUseAdmin()) {
+          <article class="feature ui-section">
+            <div class="ui-section-inner">
+              <p class="card-label">Beheer</p>
+              <h3>Admin</h3>
+              <p>Beheer gebruikers, rollen en operationele toegang.</p>
+              <a class="ui-btn-secondary" routerLink="/admin/users">Gebruikers beheren</a>
+            </div>
+          </article>
+        }
+
+        <article class="feature ui-section">
+          <div class="ui-section-inner">
+            <p class="card-label">Rapportage</p>
+            <h3>Corrosion reports</h3>
+            <p>Open exports en reviewdata voor opvolging en overdracht.</p>
+            <a class="ui-btn-secondary" routerLink="/reports/corrosion-tracker">Open rapportage</a>
+          </div>
+        </article>
+      </section>
+    </main>

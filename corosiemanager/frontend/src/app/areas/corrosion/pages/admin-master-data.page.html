@@ -1,0 +1,138 @@
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Beheer"
+            title="Aircraft beheer"
+            subtitle="Beheer aircraft, panels en batch hole-creates in een opgeruimde administratieve flow."
+          />
+
+          @if (message()) {
+            <div class="ui-banner" [class.error]="messageType() === 'error'" [class.info]="messageType() !== 'error'">
+              <span>{{ message() }}</span>
+            </div>
+          }
+
+          <section class="ui-filter-grid">
+            <article class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <p class="ui-filter-label">Nieuw aircraft</p>
+                <div class="ui-form-grid">
+                  <label class="ui-field">
+                    <span>AN</span>
+                    <input [(ngModel)]="aircraftAn" />
+                  </label>
+                  <label class="ui-field">
+                    <span>Serial number</span>
+                    <input [(ngModel)]="aircraftSerial" />
+                  </label>
+                </div>
+                <div class="ui-actions">
+                  <button class="ui-btn" type="button" (click)="createAircraft()">Aircraft aanmaken</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <p class="ui-filter-label">Nieuw panel</p>
+                <div class="ui-form-grid">
+                  <label class="ui-field">
+                    <span>Aircraft</span>
+                    <select [(ngModel)]="panelAircraftId">
+                      @for (a of aircraft(); track a.id) {
+                        <option [ngValue]="a.id">{{ a.an }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="ui-field">
+                    <span>Panel number</span>
+                    <input type="number" [(ngModel)]="panelNumber" />
+                  </label>
+                </div>
+                <div class="ui-actions">
+                  <button class="ui-btn" type="button" (click)="createPanel()">Panel aanmaken</button>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <app-page-header title="Batch hole create" subtitle="Voer ranges of CSV in, controleer de preview en maak holes in één submit aan." />
+
+              <p class="ui-note">Voorbeeld: <code>101-120, 130, 145</code></p>
+
+              <div class="ui-form-grid">
+                <label class="ui-field">
+                  <span>Aircraft</span>
+                  <select [ngModel]="batchAircraftId()" (ngModelChange)="onBatchAircraftChange($event)">
+                    @for (a of aircraft(); track a.id) {
+                      <option [ngValue]="a.id">{{ a.an }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="ui-field">
+                  <span>Panel</span>
+                  <select [ngModel]="batchPanelId()" (ngModelChange)="batchPanelId.set($event)">
+                    @for (p of batchPanels(); track p.id) {
+                      <option [ngValue]="p.id">Panel {{ p.panelNumber }} ({{ p.holeCount }})</option>
+                    }
+                  </select>
+                </label>
+                <label class="ui-field full">
+                  <span>Hole nummers</span>
+                  <textarea rows="4" [ngModel]="batchRawInput()" (ngModelChange)="onBatchRawInputChange($event)" placeholder="101-120, 130, 145"></textarea>
+                </label>
+              </div>
+
+              <div class="ui-actions">
+                <button class="ui-btn-secondary" type="button" (click)="previewBatch()">Preview</button>
+                <button class="ui-btn" type="button" (click)="submitBatch()" [disabled]="batchSubmitting() || !batchPanelId() || !batchPreviewConfirmed() || batchPreviewNumbers().length === 0">
+                  {{ batchSubmitting() ? 'Bezig...' : 'Batch aanmaken' }}
+                </button>
+              </div>
+
+              @if (batchPreviewNumbers().length > 0) {
+                <div class="ui-banner info">
+                  <span>Preview: {{ batchPreviewNumbers().length }} holes → {{ batchPreviewNumbers().slice(0, 20).join(', ') }}@if (batchPreviewNumbers().length > 20) { ... }</span>
+                </div>
+              }
+
+              @if (batchCreatedCount() + batchSkippedCount() + batchErrorCount() > 0) {
+                <div class="ui-summary-row">
+                  <span class="ui-chip">Created {{ batchCreatedCount() }}</span>
+                  <span class="ui-chip">Skipped {{ batchSkippedCount() }}</span>
+                  <span class="ui-chip">Errors {{ batchErrorCount() }}</span>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <app-page-header title="Overzicht" subtitle="Snel overzicht van aircraft en het aantal gekoppelde panels." />
+              @if (aircraft().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen masterdata"
+                  title="Nog geen aircraft gevonden"
+                  description="Maak eerst een aircraft aan om panels en batch-holes te beheren."
+                />
+              } @else {
+                <div class="ui-detail-list">
+                  @for (a of aircraft(); track a.id) {
+                    <article class="ui-detail-item">
+                      <strong>{{ a.an }}</strong>
+                      @if (a.serialNumber) {
+                        <span> ({{ a.serialNumber }})</span>
+                      }
+                      <p class="ui-note">Panels: {{ panelCountByAircraft(a.id) }}</p>
+                    </article>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>

@@ -1,0 +1,130 @@
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="NDI workflow"
+            title="NDI dashboard"
+            subtitle="Houd check tracker, action needed, report needed en finished holes in één overzicht onder controle."
+          />
+
+          <section class="filter-grid">
+            <article class="filter-card">
+              <p class="filter-label">Context</p>
+              <div class="ui-grid two">
+                <label class="ui-field">
+                  <span>Aircraft</span>
+                  <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+                    @for (a of aircraft(); track a.id) {
+                      <option [ngValue]="a.id">{{ a.an }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label class="ui-field">
+                  <span>Panel</span>
+                  <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+                    <option [ngValue]="null">Alle panels</option>
+                    @for (p of panels(); track p.id) {
+                      <option [ngValue]="p.id">Panel {{ p.panelNumber }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+            </article>
+
+            <article class="filter-card">
+              <p class="filter-label">Zoeken</p>
+              <label class="ui-field">
+                <span>Filter op hole, panel, aircraft of status</span>
+                <input [ngModel]="search()" (ngModelChange)="search.set($event); reload()" placeholder="Hole, panel, AN of status" />
+              </label>
+            </article>
+          </section>
+
+          <section class="queue-bar">
+            <button class="queue-chip" [class.active]="queue() === 'all'" (click)="setQueue('all')">Alles <span>{{ allRows().length }}</span></button>
+            <button class="queue-chip" [class.active]="queue() === 'check_tracker'" (click)="setQueue('check_tracker')">Check tracker <span>{{ checkCount() }}</span></button>
+            <button class="queue-chip" [class.active]="queue() === 'action_needed'" (click)="setQueue('action_needed')">Action needed <span>{{ actionCount() }}</span></button>
+            <button class="queue-chip" [class.active]="queue() === 'report_needed'" (click)="setQueue('report_needed')">Report needed <span>{{ reportCount() }}</span></button>
+            <button class="queue-chip" [class.active]="queue() === 'finished'" (click)="setQueue('finished')">Finished <span>{{ finishedCount() }}</span></button>
+          </section>
+
+          @if (message()) {
+            <div class="ui-banner" [class.error]="messageType() === 'error'" [class.info]="messageType() !== 'error'">
+              <span>{{ message() }}</span>
+            </div>
+          }
+
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              @if (loading()) {
+                <div class="ui-banner info"><span>NDI dashboard laden...</span></div>
+              } @else if (loadError()) {
+                <div class="ui-banner error">
+                  <span>{{ loadError() }}</span>
+                  <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+                </div>
+              } @else if (rows().length === 0) {
+                <app-empty-state
+                  eyebrow="Geen resultaten"
+                  title="Geen NDI-items gevonden"
+                  description="Pas je filters aan of kies een andere queue om resultaten te tonen."
+                />
+              } @else {
+                <div class="ui-table-wrap">
+                  <table class="ui-table ndi-table">
+                    <thead>
+                      <tr>
+                        <th>Aircraft</th>
+                        <th>Panel</th>
+                        <th>Hole</th>
+                        <th>Queue</th>
+                        <th>Inspectie</th>
+                        <th>Initials</th>
+                        <th>Datum</th>
+                        <th>Methode</th>
+                        <th>Acties</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (r of rows(); track r.holeId) {
+                        <tr>
+                          <td>{{ r.aircraftAn ?? '-' }}</td>
+                          <td>{{ r.panelNumber }}</td>
+                          <td>#{{ r.holeNumber }}</td>
+                          <td><app-status-pill [label]="queueLabel(r.queueStatus)" [state]="r.queueStatus" /></td>
+                          <td>{{ r.inspectionStatus ?? '-' }}</td>
+                          <td>{{ r.ndiNameInitials ?? '-' }}</td>
+                          <td>{{ r.ndiInspectionDate ? (r.ndiInspectionDate | date:'yyyy-MM-dd') : '-' }}</td>
+                          <td>{{ r.latestReportMethod ?? '-' }}</td>
+                          <td>
+                            <div class="row-actions">
+                              @if (r.queueStatus === 'check_tracker' && canTransitionNdi()) {
+                                <button class="ui-btn-secondary" type="button" (click)="transition(r.holeId, 'report_needed')">To report needed</button>
+                              }
+                              @if (r.queueStatus === 'action_needed' && canTransitionNdi()) {
+                                <button class="ui-btn-secondary" type="button" (click)="transition(r.holeId, 'report_needed')">Action done</button>
+                              }
+                              @if (r.queueStatus !== 'finished' && canCreateNdiReport()) {
+                                <button class="ui-btn-secondary" type="button" (click)="quickAddReport(r.holeId, r.panelId)">Quick report</button>
+                              }
+                              @if (r.queueStatus !== 'finished' && canTransitionNdi()) {
+                                <button class="ui-btn" type="button" (click)="transition(r.holeId, 'finished')">Mark finished</button>
+                              }
+                              @if (r.queueStatus === 'finished' && canTransitionNdi()) {
+                                <button class="ui-btn-secondary" type="button" (click)="transition(r.holeId, 'check_tracker')">Reopen</button>
+                              }
+                              <a [routerLink]="['/corrosion', r.holeId]" class="ui-btn-ghost">Open hole</a>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>

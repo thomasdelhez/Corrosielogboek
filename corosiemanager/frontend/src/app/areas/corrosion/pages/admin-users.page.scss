@@ -1,0 +1,19 @@
+    .form-cell{min-width:180px}
+    .table-field{display:grid;gap:6px;min-width:160px}
+    .table-field select{
+      width:100%;
+      min-height:42px;
+      border:1px solid var(--color-line-strong);
+      border-radius:14px;
+      padding:0 12px;
+      background:#fff;
+      color:var(--color-ink-strong);
+    }
+    .table-label{
+      color:var(--color-ink-muted);
+      font-size:.72rem;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .row-actions{justify-content:flex-start}

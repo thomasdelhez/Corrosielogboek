@@ -1,0 +1,31 @@
+    <main class="page">
+      <div class="sky-grid"></div>
+      <div class="haze haze-a"></div>
+      <div class="haze haze-b"></div>
+      <div class="plane plane-a"></div>
+      <div class="plane plane-b"></div>
+      <div class="plane plane-c"></div>
+
+      <section class="card">
+        <p class="eyebrow">Corrosiemanager</p>
+        <h2>Inloggen</h2>
+        <p class="subtitle">Log in om Corrosiemanager te gebruiken.</p>
+
+        <form (ngSubmit)="login()">
+          <label class="field">
+            <span>Username</span>
+            <input [(ngModel)]="username" name="username" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" [(ngModel)]="password" name="password" />
+          </label>
+
+          <div class="actions">
+            <button class="btn-primary" type="submit" [disabled]="loading()">{{ loading() ? 'Authenticeren...' : 'Login' }}</button>
+          </div>
+        </form>
+
+        <small>Demo: engineer/engineer · reviewer/reviewer · admin/admin</small>
+      </section>
+    </main>

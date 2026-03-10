@@ -1,0 +1,257 @@
+    <main class="ui-page">
+      <section class="ui-surface">
+        <div class="ui-surface-inner ui-stack-md">
+          <app-page-header
+            eyebrow="Review"
+            title="MDR management"
+            subtitle="Beheer cases, request details, statusovergangen en remarks vanuit één consistente reviewflow."
+          />
+
+          <section class="ui-filter-grid">
+            <article class="ui-filter-card">
+              <p class="ui-filter-label">Context</p>
+              <div class="ui-grid two">
+                <label class="field">
+                  <span>Aircraft</span>
+                  <select [ngModel]="selectedAircraftId()" (ngModelChange)="onAircraftChange($event)">
+                    @for (a of aircraft(); track a.id) {
+                      <option [ngValue]="a.id">{{ a.an }}</option>
+                    }
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Panel</span>
+                  <select [ngModel]="selectedPanelId()" (ngModelChange)="onPanelChange($event)">
+                    @for (p of panels(); track p.id) {
+                      <option [ngValue]="p.id">Panel {{ p.panelNumber }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+            </article>
+
+            <article class="ui-filter-card">
+              <p class="ui-filter-label">Acties</p>
+              <div class="actions no-top">
+                @if (!creatingMode() && !editingId() && canCreateOrEditMdr()) {
+                  <button class="btn-primary" type="button" (click)="startCreate()">Nieuwe MDR case</button>
+                }
+                <span class="ui-chip">Cases {{ mdrCases().length }}</span>
+                @if (selectedCase()) {
+                  <span class="ui-chip brand">Actieve case #{{ selectedCase()!.id }}</span>
+                }
+              </div>
+            </article>
+          </section>
+
+          @if (message()) {
+            <div class="ui-banner" [class.error]="messageType() === 'error'" [class.info]="messageType() !== 'error'">
+              <span>{{ message() }}</span>
+            </div>
+          }
+
+          @if (creatingMode() || editingId()) {
+            <form class="editor" (ngSubmit)="save()">
+            <h3>{{ editingId() ? 'MDR case wijzigen' : 'Nieuwe MDR case' }}</h3>
+            <div class="grid">
+              <label class="field"><span>MDR Number</span><input [(ngModel)]="form.mdrNumber" name="mdrNumber" /></label>
+              <label class="field"><span>Versie</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" /></label>
+              <label class="field">
+                <span>Status</span>
+                <select [(ngModel)]="form.status" name="status">
+                  @for (opt of statusOptions(); track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field"><span>Submitted by</span><input [(ngModel)]="form.submittedBy" name="submittedBy" /></label>
+              <label class="field"><span>ED Number</span><input [(ngModel)]="form.edNumber" name="edNumber" /></label>
+              <label class="field"><span>DCM Check</span><input [(ngModel)]="form.dcmCheck" name="dcmCheck" /></label>
+              <label class="field"><span>Hole IDs</span><input [(ngModel)]="form.holeIds" name="holeIds" /></label>
+              <label class="field"><span>Request Date</span><input [(ngModel)]="requestDateInput" name="requestDateInput" type="date" /></label>
+              <label class="field"><span>Need Date</span><input [(ngModel)]="needDateInput" name="needDateInput" type="date" /></label>
+              <label class="field"><span>Submit List Date</span><input [(ngModel)]="submitListDateInput" name="submitListDateInput" type="date" /></label>
+              <label class="field"><span>Approval Date</span><input [(ngModel)]="approvalDateInput" name="approvalDateInput" type="date" /></label>
+              <label class="field"><span><input [(ngModel)]="form.resubmit" name="resubmit" type="checkbox" /> Resubmit</span></label>
+              <label class="field"><span><input [(ngModel)]="form.requestSent" name="requestSent" type="checkbox" /> Request Sent</span></label>
+              <label class="field"><span><input [(ngModel)]="form.approved" name="approved" type="checkbox" /> Approved</span></label>
+              <label class="field"><span><input [(ngModel)]="form.tier2" name="tier2" type="checkbox" /> Tier2</span></label>
+              <label class="field full"><span>Subject</span><input [(ngModel)]="form.subject" name="subject" /></label>
+            </div>
+            <div class="actions">
+              <button class="btn-primary" type="submit" [disabled]="mdrInlineErrors().length > 0">{{ editingId() ? 'Opslaan wijzigingen' : 'Aanmaken' }}</button>
+              <button class="btn-secondary" type="button" (click)="resetForm()">Annuleren</button>
+            </div>
+            @if (mdrInlineErrors().length > 0) {
+              <ul class="inline-errors">
+                @for (err of mdrInlineErrors(); track err) {
+                  <li>{{ err }}</li>
+                }
+              </ul>
+            }
+            </form>
+          }
+
+          @if (loading()) {
+            <div class="ui-banner info"><span>MDR dashboard laden...</span></div>
+          } @else {
+            @if (selectedCase()) {
+              <section class="queue-card">
+              <h3>Case detail #{{ selectedCase()!.id }}</h3>
+              <p><strong>MDR:</strong> {{ selectedCase()!.mdrNumber ?? '-' }} · <strong>Status:</strong> <app-status-pill [label]="selectedCase()!.status ?? '-'" [state]="selectedCase()!.status" /></p>
+              <p><strong>Subject:</strong> {{ selectedCase()!.subject ?? '-' }}</p>
+
+              <h4 style="margin:10px 0 6px;">Remarks</h4>
+              @if (remarks().length === 0) { <app-empty-state eyebrow="Remarks" title="Nog geen remarks" description="Voeg een remark toe om opmerkingen en reviewcontext vast te leggen." /> } @else {
+                @for (r of remarks(); track r.id) {
+                  <p class="detail-row"><strong>V{{ r.remarkIndex }}:</strong> {{ r.remarkText }}</p>
+                }
+              }
+
+              <div class="actions">
+                <input class="remark-input" [(ngModel)]="remarkForm.remarkText" placeholder="Nieuwe remark" />
+                <select [(ngModel)]="remarkForm.remarkIndex" class="remark-index">
+                  @for (i of [1,2,3,4,5]; track i) { <option [ngValue]="i">V{{ i }}</option> }
+                </select>
+                @if (canCreateOrEditMdr()) {
+                  <button class="btn-primary" type="button" (click)="addRemark()">Add remark</button>
+                }
+              </div>
+
+              <h4 style="margin:10px 0 6px;">Request details (panel)</h4>
+              <div class="actions">
+                @if (!editingDetailId() && canManageRequestDetails()) {
+                  <button class="btn-secondary" type="button" (click)="startCreateDetail()">+ Request detail</button>
+                }
+              </div>
+              @if ((editingDetailId() || creatingDetailMode()) && canManageRequestDetails()) {
+                <div class="editor nested-editor">
+                  <h4>{{ editingDetailId() ? 'Request detail wijzigen' : 'Nieuw request detail' }}</h4>
+                  <div class="grid">
+                    <label class="field"><span>TVE</span><input [(ngModel)]="requestDetailForm.tve" name="rd_tve" /></label>
+                    <label class="field"><span>Task Type</span><input [(ngModel)]="requestDetailForm.taskType" name="rd_task_type" /></label>
+                    <label class="field"><span>FMS / Non-FMS</span><input [(ngModel)]="requestDetailForm.fmsOrNonFms" name="rd_fms_non_fms" /></label>
+                    <label class="field"><span>Releasability</span><input [(ngModel)]="requestDetailForm.releasability" name="rd_releasability" /></label>
+                    <label class="field"><span>Technical Product Number</span><input [(ngModel)]="requestDetailForm.technicalProductNumber" name="rd_tp_number" /></label>
+                    <label class="field"><span>Technical Product Title</span><input [(ngModel)]="requestDetailForm.technicalProductTitle" name="rd_tp_title" /></label>
+                    <label class="field"><span>Submitter Name</span><input [(ngModel)]="requestDetailForm.submitterName" name="rd_submitter_name" /></label>
+                    <label class="field"><span>Location</span><input [(ngModel)]="requestDetailForm.location" name="rd_location" /></label>
+                    <label class="field"><span>MDR Type</span><input [(ngModel)]="requestDetailForm.mdrType" name="rd_mdrtype" /></label>
+                    <label class="field"><span>Part Number</span><input [(ngModel)]="requestDetailForm.partNumber" name="rd_part" /></label>
+                    <label class="field"><span>Serial Number</span><input [(ngModel)]="requestDetailForm.serialNumber" name="rd_serial" /></label>
+                    <label class="field"><span>Internal Reference Number</span><input [(ngModel)]="requestDetailForm.internalReferenceNumber" name="rd_internal_ref" /></label>
+                    <label class="field"><span>CR/ECP</span><input [(ngModel)]="requestDetailForm.crEcp" name="rd_cr_ecp" /></label>
+                    <label class="field"><span>Discrepancy Type</span>
+                      <select [(ngModel)]="requestDetailForm.discrepancyType" name="rd_discrepancy_type">
+                        <option [ngValue]="null">--</option>
+                        @for (opt of discrepancyTypeOptions(); track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </label>
+                    <label class="field"><span>Cause Code / Discrepant Work</span>
+                      <select [(ngModel)]="requestDetailForm.causeCodeDiscrepantWork" name="rd_cause_code">
+                        <option [ngValue]="null">--</option>
+                        @for (opt of causeCodeOptions(); track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </label>
+                    <label class="field"><span>Resubmit Reason</span><input [(ngModel)]="requestDetailForm.resubmitReason" name="rd_resubmit_reason" /></label>
+                    <label class="field"><span>Defect Code</span><input [(ngModel)]="requestDetailForm.defectCode" name="rd_defect" /></label>
+                    <label class="field"><span>Access Location</span><input [(ngModel)]="requestDetailForm.accessLocation" name="rd_access_location" /></label>
+                    <label class="field"><span>Date Due To Field</span><input [(ngModel)]="requestDetailDateDueInput" name="rd_date_due" type="date" /></label>
+                    <label class="field"><span>Discovered By</span>
+                      <select [(ngModel)]="requestDetailForm.discoveredBy" name="rd_discovered_by">
+                        <option [ngValue]="null">--</option>
+                        @for (opt of discoveredByOptions(); track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </label>
+                    <label class="field"><span>When Discovered</span>
+                      <select [(ngModel)]="requestDetailForm.whenDiscovered" name="rd_when_discovered">
+                        <option [ngValue]="null">--</option>
+                        @for (opt of whenDiscoveredOptions(); track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </label>
+                    <label class="field"><span>LCN</span>
+                      <select [(ngModel)]="requestDetailForm.lcn" name="rd_lcn">
+                        <option [ngValue]="null">--</option>
+                        @for (opt of lcnOptions(); track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </label>
+                    <label class="field"><span>LCN Description</span><input [(ngModel)]="requestDetailForm.lcnDescription" name="rd_lcn_description" /></label>
+                    <label class="field"><span>Inspection Criteria</span><input [(ngModel)]="requestDetailForm.inspectionCriteria" name="rd_inspection_criteria" /></label>
+                    <label class="field"><span>MGI Required</span><input [(ngModel)]="requestDetailForm.mgiRequired" name="rd_mgi_required" /></label>
+                    <label class="field"><span>MGI Number</span><input [(ngModel)]="requestDetailForm.mgiNumber" name="rd_mgi_number" /></label>
+                    <label class="field"><span>Discovered During</span><input [(ngModel)]="requestDetailForm.discoveredDuring" name="rd_discovered_during" /></label>
+                    <label class="field"><span>Date Discovered</span><input [(ngModel)]="requestDetailDateDiscoveredInput" name="rd_date_discovered" type="date" /></label>
+                    <label class="field"><span>T/M/S</span><input [(ngModel)]="requestDetailForm.tms" name="rd_tms" /></label>
+                    <label class="field"><span>Email</span><input [(ngModel)]="requestDetailForm.email" name="rd_email" /></label>
+                    <label class="field"><span>Confirm Email</span><input [(ngModel)]="requestDetailForm.confirmEmail" name="rd_confirm_email" /></label>
+                    <label class="field full"><span>Problem Statement</span><textarea [(ngModel)]="requestDetailForm.problemStatement" name="rd_problem"></textarea></label>
+                    <label class="field full"><span>Technical Product Details Summary</span><textarea [(ngModel)]="requestDetailForm.technicalProductDetailsSummary" name="rd_tp_summary"></textarea></label>
+                  </div>
+                  <div class="actions">
+                    <button class="btn-primary" type="button" (click)="saveRequestDetail()" [disabled]="requestDetailInlineErrors().length > 0">Opslaan request detail</button>
+                    <button class="btn-secondary" type="button" (click)="resetRequestDetailForm()">Annuleren</button>
+                  </div>
+                  @if (requestDetailInlineErrors().length > 0) {
+                    <ul class="inline-errors">
+                      @for (err of requestDetailInlineErrors(); track err) {
+                        <li>{{ err }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+              @if (requestDetails().length === 0) { <app-empty-state eyebrow="Request details" title="Geen request details gevonden" description="Maak een request detail aan om panel-specifieke MDR-data vast te leggen." /> } @else {
+                @for (d of requestDetails(); track d.id) {
+                  <p class="detail-row">
+                    {{ d.tve ?? '-' }} · {{ d.partNumber ?? '-' }} · {{ d.problemStatement ?? '-' }}
+                    @if (canManageRequestDetails()) {
+                      <button class="btn-secondary inline" (click)="startEditDetail(d)">Wijzigen</button>
+                    }
+                    @if (canDeleteRequestDetails()) {
+                      <button class="btn-danger inline" (click)="deleteRequestDetail(d.id)">Verwijder</button>
+                    }
+                  </p>
+                }
+              }
+              </section>
+            }
+
+            @if (mdrCases().length === 0) {
+              <app-empty-state
+                eyebrow="Geen cases"
+                title="Nog geen MDR-cases voor dit panel"
+                description="Maak een nieuwe MDR-case aan of kies een ander panel."
+              />
+            } @else {
+              <div class="table-wrap">
+                <table>
+              <thead>
+                <tr><th>ID</th><th>MDR Number</th><th>Subject</th><th>Status</th><th>Acties</th></tr>
+              </thead>
+              <tbody>
+                @for (m of mdrCases(); track m.id) {
+                  <tr>
+                    <td>#{{ m.id }}</td>
+                    <td>{{ m.mdrNumber ?? '-' }}</td>
+                    <td>{{ m.subject ?? '-' }}</td>
+                    <td><app-status-pill [label]="m.status ?? '-'" [state]="m.status" /></td>
+                    <td>
+                      @if (canCreateOrEditMdr()) {
+                        <button class="btn-secondary inline" (click)="startEdit(m)">Wijzigen</button>
+                      }
+                      <button class="btn-secondary inline" (click)="selectCase(m)">Detail</button>
+                      @if (canDeleteMdr()) {
+                        <button class="btn-danger inline" (click)="deleteMdr(m.id)">Verwijder</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+                </table>
+              </div>
+            }
+          }
+        </div>
+      </section>
+    </main>
