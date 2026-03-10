@@ -1,42 +1,194 @@
 :host {
-  --bg0:#f8fafc;
-  --bg1:#eef2ff;
-  --bg2:#e2e8f0;
-  display:block;
-  min-height:100vh;
-  font-family:Inter,system-ui,sans-serif;
-  position:relative;
-  isolation:isolate;
-  background:linear-gradient(170deg,var(--bg0) 0%,var(--bg1) 48%,var(--bg2) 100%);
+  display: block;
+  min-height: 100vh;
 }
 
-:host::before{
-  content:"";
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  z-index:-2;
-  opacity:.2;
-  background-image:
-    linear-gradient(to right,#64748b1c 1px,transparent 1px),
-    linear-gradient(to bottom,#64748b1c 1px,transparent 1px);
-  background-size:36px 36px;
-  mask-image:radial-gradient(circle at 50% 10%,#000 20%,transparent 85%);
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
 }
 
-:host::after{
-  content:"";
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  z-index:-1;
+.app-nav {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 28px 22px;
+  display: grid;
+  align-content: start;
+  gap: 24px;
   background:
-    radial-gradient(180px 180px at 12% 8%,#93c5fd66,transparent 70%),
-    radial-gradient(170px 170px at 88% 92%,#c4b5fd55,transparent 70%);
-  filter:blur(18px);
+    linear-gradient(180deg, rgba(10, 29, 54, 0.96), rgba(15, 37, 63, 0.98));
+  color: rgba(255, 255, 255, 0.88);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-:host > *{
-  position:relative;
-  z-index:1;
+.brand {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #37b5ff, #1a61ef);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.brand strong {
+  display: block;
+  font: 700 1.02rem/1.1 var(--font-heading);
+}
+
+.brand small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.nav-groups {
+  display: grid;
+  gap: 20px;
+}
+
+.nav-group {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-label,
+.eyebrow {
+  margin: 0;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(126, 210, 248, 0.72);
+  font-weight: 700;
+}
+
+.nav-group a {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid transparent;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.nav-group a:hover,
+.nav-group a.active {
+  transform: translateX(2px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(126, 210, 248, 0.18);
+  color: #fff;
+}
+
+.app-main {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.app-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 28px 14px;
+}
+
+.topbar-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.topbar-copy strong {
+  font: 700 1.1rem/1.1 var(--font-heading);
+  color: var(--color-ink-strong);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--color-line);
+  text-decoration: none;
+}
+
+.account-chip span {
+  font-weight: 700;
+}
+
+.account-chip small {
+  color: var(--color-ink-muted);
+}
+
+.logout-btn {
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--color-ink);
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-content {
+  padding: 0 28px 28px;
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-nav {
+    position: static;
+    height: auto;
+    padding: 18px;
+  }
+
+  .nav-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-topbar,
+  .app-content {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  .nav-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

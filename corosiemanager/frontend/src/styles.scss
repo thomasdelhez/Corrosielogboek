@@ -1,8 +1,304 @@
-/* You can add global styles to this file, and also import other style files */
-html, body {
+:root {
+  --font-body: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-heading: "Bahnschrift", "Aptos Display", "Segoe UI Variable", sans-serif;
+
+  --color-ink-strong: #112031;
+  --color-ink: #223449;
+  --color-ink-muted: #5d7086;
+  --color-line: rgba(38, 68, 96, 0.14);
+  --color-line-strong: rgba(38, 68, 96, 0.24);
+
+  --color-brand: #155eef;
+  --color-brand-strong: #0d4fd6;
+  --color-brand-soft: #e7f0ff;
+  --color-accent: #14b8a6;
+  --color-danger-soft: #fff0ef;
+  --color-danger-ink: #a33b36;
+  --color-warning-soft: #fff8e5;
+  --color-warning-ink: #855b00;
+
+  --surface-canvas: #edf3f8;
+  --surface-canvas-strong: #dfe9f1;
+  --surface-base: rgba(255, 255, 255, 0.82);
+  --surface-panel: rgba(255, 255, 255, 0.93);
+  --surface-panel-strong: #ffffff;
+  --surface-subtle: #f5f8fb;
+  --surface-brand: linear-gradient(135deg, #195ded 0%, #0f43a4 100%);
+
+  --shadow-soft: 0 20px 44px rgba(17, 32, 49, 0.08);
+  --shadow-panel: 0 14px 30px rgba(14, 32, 54, 0.12);
+
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+}
+
+html,
+body {
   min-height: 100%;
 }
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(21, 94, 239, 0.08), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.08), transparent 24%),
+    linear-gradient(180deg, var(--surface-canvas) 0%, var(--surface-canvas-strong) 100%);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.ui-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.ui-surface {
+  background: var(--surface-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.ui-surface-inner {
+  padding: clamp(18px, 2vw, 28px);
+}
+
+.ui-section {
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+}
+
+.ui-section-inner {
+  padding: clamp(16px, 1.5vw, 22px);
+}
+
+.ui-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ui-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ui-field {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.ui-field input,
+.ui-field select,
+.ui-field textarea,
+.ui-input {
+  width: 100%;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 14px;
+  padding: 11px 13px;
+  background: #fff;
+  color: var(--color-ink-strong);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.ui-field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.ui-field input:focus,
+.ui-field select:focus,
+.ui-field textarea:focus,
+.ui-input:focus {
+  outline: none;
+  border-color: rgba(21, 94, 239, 0.42);
+  box-shadow: 0 0 0 4px rgba(21, 94, 239, 0.12);
+}
+
+.ui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.ui-btn,
+.ui-btn-secondary,
+.ui-btn-ghost,
+.ui-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.ui-btn:hover,
+.ui-btn-secondary:hover,
+.ui-btn-ghost:hover,
+.ui-btn-danger:hover {
+  transform: translateY(-1px);
+}
+
+.ui-btn {
+  color: #fff;
+  background: var(--surface-brand);
+  box-shadow: 0 10px 24px rgba(21, 94, 239, 0.22);
+}
+
+.ui-btn-secondary {
+  color: var(--color-ink);
+  background: var(--surface-subtle);
+  border-color: var(--color-line);
+}
+
+.ui-btn-ghost {
+  color: var(--color-brand);
+  background: transparent;
+  border-color: rgba(21, 94, 239, 0.2);
+}
+
+.ui-btn-danger {
+  color: var(--color-danger-ink);
+  background: var(--color-danger-soft);
+  border-color: rgba(163, 59, 54, 0.18);
+}
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--color-line);
+  color: var(--color-ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.ui-chip.brand {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  border-color: rgba(21, 94, 239, 0.18);
+}
+
+.ui-meta {
+  color: var(--color-ink-muted);
+}
+
+.ui-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ui-table th,
+.ui-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(38, 68, 96, 0.08);
+  text-align: left;
+}
+
+.ui-table th {
+  background: #f5f8fb;
+  color: var(--color-ink-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ui-table tbody tr:hover {
+  background: rgba(21, 94, 239, 0.03);
+}
+
+.ui-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-line);
+}
+
+.ui-banner.error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-ink);
+  border-color: rgba(163, 59, 54, 0.16);
+}
+
+.ui-banner.info {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  border-color: rgba(21, 94, 239, 0.14);
+}
+
+.ui-banner.warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-ink);
+  border-color: rgba(133, 91, 0, 0.14);
+}
+
+.ui-inline-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ui-stack-sm {
+  display: grid;
+  gap: 10px;
+}
+
+.ui-stack-md {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .ui-grid.two {
+    grid-template-columns: 1fr;
+  }
 }
