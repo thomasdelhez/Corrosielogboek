@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticationService } from './core/security/services/authentication.service';
 import { PermissionService } from './core/security/services/permission.service';
@@ -7,7 +7,7 @@ import { ToastHostComponent } from './shared/components/toast-host.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent],
+  imports: [RouterOutlet, RouterLink, ToastHostComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

@@ -23,116 +23,70 @@ import { AuthenticationService } from '../security/services/authentication.servi
             title="Operationeel overzicht"
             subtitle="Navigeer direct naar de juiste werkstroom, zoek door onderhoudsdata en houd focus op de volgende actie."
           >
-            @if (isLoggedIn()) {
-              <a class="ui-btn-secondary" routerLink="/account">Mijn account</a>
-              <button class="ui-btn-ghost" type="button" (click)="logout()">Uitloggen</button>
-            } @else {
+            @if (!isLoggedIn()) {
               <a class="ui-btn" routerLink="/login">Naar login</a>
             }
           </app-page-header>
 
-          <div class="hero-grid">
-            <section class="hero-panel ui-section">
-              <div class="ui-section-inner ui-stack-md">
-                <div class="ui-inline-list">
-                  @if (isLoggedIn()) {
-                    <app-status-pill [label]="userLabel()" state="brand" />
-                    <span class="ui-chip">{{ roleHeading() }}</span>
-                  } @else {
-                    <span class="ui-chip">Niet ingelogd</span>
-                  }
-                </div>
+          @if (authMessage()) {
+            <div class="ui-banner info hero-message">
+              <span>{{ authMessage() }}</span>
+            </div>
+          }
 
-                @if (authMessage()) {
-                  <div class="ui-banner info">
-                    <span>{{ authMessage() }}</span>
-                  </div>
-                }
+          @if (!isLoggedIn()) {
+            <div class="hero-message">
+              <app-empty-state
+                eyebrow="Toegang"
+                title="Log in om werkstromen te openen"
+                description="Na het inloggen krijg je directe toegang tot modules, zoekfunctie en detailschermen."
+              >
+                <a class="ui-btn" routerLink="/login">Login openen</a>
+              </app-empty-state>
+            </div>
+          }
 
-                @if (isLoggedIn()) {
-                  <div class="task-card">
-                    <p class="card-label">Jouw focus</p>
-                    <ul class="task-list">
-                      @for (item of roleTasks(); track item) {
-                        <li>{{ item }}</li>
-                      }
-                    </ul>
-                  </div>
-                } @else {
-                  <app-empty-state
-                    eyebrow="Toegang"
-                    title="Log in om werkstromen te openen"
-                    description="Na het inloggen krijg je directe toegang tot jouw modules, zoekfunctie en snellinks."
-                  >
-                    <a class="ui-btn" routerLink="/login">Login openen</a>
-                  </app-empty-state>
-                }
+          <section class="search-strip">
+            <div class="search-head">
+              <div>
+                <p class="card-label">Direct zoeken</p>
+                <h2>Aircraft, panel, hole of MDR</h2>
               </div>
-            </section>
-
-            <section class="search-card ui-section">
-              <div class="ui-section-inner ui-stack-md">
-                <div>
-                  <p class="card-label">Direct zoeken</p>
-                  <h2>Aircraft, panel, hole of MDR</h2>
-                  <p class="ui-meta">Gebruik één zoekveld om direct naar de juiste case of workflow te springen.</p>
-                </div>
-                <form class="search-form" (ngSubmit)="runGlobalSearch()">
-                  <input
-                    class="ui-input"
-                    [(ngModel)]="globalSearchQuery"
-                    name="globalSearchQuery"
-                    placeholder="Bijv. AN 10, panel 190, hole 123, MDR-001"
-                  />
-                  <button class="ui-btn" type="submit" [disabled]="searchLoading()">
-                    {{ searchLoading() ? 'Zoeken...' : 'Zoeken' }}
-                  </button>
-                </form>
-                @if (searchResults().length > 0) {
-                  <div class="search-results">
-                    @for (result of searchResults(); track result.route + result.title) {
-                      <button class="result-item" type="button" (click)="openSearchResult(result)">
-                        <app-status-pill [label]="result.kind" state="brand" />
-                        <strong>{{ result.title }}</strong>
-                        @if (result.subtitle) {
-                          <span class="ui-meta">{{ result.subtitle }}</span>
-                        }
-                      </button>
+              <p class="ui-meta">Gebruik één zoekveld om direct naar de juiste case of workflow te springen.</p>
+            </div>
+            <form class="search-form" (ngSubmit)="runGlobalSearch()">
+              <input
+                class="ui-input"
+                [(ngModel)]="globalSearchQuery"
+                name="globalSearchQuery"
+                placeholder="Bijv. AN 10, panel 190, hole 123, MDR-001"
+              />
+              <button class="ui-btn-secondary" type="submit" [disabled]="searchLoading()">
+                {{ searchLoading() ? 'Zoeken...' : 'Zoeken' }}
+              </button>
+            </form>
+            @if (searchResults().length > 0) {
+              <div class="search-results">
+                @for (result of searchResults(); track result.route + result.title) {
+                  <button class="result-item" type="button" (click)="openSearchResult(result)">
+                    <app-status-pill [label]="result.kind" state="brand" />
+                    <strong>{{ result.title }}</strong>
+                    @if (result.subtitle) {
+                      <span class="ui-meta">{{ result.subtitle }}</span>
                     }
-                  </div>
-                } @else if (searchTried() && !searchLoading()) {
-                  <app-empty-state
-                    eyebrow="Zoekresultaten"
-                    title="Geen resultaten gevonden"
-                    description="Probeer een andere aircraftcode, hole, panelnummer of MDR-referentie."
-                  />
+                  </button>
                 }
               </div>
-            </section>
-          </div>
+            } @else if (searchTried() && !searchLoading()) {
+              <app-empty-state
+                eyebrow="Zoekresultaten"
+                title="Geen resultaten gevonden"
+                description="Probeer een andere aircraftcode, hole, panelnummer of MDR-referentie."
+              />
+            }
+          </section>
         </div>
       </section>
-
-      @if (isLoggedIn()) {
-        <section class="quick-strip ui-section">
-          <div class="ui-section-inner">
-            <div class="strip-head">
-              <div>
-                <p class="card-label">Snelle acties</p>
-                <h2>Ga direct naar je meest gebruikte schermen</h2>
-              </div>
-            </div>
-            <div class="quick-actions">
-              @for (action of quickActions(); track action.label) {
-                <a class="quick-link" [routerLink]="action.path" [queryParams]="action.queryParams ?? null">
-                  <strong>{{ action.label }}</strong>
-                  <span>Open workflow</span>
-                </a>
-              }
-            </div>
-          </div>
-        </section>
-      }
 
       <section class="feature-grid">
         <article class="feature feature-primary ui-section">
@@ -214,45 +168,28 @@ import { AuthenticationService } from '../security/services/authentication.servi
     </main>
   `,
   styles: `
-    .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:24px}
-    .hero-panel,.search-card{overflow:hidden}
-    .task-card{
-      padding:18px;border-radius:18px;background:linear-gradient(180deg, rgba(21,94,239,.06), rgba(255,255,255,.92));
-      border:1px solid rgba(21,94,239,.12);
+    .search-strip{
+      display:grid;gap:14px;margin-top:24px;padding:18px 0 6px;
+      border-top:1px solid var(--color-line);
     }
-    .task-list{margin:0;padding-left:18px;display:grid;gap:8px}
+    .hero-message{margin-top:18px}
     .card-label{margin:0 0 8px;color:var(--color-brand);font-size:.76rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
-    .search-card h2,.quick-strip h2{margin:0 0 8px;font:700 1.35rem/1.1 var(--font-heading);color:var(--color-ink-strong)}
+    .search-strip h2{margin:0 0 4px;font:700 1.05rem/1.1 var(--font-heading);color:var(--color-ink-strong)}
+    .search-head{display:flex;justify-content:space-between;gap:16px;align-items:end;flex-wrap:wrap}
     .search-form{display:flex;flex-wrap:wrap;gap:10px}
     .search-form .ui-input{flex:1;min-width:240px}
     .search-results{display:grid;gap:10px}
     .result-item{
-      border:1px solid var(--color-line);border-radius:16px;background:#fff;padding:14px;text-align:left;display:grid;gap:8px;cursor:pointer;
+      border:1px solid var(--color-line);border-radius:14px;background:rgba(255,255,255,.78);padding:12px 14px;text-align:left;display:grid;gap:8px;cursor:pointer;
       transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
     }
-    .result-item:hover{transform:translateY(-1px);border-color:rgba(21,94,239,.22);box-shadow:var(--shadow-panel)}
-    .quick-strip{overflow:hidden}
-    .strip-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
-    .quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
-    .quick-link{
-      display:grid;gap:4px;padding:16px;border-radius:18px;text-decoration:none;background:linear-gradient(180deg,#fff, #f6f9fc);
-      border:1px solid var(--color-line);box-shadow:var(--shadow-panel);
-    }
-    .quick-link strong{color:var(--color-ink-strong)}
-    .quick-link span{color:var(--color-ink-muted)}
+    .result-item:hover{transform:translateY(-1px);border-color:rgba(21,94,239,.18);box-shadow:0 10px 20px rgba(17,32,49,.08)}
     .feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     .feature{overflow:hidden}
     .feature-primary{grid-column:span 2;background:linear-gradient(135deg, rgba(21,94,239,.08), rgba(255,255,255,.94))}
     .feature h3{margin:0 0 8px;font:700 1.16rem/1.1 var(--font-heading);color:var(--color-ink-strong)}
     .feature p{margin:0 0 16px;color:var(--color-ink-muted);line-height:1.45}
-    @media (max-width:1100px){
-      .hero-grid,.feature-grid{grid-template-columns:1fr}
-      .feature-primary{grid-column:auto}
-      .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-    }
-    @media (max-width:720px){
-      .quick-actions{grid-template-columns:1fr}
-    }
+    @media (max-width:1100px){.feature-grid{grid-template-columns:1fr}.feature-primary{grid-column:auto}}
   `,
 })
 export class HomePage {
@@ -277,54 +214,6 @@ export class HomePage {
     if (reason === 'role_required') return 'Je account heeft geen toegang tot de gevraagde module.';
     if (reason === 'account_updated') return 'Je account is bijgewerkt.';
     return null;
-  }
-
-  protected userLabel(): string {
-    return this.auth.currentUser()?.username ?? 'Gast';
-  }
-
-  protected roleHeading(): string {
-    const role = this.auth.currentUser()?.roles[0];
-    if (role === 'admin') return 'Administratie en review';
-    if (role === 'reviewer') return 'Review en besluitvorming';
-    return 'Engineering en uitvoering';
-  }
-
-  protected roleTasks(): string[] {
-    const role = this.auth.currentUser()?.roles[0];
-    if (role === 'admin') {
-      return [
-        'Controleer gebruikers- en rolwijzigingen.',
-        'Houd MDR en NDI doorlooptijden scherp in de gaten.',
-        'Gebruik rapportages voor overdracht en kwaliteitscontrole.',
-      ];
-    }
-    if (role === 'reviewer') {
-      return [
-        'Werk reviewqueues af en controleer statusovergangen.',
-        'Controleer MDR-cases en NDI-rapporten op volledigheid.',
-        'Gebruik rapportages om open acties te prioriteren.',
-      ];
-    }
-    return [
-      'Open het corrosie-overzicht en werk paneldata gericht bij.',
-      'Volg ordering en installatie zonder contextwissels.',
-      'Gebruik de zoekfunctie om direct naar de juiste hole te springen.',
-    ];
-  }
-
-  protected quickActions(): Array<{ label: string; path: string; queryParams?: Record<string, string> }> {
-    const base = [
-      { label: 'Corrosie workflow', path: '/corrosion' },
-      { label: 'Ordering tracker', path: '/ordering' },
-      { label: 'Inspectie queue', path: '/inspection' },
-    ];
-
-    if (this.permissions.canAccessReviewerArea(this.auth.currentUser())) {
-      base.push({ label: 'MDR board', path: '/mdr' }, { label: 'NDI board', path: '/ndi' });
-    }
-
-    return base;
   }
 
   protected canUseMdr(): boolean {

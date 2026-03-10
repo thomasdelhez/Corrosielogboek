@@ -1,68 +1,30 @@
 @if (isLoginRoute()) {
   <router-outlet />
 } @else {
-  <div class="app-shell">
-    <aside class="app-nav">
+  <div class="app-main">
+    <header class="app-topbar">
       <a class="brand" routerLink="/">
         <span class="brand-mark">CL</span>
         <div>
-          <strong>Corrosielogboek</strong>
-          <small>F35 Workflow</small>
-        </div>
-      </a>
-
-      <nav class="nav-groups">
-        <section class="nav-group">
-          <p class="nav-label">Workflow</p>
-          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Overzicht</a>
-          <a routerLink="/corrosion" routerLinkActive="active">Corrosie</a>
-          <a routerLink="/ordering" routerLinkActive="active">Ordering</a>
-          <a routerLink="/inspection" routerLinkActive="active">Inspectie</a>
-          <a routerLink="/trackers" routerLinkActive="active">Trackers</a>
-          <a routerLink="/installation" routerLinkActive="active">Installatie</a>
-        </section>
-
-        @if (canUseReviewerArea()) {
-          <section class="nav-group">
-            <p class="nav-label">Review</p>
-            <a routerLink="/mdr" routerLinkActive="active">MDR</a>
-            <a routerLink="/ndi" routerLinkActive="active">NDI</a>
-            <a routerLink="/reports/corrosion-tracker" routerLinkActive="active">Rapportage</a>
-          </section>
-        }
-
-        @if (canUseAdminArea()) {
-          <section class="nav-group">
-            <p class="nav-label">Beheer</p>
-            <a routerLink="/admin/aircraft-beheer" routerLinkActive="active">Aircraft</a>
-            <a routerLink="/admin/users" routerLinkActive="active">Gebruikers</a>
-          </section>
-        }
-      </nav>
-    </aside>
-
-    <div class="app-main">
-      <header class="app-topbar">
-        <div class="topbar-copy">
           <p class="eyebrow">Maintenance Workspace</p>
           <strong>Corrosiemanager</strong>
         </div>
+      </a>
 
-        <div class="topbar-actions">
-          @if (currentUser(); as user) {
-            <a class="account-chip" routerLink="/account">
-              <span>{{ user.username }}</span>
-              <small>{{ user.roles[0] }}</small>
-            </a>
-            <button class="logout-btn" type="button" (click)="logout()">Uitloggen</button>
-          }
-        </div>
-      </header>
+      <div class="topbar-actions">
+        @if (currentUser(); as user) {
+          <a class="account-chip" routerLink="/account">
+            <span>{{ user.username }}</span>
+            <small>{{ user.roles[0] }}</small>
+          </a>
+          <button class="logout-btn" type="button" (click)="logout()">Uitloggen</button>
+        }
+      </div>
+    </header>
 
-      <main class="app-content">
-        <router-outlet />
-      </main>
-    </div>
+    <main class="app-content">
+      <router-outlet />
+    </main>
   </div>
 }
 <app-toast-host />

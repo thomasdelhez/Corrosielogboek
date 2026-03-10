@@ -3,32 +3,12 @@
   min-height: 100vh;
 }
 
-.app-shell {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 100vh;
-}
-
-.app-nav {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  padding: 28px 22px;
-  display: grid;
-  align-content: start;
-  gap: 24px;
-  background:
-    linear-gradient(180deg, rgba(10, 29, 54, 0.96), rgba(15, 37, 63, 0.98));
-  color: rgba(255, 255, 255, 0.88);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
 .brand {
   display: flex;
   gap: 14px;
   align-items: center;
   text-decoration: none;
-  color: inherit;
+  color: var(--color-ink-strong);
 }
 
 .brand-mark {
@@ -48,56 +28,20 @@
   font: 700 1.02rem/1.1 var(--font-heading);
 }
 
-.brand small {
-  display: block;
-  margin-top: 3px;
-  color: rgba(255, 255, 255, 0.62);
-}
-
-.nav-groups {
-  display: grid;
-  gap: 20px;
-}
-
-.nav-group {
-  display: grid;
-  gap: 8px;
-}
-
-.nav-label,
 .eyebrow {
   margin: 0;
   font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgba(126, 210, 248, 0.72);
+  color: var(--color-brand);
   font-weight: 700;
-}
-
-.nav-group a {
-  display: flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 14px;
-  text-decoration: none;
-  color: rgba(255, 255, 255, 0.82);
-  border: 1px solid transparent;
-  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
-}
-
-.nav-group a:hover,
-.nav-group a.active {
-  transform: translateX(2px);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(126, 210, 248, 0.18);
-  color: #fff;
 }
 
 .app-main {
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
+  min-height: 100vh;
 }
 
 .app-topbar {
@@ -161,20 +105,6 @@
 }
 
 @media (max-width: 980px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .app-nav {
-    position: static;
-    height: auto;
-    padding: 18px;
-  }
-
-  .nav-groups {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .app-topbar,
   .app-content {
     padding-left: 18px;
@@ -183,10 +113,6 @@
 }
 
 @media (max-width: 700px) {
-  .nav-groups {
-    grid-template-columns: 1fr;
-  }
-
   .app-topbar {
     align-items: flex-start;
     flex-direction: column;
