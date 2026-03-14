@@ -25,9 +25,12 @@ class HolePartIn(BaseModel):
 class HoleCreate(BaseModel):
     hole_number: int = Field(ge=0)
     max_bp_diameter: int | None = None
+    bp_damage_clean: str | None = None
     final_hole_size: int | None = None
     fit: str | None = None
+    ream_max_bp: bool = False
     mdr_code: str | None = None
+    mdr_needed: bool = False
     mdr_version: str | None = None
     ndi_name_initials: str | None = None
     ndi_inspection_date: datetime | None = None
@@ -45,9 +48,12 @@ class HoleCreate(BaseModel):
     surface_corrosion: bool = False
     nutplate_inspection: str | None = None
     nutplate_surface_corrosion: str | None = None
+    nutplate_test: str | None = None
     total_structure_thickness: str | None = None
     flexhone: str | None = None
     flexndi: bool = False
+    example_part: str | None = None
+    clean_alcohol_alodine: bool = False
     steps: list[HoleStepIn] = []
     parts: list[HolePartIn] = []
 
@@ -78,9 +84,12 @@ class HoleBatchCreateOut(BaseModel):
 
 class HoleUpdate(BaseModel):
     max_bp_diameter: int | None = None
+    bp_damage_clean: str | None = None
     final_hole_size: int | None = None
     fit: str | None = None
+    ream_max_bp: bool = False
     mdr_code: str | None = None
+    mdr_needed: bool = False
     mdr_version: str | None = None
     ndi_name_initials: str | None = None
     ndi_inspection_date: datetime | None = None
@@ -98,9 +107,12 @@ class HoleUpdate(BaseModel):
     surface_corrosion: bool = False
     nutplate_inspection: str | None = None
     nutplate_surface_corrosion: str | None = None
+    nutplate_test: str | None = None
     total_structure_thickness: str | None = None
     flexhone: str | None = None
     flexndi: bool = False
+    example_part: str | None = None
+    clean_alcohol_alodine: bool = False
 
     @model_validator(mode="after")
     def validate_ndi(self):
@@ -128,9 +140,12 @@ class HoleOut(BaseModel):
     panel_id: int
     hole_number: int
     max_bp_diameter: int | None
+    bp_damage_clean: str | None
     final_hole_size: int | None
     fit: str | None
+    ream_max_bp: bool
     mdr_code: str | None
+    mdr_needed: bool
     mdr_version: str | None
     ndi_name_initials: str | None
     ndi_inspection_date: datetime | None
@@ -148,9 +163,12 @@ class HoleOut(BaseModel):
     surface_corrosion: bool
     nutplate_inspection: str | None
     nutplate_surface_corrosion: str | None
+    nutplate_test: str | None
     total_structure_thickness: str | None
     flexhone: str | None
     flexndi: bool
+    example_part: str | None
+    clean_alcohol_alodine: bool
     created_at: datetime
     steps: list[HoleStepOut] = []
     parts: list[HolePartOut] = []

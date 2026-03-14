@@ -1,187 +1,381 @@
-    <main class="ui-page">
-      <section class="ui-surface">
-        <div class="ui-surface-inner ui-stack-md">
-          <app-page-header
-            eyebrow="Corrosie detail"
-            title="Hole detail"
-            subtitle="Werk kerngegevens, steps en parts gecontroleerd bij vanuit één detailweergave."
-            backLink="/corrosion"
-            backLabel="Terug naar overzicht"
-          >
-            @if (hole(); as h) {
-              <span class="ui-chip brand">Hole #{{ h.holeNumber }}</span>
-              @if (h.inspectionStatus) {
-                <app-status-pill [label]="h.inspectionStatus" [state]="h.inspectionStatus" />
-              }
-            }
-          </app-page-header>
+<main class="ui-page">
+  <section class="ui-surface">
+    <div class="ui-surface-inner ui-stack-md">
+      <app-page-header
+        eyebrow="Corrosie workspace"
+        title="Hole detail"
+        subtitle="Werk per fase: eerst inspection, daarna repair."
+        backLink="/corrosion"
+        backLabel="Terug naar overzicht"
+      />
 
-        @if (hole()) {
-          @if (hole(); as h) {
-            <section class="meta-strip">
-              <span class="ui-chip">MDR: {{ h.mdrCode || '-' }}</span>
-              <span class="ui-chip">Versie: {{ h.mdrVersion || '-' }}</span>
-              <span class="ui-chip">Fit: {{ h.fit || '-' }}</span>
-              <span class="ui-chip">Final size: {{ h.finalHoleSize ?? '-' }}</span>
+      @if (hole()) {
+        @if (hole(); as h) {
+          <section class="workspace-tabs">
+            @for (tab of workspaceTabs(); track tab.id) {
+              <button class="workspace-tab" type="button" [class.active]="activeWorkspace() === tab.id" (click)="activeWorkspace.set(tab.id)">
+                {{ tab.label }}
+              </button>
+            }
+          </section>
+
+          @if (activeWorkspace() === 'inspection') {
+            <section class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <div class="section-head">
+                  <div>
+                    <p class="section-kicker">Phase 1</p>
+                    <h3>Hole inspection</h3>
+                  </div>
+                  <div class="ui-inline-list">
+                    <span class="ui-chip">Panel {{ h.panelId }}</span>
+                    <span class="ui-chip">Hole {{ h.holeNumber }}</span>
+                    @if (canEditHole()) {
+                      <button class="ui-btn-danger inspection-delete-chip" type="button" [disabled]="deletingHole()" (click)="deleteCurrentHole()">
+                        {{ deletingHole() ? 'Verwijderen...' : 'Delete HoleID' }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                @if (!canEditHole()) {
+                  <div class="ui-banner warning"><span>Alleen engineer/admin kan hole-data wijzigen.</span></div>
+                }
+
+                @if (coreMessage()) {
+                  <div class="ui-banner" [class.error]="coreMessageType() === 'error'" [class.info]="coreMessageType() !== 'error'">
+                    <span>{{ coreMessage() }}</span>
+                  </div>
+                }
+
+                <section class="inspection-workspace">
+                  <aside class="inspection-sidebar">
+                    <div class="inspection-card inspection-card-info">
+                      <h4>HoleID inspection</h4>
+                      <div class="inspection-meta">
+                        <div><span>AN</span><strong>{{ aircraft()?.an || '-' }}</strong></div>
+                        <div><span>Serial Nr</span><strong>{{ aircraft()?.serialNumber || '-' }}</strong></div>
+                        <div><span>Panel Number</span><strong>{{ panel()?.panelNumber || h.panelId }}</strong></div>
+                      </div>
+                    </div>
+
+                    <div class="inspection-card inspection-card-selection">
+                      <label class="ui-field">
+                        <span>HoleID selection</span>
+                        <select [ngModel]="selectedHoleId()" (ngModelChange)="onSelectedHoleChange($event)" name="selectedHoleId">
+                          @for (option of panelHoles(); track option.id) {
+                            <option [ngValue]="option.id">Hole {{ option.holeNumber }}</option>
+                          }
+                        </select>
+                      </label>
+
+                      <div class="inspection-nav inspection-nav-row">
+                        <button class="ui-btn-secondary" type="button" [disabled]="!canGoPrevious()" (click)="goToPreviousHole()">Previous HoleID</button>
+                        <button class="ui-btn-secondary" type="button" [disabled]="!canGoNext()" (click)="goToNextHole()">Next HoleID</button>
+                      </div>
+                    </div>
+                  </aside>
+
+                  <form class="inspection-form inspection-form-card" (ngSubmit)="saveCore()">
+                    <fieldset [disabled]="!canEditHole()">
+                      <div class="inspection-form-grid">
+                        <label class="ui-field compact-field inspection-hole-field">
+                          <span>HoleID</span>
+                          <input [ngModel]="h.holeNumber" name="displayHoleNumber" type="text" readonly />
+                        </label>
+
+                        <label class="toggle-card inspection-clean-toggle"><input [(ngModel)]="form.clean" name="clean" type="checkbox" /> <span>Cleaned with Brush and Alcohol</span></label>
+
+                        <label class="ui-field inspection-status-field">
+                          <span>Hole Status (After Cleaning)</span>
+                          <select [(ngModel)]="form.inspectionStatus" name="inspectionStatus">
+                            <option [ngValue]="null">-- Selecteer status --</option>
+                            @for (opt of inspectionStatusOptions; track opt) {
+                              <option [value]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                        </label>
+
+                        <div class="ui-actions inspection-actions">
+                          <button class="ui-btn" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan inspection' }}</button>
+                        </div>
+                      </div>
+                    </fieldset>
+                  </form>
+
+                  <section class="inspection-queues-grid">
+                    <article class="inspection-queue lane-neutral">
+                      <header>{{ queueColumnTitle('to_be_inspected') }}</header>
+                      <div class="inspection-queue-list">
+                        @for (row of queueColumns().toBeInspected; track row.holeId) {
+                          <button class="inspection-queue-item" type="button" [class.active]="row.holeId === h.id" (click)="onSelectedHoleChange(row.holeId)">{{ row.holeNumber }}</button>
+                        }
+                      </div>
+                    </article>
+
+                    <article class="inspection-queue lane-rifled">
+                      <header>{{ queueColumnTitle('marked_as_rifled') }}</header>
+                      <div class="inspection-queue-list">
+                        @for (row of queueColumns().markedAsRifled; track row.holeId) {
+                          <button class="inspection-queue-item" type="button" [class.active]="row.holeId === h.id" (click)="onSelectedHoleChange(row.holeId)">{{ row.holeNumber }}</button>
+                        }
+                      </div>
+                    </article>
+
+                    <article class="inspection-queue lane-corroded">
+                      <header>{{ queueColumnTitle('marked_as_corroded') }}</header>
+                      <div class="inspection-queue-list">
+                        @for (row of queueColumns().markedAsCorroded; track row.holeId) {
+                          <button class="inspection-queue-item" type="button" [class.active]="row.holeId === h.id" (click)="onSelectedHoleChange(row.holeId)">{{ row.holeNumber }}</button>
+                        }
+                      </div>
+                    </article>
+
+                    <article class="inspection-queue lane-clean">
+                      <header>{{ queueColumnTitle('marked_as_clean') }}</header>
+                      <div class="inspection-queue-list">
+                        @for (row of queueColumns().markedAsClean; track row.holeId) {
+                          <button class="inspection-queue-item" type="button" [class.active]="row.holeId === h.id" (click)="onSelectedHoleChange(row.holeId)">{{ row.holeNumber }}</button>
+                        }
+                      </div>
+                    </article>
+                  </section>
+                </section>
+              </div>
             </section>
           }
-          <form class="ui-section" (ngSubmit)="saveCore()">
-            <div class="ui-section-inner">
-            <div class="section-head">
-              <h3>Kerngegevens</h3>
-            </div>
-            @if (!canEditHole()) {
-              <p class="ui-banner warning">Alleen engineer/admin kan hole-data wijzigen.</p>
-            }
-            <fieldset [disabled]="!canEditHole()">
-              <div class="ui-grid two">
-                <label class="ui-field"><span>Max BP diameter</span><input [(ngModel)]="form.maxBpDiameter" name="maxBpDiameter" type="number" /></label>
-                <label class="ui-field"><span>Final hole size</span><input [(ngModel)]="form.finalHoleSize" name="finalHoleSize" type="number" /></label>
-                <label class="ui-field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
-                <label class="ui-field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
-                <label class="ui-field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
-                <label class="ui-field"><span>TOTAL StackUp Length</span><input [(ngModel)]="form.totalStackupLength" name="totalStackupLength" type="text" /></label>
-                <label class="ui-field"><span>Stack up</span><input [(ngModel)]="form.stackUp" name="stackUp" type="number" /></label>
-                <label class="ui-field">
-                  <span>Sleeve/Bushings</span>
-                  <select [(ngModel)]="form.sleeveBushings" name="sleeveBushings">
-                    <option [ngValue]="null">-- Selecteer --</option>
-                    @for (opt of withCurrentOptions(sleeveBushingOptions, form.sleeveBushings); track opt) {
-                      <option [ngValue]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="ui-field">
-                  <span>Nutplate Inspection</span>
-                  <select [(ngModel)]="form.nutplateInspection" name="nutplateInspection">
-                    <option [ngValue]="null">-- Selecteer --</option>
-                    @for (opt of withCurrentOptions(nutplateConditionOptions, form.nutplateInspection); track opt) {
-                      <option [ngValue]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="ui-field">
-                  <span>Nutplate Surface Corrosion</span>
-                  <select [(ngModel)]="form.nutplateSurfaceCorrosion" name="nutplateSurfaceCorrosion">
-                    <option [ngValue]="null">-- Selecteer --</option>
-                    @for (opt of withCurrentOptions(nutplateConditionOptions, form.nutplateSurfaceCorrosion); track opt) {
-                      <option [ngValue]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="ui-field"><span>TOTAL Structure Thickness</span><input [(ngModel)]="form.totalStructureThickness" name="totalStructureThickness" type="text" /></label>
-                <label class="ui-field"><span>FlexHone</span><input [(ngModel)]="form.flexhone" name="flexhone" type="text" /></label>
-                <label class="ui-field">
-                  <span>Inspection status</span>
-                  <select [(ngModel)]="form.inspectionStatus" name="inspectionStatus">
-                    <option [ngValue]="null">-- Selecteer status --</option>
-                    @for (opt of inspectionStatusOptions; track opt) {
-                      <option [value]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="ui-field"><span>NDI initials</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
-                <label class="ui-field"><span>NDI inspection date</span><input [(ngModel)]="ndiInspectionDateInput" name="ndiInspectionDateInput" type="date" /></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.ndiFinished" name="ndiFinished" type="checkbox" /> NDI Finished</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.mdrResubmit" name="mdrResubmit" type="checkbox" /> MDR Resubmit</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.countersinked" name="countersinked" type="checkbox" /> Countersinked</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.clean" name="clean" type="checkbox" /> Clean</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.cutSleeveBushing" name="cutSleeveBushing" type="checkbox" /> Cut Sleeve/Bushing</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.installed" name="installed" type="checkbox" /> Installed</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.primer" name="primer" type="checkbox" /> Primer</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.surfaceCorrosion" name="surfaceCorrosion" type="checkbox" /> Surface Corrosion</span></label>
-                <label class="ui-field"><span><input [(ngModel)]="form.flexndi" name="flexndi" type="checkbox" /> FlexNDI</span></label>
-              </div>
-              <div class="ui-actions"><button class="ui-btn" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan kern' }}</button></div>
-            </fieldset>
-            </div>
-          </form>
 
-          <section class="ui-section">
-            <div class="ui-section-inner">
-            <div class="section-head">
-              <h3>Steps</h3>
-              <span class="ui-chip">{{ stepInputs.length }}</span>
-            </div>
-            <fieldset [disabled]="!canEditHole()">
-              @for (s of stepInputs; track $index; let i = $index) {
-                <div class="row-grid">
-                  <input [(ngModel)]="s.stepNo" [name]="'stepNo'+i" type="number" placeholder="Step" />
-                  <input [(ngModel)]="s.sizeValue" [name]="'sizeValue'+i" type="number" placeholder="Size" />
-                  <select [(ngModel)]="s.visualDamageCheck" [name]="'visual'+i">
-                    <option [ngValue]="null">-- DMG/CLEAN --</option>
-                    @for (opt of dmgCleanOptions; track opt) {
-                      <option [value]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                  <label class="check-inline"><input [(ngModel)]="s.reamFlag" [name]="'ream'+i" type="checkbox" /> Ream</label>
-                  <label><input [(ngModel)]="s.mdrFlag" [name]="'mdr'+i" type="checkbox" /> MDR</label>
-                  <label><input [(ngModel)]="s.ndiFlag" [name]="'ndi'+i" type="checkbox" /> NDI</label>
-                  <button class="ui-btn-danger" type="button" (click)="removeStep(i)">Verwijder</button>
+          @if (activeWorkspace() === 'repair') {
+            <section class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <div class="section-head">
+                  <div>
+                    <p class="section-kicker">Phase 2</p>
+                    <h3>Hole repair</h3>
+                  </div>
+                  <div class="ui-inline-list">
+                    <span class="ui-chip">Ordered {{ partSummary('orderedFlag') }}</span>
+                    <span class="ui-chip">Delivered {{ partSummary('deliveredFlag') }}</span>
+                    <span class="ui-chip">Installed {{ form.installed ? 'Yes' : 'No' }}</span>
+                  </div>
                 </div>
-              }
-              <div class="ui-actions">
-                <button class="ui-btn-secondary" type="button" (click)="addStep()">+ Step</button>
-                <button class="ui-btn" type="button" (click)="saveSteps()" [disabled]="savingSteps()">{{ savingSteps() ? 'Opslaan...' : 'Opslaan steps' }}</button>
-              </div>
-            </fieldset>
-            </div>
-          </section>
 
-          <section class="ui-section">
-            <div class="ui-section-inner">
-            <div class="section-head">
-              <h3>Parts</h3>
-              <span class="ui-chip">{{ partInputs.length }}</span>
-            </div>
-            <p class="subtitle parts-note">Maximaal 4 parts per hole (slots 1 t/m 4).</p>
-            <fieldset [disabled]="!canEditHole()">
-              @for (p of partInputs; track $index; let i = $index) {
-                <div class="row-grid parts">
-                  <input [(ngModel)]="p.slotNo" [name]="'slot'+i" type="number" placeholder="Slot" />
-                  <input [(ngModel)]="p.partNumber" [name]="'partNo'+i" type="text" placeholder="Part number" />
-                  <input [(ngModel)]="p.partLength" [name]="'partLength'+i" type="number" placeholder="Length" />
-                  <select [(ngModel)]="p.bushingType" [name]="'bushing'+i">
-                    <option [ngValue]="null">-- SB/CS --</option>
-                    @for (opt of bushingTypeOptions; track opt) {
-                      <option [value]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                  <select [(ngModel)]="p.standardCustom" [name]="'stdcst'+i">
-                    <option [ngValue]="null">-- STD/CST --</option>
-                    @for (opt of stdCstOptions; track opt) {
-                      <option [value]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                  <select [(ngModel)]="p.status" [name]="'status'+i">
-                    <option [ngValue]="null">-- Status --</option>
-                    @for (opt of withCurrentOptions(partStatusOptions, p.status); track opt) {
-                      <option [value]="opt">{{ opt }}</option>
-                    }
-                  </select>
-                  <label class="check-inline"><input [(ngModel)]="p.orderedFlag" [name]="'ordered'+i" type="checkbox" /> Ordered</label>
-                  <label class="check-inline"><input [(ngModel)]="p.deliveredFlag" [name]="'delivered'+i" type="checkbox" /> Delivered</label>
-                  <button class="ui-btn-danger" type="button" (click)="removePart(i)">Verwijder</button>
+                @if (!canEditHole()) {
+                  <div class="ui-banner warning"><span>Alleen engineer/admin kan hole-data wijzigen.</span></div>
+                }
+
+                @if (coreMessage()) {
+                  <div class="ui-banner" [class.error]="coreMessageType() === 'error'" [class.info]="coreMessageType() !== 'error'">
+                    <span>{{ coreMessage() }}</span>
+                  </div>
+                }
+
+                <form class="ui-stack-md" (ngSubmit)="saveCore()">
+                  <fieldset [disabled]="!canEditHole()">
+                    <section class="dense-block">
+                      <div class="section-head compact-head">
+                        <div>
+                          <p class="section-kicker">Repair core</p>
+                          <h3>Machining</h3>
+                        </div>
+                      </div>
+
+                      <div class="phase-grid">
+                        <label class="ui-field"><span>Max BP diameter</span><input [(ngModel)]="form.maxBpDiameter" name="maxBpDiameter" type="number" /></label>
+                        <label class="ui-field">
+                          <span>BP DMG/CLEAN</span>
+                          <select [(ngModel)]="form.bpDamageClean" name="bpDamageClean">
+                            <option [ngValue]="null">-- DMG/CLEAN --</option>
+                            @for (opt of dmgCleanOptions; track opt) {
+                              <option [ngValue]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                        </label>
+                        <label class="ui-field"><span>FlexHone</span><input [(ngModel)]="form.flexhone" name="flexhone" type="text" /></label>
+                        <label class="ui-field"><span>Final hole size</span><input [(ngModel)]="form.finalHoleSize" name="finalHoleSize" type="number" /></label>
+                        <label class="ui-field"><span>Fit</span><input [(ngModel)]="form.fit" name="fit" type="text" /></label>
+                      </div>
+
+                      <div class="toggle-grid compact repair-toggle-grid">
+                        <label class="toggle-card"><input [(ngModel)]="form.reamMaxBp" name="reamMaxBp" type="checkbox" /> <span>Ream max B/P</span></label>
+                        <label class="toggle-card"><input [(ngModel)]="form.mdrNeeded" name="mdrNeeded" type="checkbox" /> <span>MDR needed</span></label>
+                        <label class="toggle-card"><input [(ngModel)]="form.mdrResubmit" name="mdrResubmit" type="checkbox" /> <span>MDR resubmit</span></label>
+                      </div>
+                    </section>
+
+                    <section class="dense-block">
+                      <div class="section-head compact-head">
+                        <div>
+                          <p class="section-kicker">MDR / NDI</p>
+                          <h3>Submission status</h3>
+                        </div>
+                      </div>
+
+                      <div class="phase-grid">
+                        <label class="ui-field"><span>MDR code</span><input [(ngModel)]="form.mdrCode" name="mdrCode" type="text" /></label>
+                        <label class="ui-field"><span>MDR version</span><input [(ngModel)]="form.mdrVersion" name="mdrVersion" type="text" /></label>
+                        <label class="ui-field"><span>NDI done by</span><input [(ngModel)]="form.ndiNameInitials" name="ndiNameInitials" type="text" /></label>
+                        <label class="ui-field"><span>NDI on</span><input [(ngModel)]="ndiInspectionDateInput" name="ndiInspectionDateInput" type="date" /></label>
+                      </div>
+
+                      <div class="toggle-grid compact repair-toggle-grid">
+                        <label class="toggle-card"><input [(ngModel)]="form.ndiFinished" name="ndiFinished" type="checkbox" /> <span>NDI finished</span></label>
+                      </div>
+                    </section>
+
+                    <section class="dense-block">
+                      <div class="section-head compact-head">
+                        <div>
+                          <p class="section-kicker">Structure</p>
+                          <h3>Nutplate and sleeve</h3>
+                        </div>
+                      </div>
+
+                      <div class="phase-grid">
+                        <label class="ui-field">
+                          <span>Nutplate inspection</span>
+                          <select [(ngModel)]="form.nutplateInspection" name="nutplateInspection">
+                            <option [ngValue]="null">-- Selecteer --</option>
+                            @for (opt of withCurrentOptions(nutplateConditionOptions, form.nutplateInspection); track opt) {
+                              <option [ngValue]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                        </label>
+                        <label class="ui-field">
+                          <span>Nutplate corrosion</span>
+                          <select [(ngModel)]="form.nutplateSurfaceCorrosion" name="nutplateSurfaceCorrosion">
+                            <option [ngValue]="null">-- Selecteer --</option>
+                            @for (opt of withCurrentOptions(nutplateConditionOptions, form.nutplateSurfaceCorrosion); track opt) {
+                              <option [ngValue]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                        </label>
+                        <label class="ui-field">
+                          <span>Nutplate test</span>
+                          <select [(ngModel)]="form.nutplateTest" name="nutplateTest">
+                            <option [ngValue]="null">-- PASS/FAIL --</option>
+                            @for (opt of withCurrentOptions(nutplateTestOptions, form.nutplateTest); track opt) {
+                              <option [ngValue]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                        </label>
+                        <label class="ui-field"><span>Total stackup length</span><input [(ngModel)]="form.totalStackupLength" name="totalStackupLength" type="text" /></label>
+                        <label class="ui-field"><span>Stack up</span><input [(ngModel)]="form.stackUp" name="stackUp" type="number" /></label>
+                        <label class="ui-field"><span>Total structure thickness</span><input [(ngModel)]="form.totalStructureThickness" name="totalStructureThickness" type="text" /></label>
+                        <label class="ui-field">
+                          <span>Sleeve/Bushings</span>
+                          <select [(ngModel)]="form.sleeveBushings" name="sleeveBushings">
+                            <option [ngValue]="null">-- Selecteer --</option>
+                            @for (opt of withCurrentOptions(sleeveBushingOptions, form.sleeveBushings); track opt) {
+                              <option [ngValue]="opt">{{ opt }}</option>
+                            }
+                          </select>
+                        </label>
+                        <label class="ui-field"><span>Example part</span><input [(ngModel)]="form.examplePart" name="examplePart" type="text" /></label>
+                      </div>
+
+                      <div class="toggle-grid compact repair-toggle-grid">
+                        <label class="toggle-card"><input [(ngModel)]="form.cleanAlcoholAlodine" name="cleanAlcoholAlodine" type="checkbox" /> <span>Clean / Alcohol / Alodine</span></label>
+                        <label class="toggle-card"><input [(ngModel)]="form.countersinked" name="countersinked" type="checkbox" /> <span>Countersinked</span></label>
+                        <label class="toggle-card"><input [(ngModel)]="form.cutSleeveBushing" name="cutSleeveBushing" type="checkbox" /> <span>Cut sleeve/bushing</span></label>
+                        <label class="toggle-card"><input [(ngModel)]="form.installed" name="installed" type="checkbox" /> <span>Sleeve/bushing installed</span></label>
+                        <label class="toggle-card"><input [(ngModel)]="form.primer" name="primer" type="checkbox" /> <span>Primer</span></label>
+                      </div>
+                    </section>
+
+                    <div class="ui-actions">
+                      <button class="ui-btn" type="submit" [disabled]="savingCore()">{{ savingCore() ? 'Opslaan...' : 'Opslaan repair' }}</button>
+                    </div>
+                  </fieldset>
+                </form>
+              </div>
+            </section>
+          }
+
+          @if (activeWorkspace() === 'parts') {
+            <section class="ui-section">
+              <div class="ui-section-inner ui-stack-md">
+                <div class="section-head">
+                  <div>
+                    <p class="section-kicker">Sleeves / bushings</p>
+                    <h3>Parts</h3>
+                  </div>
+                  <span class="ui-chip">{{ partInputs.length }}/4</span>
                 </div>
-              }
-              <div class="ui-actions">
-                <button class="ui-btn-secondary" type="button" (click)="addPart()" [disabled]="partInputs.length >= 4">+ Part</button>
-                <button class="ui-btn" type="button" (click)="saveParts()" [disabled]="savingParts()">{{ savingParts() ? 'Opslaan...' : 'Opslaan parts' }}</button>
-              </div>
-            </fieldset>
-            </div>
-          </section>
 
-        } @else {
-          @if (loadError()) {
-            <div class="ui-banner error">
-              <span>{{ loadError() }}</span>
-              <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
-            </div>
-          } @else {
-            <app-empty-state eyebrow="Laden" title="Hole wordt geladen" description="De detaildata wordt opgehaald. Dit duurt meestal maar kort." />
+                @if (partsMessage()) {
+                  <div class="ui-banner" [class.error]="partsMessageType() === 'error'" [class.info]="partsMessageType() !== 'error'">
+                    <span>{{ partsMessage() }}</span>
+                  </div>
+                }
+
+                <fieldset [disabled]="!canEditHole()">
+                  <div class="record-list">
+                    @for (p of partInputs; track $index; let i = $index) {
+                      <article class="record-card">
+                        <div class="record-head">
+                          <strong>Slot {{ p.slotNo }}</strong>
+                          <button class="ui-btn-danger" type="button" (click)="removePart(i)">Verwijder</button>
+                        </div>
+                        <div class="parts-grid">
+                          <label class="ui-field"><span>Slot</span><input [(ngModel)]="p.slotNo" [name]="'slot'+i" type="number" /></label>
+                          <label class="ui-field"><span>Part number</span><input [(ngModel)]="p.partNumber" [name]="'partNo'+i" type="text" /></label>
+                          <label class="ui-field"><span>Length</span><input [(ngModel)]="p.partLength" [name]="'partLength'+i" type="number" /></label>
+                          <label class="ui-field">
+                            <span>SB / CS</span>
+                            <select [(ngModel)]="p.bushingType" [name]="'bushing'+i">
+                              <option [ngValue]="null">-- SB/CS --</option>
+                              @for (opt of bushingTypeOptions; track opt) {
+                                <option [value]="opt">{{ opt }}</option>
+                              }
+                            </select>
+                          </label>
+                          <label class="ui-field">
+                            <span>STD / CST</span>
+                            <select [(ngModel)]="p.standardCustom" [name]="'stdcst'+i">
+                              <option [ngValue]="null">-- STD/CST --</option>
+                              @for (opt of stdCstOptions; track opt) {
+                                <option [value]="opt">{{ opt }}</option>
+                              }
+                            </select>
+                          </label>
+                          <label class="ui-field part-status">
+                            <span>Status</span>
+                            <select [(ngModel)]="p.status" [name]="'status'+i">
+                              <option [ngValue]="null">-- Status --</option>
+                              @for (opt of withCurrentOptions(partStatusOptions, p.status); track opt) {
+                                <option [value]="opt">{{ opt }}</option>
+                              }
+                            </select>
+                          </label>
+                        </div>
+                        <div class="toggle-grid compact">
+                          <label class="toggle-card"><input [(ngModel)]="p.orderedFlag" [name]="'ordered'+i" type="checkbox" /> <span>Ordered</span></label>
+                          <label class="toggle-card"><input [(ngModel)]="p.deliveredFlag" [name]="'delivered'+i" type="checkbox" /> <span>Delivered</span></label>
+                        </div>
+                      </article>
+                    }
+                  </div>
+
+                  <div class="ui-actions">
+                    <button class="ui-btn-secondary" type="button" (click)="addPart()" [disabled]="partInputs.length >= 4">+ Part</button>
+                    <button class="ui-btn" type="button" (click)="saveParts()" [disabled]="savingParts()">{{ savingParts() ? 'Opslaan...' : 'Opslaan parts' }}</button>
+                  </div>
+                </fieldset>
+              </div>
+            </section>
           }
         }
-        </div>
-      </section>
-    </main>
+      } @else {
+        @if (loadError()) {
+          <div class="ui-banner error">
+            <span>{{ loadError() }}</span>
+            <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+          </div>
+        } @else {
+          <app-empty-state eyebrow="Laden" title="Hole wordt geladen" description="De detaildata wordt opgehaald. Dit duurt meestal maar kort." />
+        }
+      }
+    </div>
+  </section>
+</main>

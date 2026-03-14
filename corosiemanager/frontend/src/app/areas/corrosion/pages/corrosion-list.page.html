@@ -4,7 +4,7 @@
           <app-page-header
             eyebrow="Corrosie workflow"
             title="Aircraft en panels"
-            subtitle="Selecteer het juiste aircraft en panel, filter de holes en spring direct naar detailwerk."
+            subtitle="Selecteer het juiste aircraft en panel, filter de holes en spring direct naar inspection of repair."
           />
 
           <section class="selector-grid">
@@ -46,6 +46,7 @@
                 </label>
 
                 <div class="filter-meta">
+                  <span class="ui-chip brand">{{ workspace() === 'inspection' ? 'Inspection mode' : 'Repair mode' }}</span>
                   <span class="ui-chip brand">{{ filteredHoles().length }} van {{ holes().length }}</span>
                   @if (selectedAircraft()) {
                     <span class="ui-chip">{{ selectedAircraft()!.an }}</span>

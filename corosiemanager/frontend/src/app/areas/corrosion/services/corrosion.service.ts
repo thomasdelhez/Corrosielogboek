@@ -171,6 +171,10 @@ export class CorrosionService {
     return this.http.get<HoleDto>(`${this.config.apiBaseUrl}/holes/${holeId}`).pipe(map((row) => this.toHole(row)));
   }
 
+  deleteHole(holeId: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.config.apiBaseUrl}/holes/${holeId}`);
+  }
+
   updateHole(holeId: number, input: UpdateHoleInput): Observable<Hole> {
     return this.http
       .put<HoleDto>(`${this.config.apiBaseUrl}/holes/${holeId}`, this.toUpdateDto(input))
@@ -460,9 +464,12 @@ export class CorrosionService {
   private toCreateHoleDto(input: CreateHoleInput): {
     hole_number: number;
     max_bp_diameter: number | null;
+    bp_damage_clean: string | null;
     final_hole_size: number | null;
     fit: string | null;
+    ream_max_bp: boolean;
     mdr_code: string | null;
+    mdr_needed: boolean;
     mdr_version: string | null;
     ndi_name_initials: string | null;
     ndi_inspection_date: string | null;
@@ -480,18 +487,24 @@ export class CorrosionService {
     surface_corrosion: boolean;
     nutplate_inspection: string | null;
     nutplate_surface_corrosion: string | null;
+    nutplate_test: string | null;
     total_structure_thickness: string | null;
     flexhone: string | null;
     flexndi: boolean;
+    example_part: string | null;
+    clean_alcohol_alodine: boolean;
     steps: UpdateHoleStepInputDto[];
     parts: UpdateHolePartInputDto[];
   } {
     return {
       hole_number: input.holeNumber,
       max_bp_diameter: input.maxBpDiameter,
+      bp_damage_clean: input.bpDamageClean ?? null,
       final_hole_size: input.finalHoleSize,
       fit: input.fit,
+      ream_max_bp: input.reamMaxBp ?? false,
       mdr_code: input.mdrCode,
+      mdr_needed: input.mdrNeeded ?? false,
       mdr_version: input.mdrVersion,
       ndi_name_initials: input.ndiNameInitials,
       ndi_inspection_date: input.ndiInspectionDate ? input.ndiInspectionDate.toISOString() : null,
@@ -509,9 +522,12 @@ export class CorrosionService {
       surface_corrosion: input.surfaceCorrosion ?? false,
       nutplate_inspection: input.nutplateInspection ?? null,
       nutplate_surface_corrosion: input.nutplateSurfaceCorrosion ?? null,
+      nutplate_test: input.nutplateTest ?? null,
       total_structure_thickness: input.totalStructureThickness ?? null,
       flexhone: input.flexhone ?? null,
       flexndi: input.flexndi ?? false,
+      example_part: input.examplePart ?? null,
+      clean_alcohol_alodine: input.cleanAlcoholAlodine ?? false,
       steps: input.steps.map((s) => this.toUpdateStepDto(s)),
       parts: input.parts.map((p) => this.toUpdatePartDto(p)),
     };
@@ -520,9 +536,12 @@ export class CorrosionService {
   private toUpdateDto(input: UpdateHoleInput): UpdateHoleInputDto {
     return {
       max_bp_diameter: input.maxBpDiameter,
+      bp_damage_clean: input.bpDamageClean ?? null,
       final_hole_size: input.finalHoleSize,
       fit: input.fit,
+      ream_max_bp: input.reamMaxBp ?? false,
       mdr_code: input.mdrCode,
+      mdr_needed: input.mdrNeeded ?? false,
       mdr_version: input.mdrVersion,
       ndi_name_initials: input.ndiNameInitials,
       ndi_inspection_date: input.ndiInspectionDate ? input.ndiInspectionDate.toISOString() : null,
@@ -540,9 +559,12 @@ export class CorrosionService {
       surface_corrosion: input.surfaceCorrosion ?? false,
       nutplate_inspection: input.nutplateInspection ?? null,
       nutplate_surface_corrosion: input.nutplateSurfaceCorrosion ?? null,
+      nutplate_test: input.nutplateTest ?? null,
       total_structure_thickness: input.totalStructureThickness ?? null,
       flexhone: input.flexhone ?? null,
       flexndi: input.flexndi ?? false,
+      example_part: input.examplePart ?? null,
+      clean_alcohol_alodine: input.cleanAlcoholAlodine ?? false,
     };
   }
 
@@ -576,9 +598,12 @@ export class CorrosionService {
       panelId: dto.panel_id,
       holeNumber: dto.hole_number,
       maxBpDiameter: dto.max_bp_diameter,
+      bpDamageClean: dto.bp_damage_clean,
       finalHoleSize: dto.final_hole_size,
       fit: dto.fit,
+      reamMaxBp: dto.ream_max_bp,
       mdrCode: dto.mdr_code,
+      mdrNeeded: dto.mdr_needed,
       mdrVersion: dto.mdr_version,
       ndiNameInitials: dto.ndi_name_initials,
       ndiInspectionDate: dto.ndi_inspection_date ? new Date(dto.ndi_inspection_date) : null,
@@ -596,9 +621,12 @@ export class CorrosionService {
       surfaceCorrosion: dto.surface_corrosion,
       nutplateInspection: dto.nutplate_inspection,
       nutplateSurfaceCorrosion: dto.nutplate_surface_corrosion,
+      nutplateTest: dto.nutplate_test,
       totalStructureThickness: dto.total_structure_thickness,
       flexhone: dto.flexhone,
       flexndi: dto.flexndi,
+      examplePart: dto.example_part,
+      cleanAlcoholAlodine: dto.clean_alcohol_alodine,
       createdAt: new Date(dto.created_at),
       steps: dto.steps.map((step) => this.toHoleStep(step)),
       parts: dto.parts.map((part) => this.toHolePart(part)),

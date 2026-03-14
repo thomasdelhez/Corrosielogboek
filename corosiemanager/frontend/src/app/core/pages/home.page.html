@@ -75,10 +75,11 @@
         <article class="feature feature-primary ui-section">
           <div class="ui-section-inner">
             <p class="card-label">Core workflow</p>
-            <h3>Aircraft & Panels</h3>
-            <p>Selecteer aircraft, open panels en beheer holes vanuit het centrale overzicht.</p>
+            <h3>Hole workspace</h3>
+            <p>Kies direct de juiste fase en open holes vanuit een inspection- of repair-ingang.</p>
             <div class="ui-actions">
-              <a class="ui-btn" routerLink="/corrosion">Open workflow</a>
+              <a class="ui-btn" [routerLink]="['/corrosion']" [queryParams]="{ workspace: 'inspection' }">Hole inspection</a>
+              <a class="ui-btn-secondary" [routerLink]="['/corrosion']" [queryParams]="{ workspace: 'repair' }">Hole repair</a>
               <a class="ui-btn-secondary" routerLink="/admin/aircraft-beheer">Aircraft beheer</a>
             </div>
           </div>

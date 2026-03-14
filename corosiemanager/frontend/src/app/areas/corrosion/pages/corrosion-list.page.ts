@@ -32,6 +32,7 @@ export class CorrosionListPage implements OnInit {
   protected readonly loading = signal<boolean>(true);
   protected readonly loadError = signal<string | null>(null);
   protected readonly search = signal<string>('');
+  protected readonly workspace = signal<'inspection' | 'repair'>('inspection');
 
   protected selectedAircraft = () => this.aircraftList().find((a) => a.id === this.selectedAircraftId()) ?? null;
   protected selectedPanel = () => this.panels().find((p) => p.id === this.selectedPanelId()) ?? null;
@@ -65,6 +66,8 @@ export class CorrosionListPage implements OnInit {
     try {
       const aircraft = await firstValueFrom(this.corrosionService.listAircraft());
       this.aircraftList.set(aircraft);
+      const workspaceParam = this.route.snapshot.queryParamMap.get('workspace');
+      this.workspace.set(workspaceParam === 'repair' ? 'repair' : 'inspection');
       const queryAircraftRaw = this.route.snapshot.queryParamMap.get('aircraftId');
       const queryPanelRaw = this.route.snapshot.queryParamMap.get('panelId');
       const queryAircraftId = queryAircraftRaw ? Number(queryAircraftRaw) : NaN;
@@ -137,6 +140,6 @@ export class CorrosionListPage implements OnInit {
   }
 
   openHole(holeId: number): void {
-    void this.routing.goToCorrosionDetail(holeId);
+    void this.routing.goToCorrosionDetail(holeId, this.workspace());
   }
 }

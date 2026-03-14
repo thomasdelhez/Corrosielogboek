@@ -38,9 +38,12 @@ class Hole(Base):
     hole_number: Mapped[int] = mapped_column(Integer)
 
     max_bp_diameter: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bp_damage_clean: Mapped[str | None] = mapped_column(String(32), nullable=True)
     final_hole_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fit: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ream_max_bp: Mapped[bool] = mapped_column(Boolean, default=False)
     mdr_code: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    mdr_needed: Mapped[bool] = mapped_column(Boolean, default=False)
     mdr_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ndi_name_initials: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ndi_inspection_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -58,9 +61,12 @@ class Hole(Base):
     surface_corrosion: Mapped[bool] = mapped_column(Boolean, default=False)
     nutplate_inspection: Mapped[str | None] = mapped_column(String(255), nullable=True)
     nutplate_surface_corrosion: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    nutplate_test: Mapped[str | None] = mapped_column(String(32), nullable=True)
     total_structure_thickness: Mapped[str | None] = mapped_column(String(255), nullable=True)
     flexhone: Mapped[str | None] = mapped_column(String(255), nullable=True)
     flexndi: Mapped[bool] = mapped_column(Boolean, default=False)
+    example_part: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    clean_alcohol_alodine: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

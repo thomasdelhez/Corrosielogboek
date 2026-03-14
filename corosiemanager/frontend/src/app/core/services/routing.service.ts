@@ -9,7 +9,9 @@ export class RoutingService {
     return this.router.navigate(['/corrosion']);
   }
 
-  goToCorrosionDetail(holeId: number): Promise<boolean> {
-    return this.router.navigate(['/corrosion', holeId]);
+  goToCorrosionDetail(holeId: number, workspace?: 'inspection' | 'repair'): Promise<boolean> {
+    return this.router.navigate(['/corrosion', holeId], {
+      queryParams: workspace ? { workspace } : undefined,
+    });
   }
 }

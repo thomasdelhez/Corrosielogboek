@@ -940,9 +940,12 @@ def _create_hole_row(db: Session, panel_id: int, payload: HoleCreate) -> Hole:
         panel_id=panel_id,
         hole_number=payload.hole_number,
         max_bp_diameter=payload.max_bp_diameter,
+        bp_damage_clean=payload.bp_damage_clean,
         final_hole_size=payload.final_hole_size,
         fit=payload.fit,
+        ream_max_bp=payload.ream_max_bp,
         mdr_code=payload.mdr_code,
+        mdr_needed=payload.mdr_needed,
         mdr_version=payload.mdr_version,
         ndi_name_initials=payload.ndi_name_initials,
         ndi_inspection_date=payload.ndi_inspection_date,
@@ -960,9 +963,12 @@ def _create_hole_row(db: Session, panel_id: int, payload: HoleCreate) -> Hole:
         surface_corrosion=payload.surface_corrosion,
         nutplate_inspection=payload.nutplate_inspection,
         nutplate_surface_corrosion=payload.nutplate_surface_corrosion,
+        nutplate_test=payload.nutplate_test,
         total_structure_thickness=payload.total_structure_thickness,
         flexhone=payload.flexhone,
         flexndi=payload.flexndi,
+        example_part=payload.example_part,
+        clean_alcohol_alodine=payload.clean_alcohol_alodine,
     )
     db.add(hole)
     db.flush()
@@ -1108,14 +1114,26 @@ def get_hole(hole_id: int, db: Session = Depends(get_db), _user=Depends(current_
     return _get_hole_or_404(db, hole_id)
 
 
+@app.delete("/api/v1/holes/{hole_id}")
+def delete_hole(hole_id: int, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))):
+    hole = _get_hole_or_404(db, hole_id)
+    db.delete(hole)
+    _audit(db, "delete", "hole", hole.id, user["username"])
+    db.commit()
+    return {"deleted": True}
+
+
 @app.put("/api/v1/holes/{hole_id}", response_model=HoleOut)
 def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db), user=Depends(require_any_roles("engineer", "admin"))):
     hole = _get_hole_or_404(db, hole_id)
 
     hole.max_bp_diameter = payload.max_bp_diameter
+    hole.bp_damage_clean = payload.bp_damage_clean
     hole.final_hole_size = payload.final_hole_size
     hole.fit = payload.fit
+    hole.ream_max_bp = payload.ream_max_bp
     hole.mdr_code = payload.mdr_code
+    hole.mdr_needed = payload.mdr_needed
     hole.mdr_version = payload.mdr_version
     hole.ndi_name_initials = payload.ndi_name_initials
     hole.ndi_inspection_date = payload.ndi_inspection_date
@@ -1133,9 +1151,12 @@ def update_hole(hole_id: int, payload: HoleUpdate, db: Session = Depends(get_db)
     hole.surface_corrosion = payload.surface_corrosion
     hole.nutplate_inspection = payload.nutplate_inspection
     hole.nutplate_surface_corrosion = payload.nutplate_surface_corrosion
+    hole.nutplate_test = payload.nutplate_test
     hole.total_structure_thickness = payload.total_structure_thickness
     hole.flexhone = payload.flexhone
     hole.flexndi = payload.flexndi
+    hole.example_part = payload.example_part
+    hole.clean_alcohol_alodine = payload.clean_alcohol_alodine
 
     db.commit()
     return _get_hole_or_404(db, hole_id)

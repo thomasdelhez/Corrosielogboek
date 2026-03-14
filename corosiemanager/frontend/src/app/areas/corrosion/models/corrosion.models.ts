@@ -25,9 +25,12 @@ export interface Hole {
   panelId: number;
   holeNumber: number;
   maxBpDiameter: number | null;
+  bpDamageClean: string | null;
   finalHoleSize: number | null;
   fit: string | null;
+  reamMaxBp: boolean;
   mdrCode: string | null;
+  mdrNeeded: boolean;
   mdrVersion: string | null;
   ndiNameInitials: string | null;
   ndiInspectionDate: Date | null;
@@ -45,9 +48,12 @@ export interface Hole {
   surfaceCorrosion: boolean;
   nutplateInspection: string | null;
   nutplateSurfaceCorrosion: string | null;
+  nutplateTest: string | null;
   totalStructureThickness: string | null;
   flexhone: string | null;
   flexndi: boolean;
+  examplePart: string | null;
+  cleanAlcoholAlodine: boolean;
   createdAt: Date;
   steps: HoleStep[];
   parts: HolePart[];

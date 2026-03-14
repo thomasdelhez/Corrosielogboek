@@ -25,9 +25,12 @@ export interface HoleDto {
   panel_id: number;
   hole_number: number;
   max_bp_diameter: number | null;
+  bp_damage_clean: string | null;
   final_hole_size: number | null;
   fit: string | null;
+  ream_max_bp: boolean;
   mdr_code: string | null;
+  mdr_needed: boolean;
   mdr_version: string | null;
   ndi_name_initials: string | null;
   ndi_inspection_date: string | null;
@@ -45,9 +48,12 @@ export interface HoleDto {
   surface_corrosion: boolean;
   nutplate_inspection: string | null;
   nutplate_surface_corrosion: string | null;
+  nutplate_test: string | null;
   total_structure_thickness: string | null;
   flexhone: string | null;
   flexndi: boolean;
+  example_part: string | null;
+  clean_alcohol_alodine: boolean;
   created_at: string;
   steps: HoleStepDto[];
   parts: HolePartDto[];
@@ -55,9 +61,12 @@ export interface HoleDto {
 
 export interface UpdateHoleInputDto {
   max_bp_diameter: number | null;
+  bp_damage_clean: string | null;
   final_hole_size: number | null;
   fit: string | null;
+  ream_max_bp: boolean;
   mdr_code: string | null;
+  mdr_needed: boolean;
   mdr_version: string | null;
   ndi_name_initials: string | null;
   ndi_inspection_date: string | null;
@@ -75,9 +84,12 @@ export interface UpdateHoleInputDto {
   surface_corrosion: boolean;
   nutplate_inspection: string | null;
   nutplate_surface_corrosion: string | null;
+  nutplate_test: string | null;
   total_structure_thickness: string | null;
   flexhone: string | null;
   flexndi: boolean;
+  example_part: string | null;
+  clean_alcohol_alodine: boolean;
 }
 
 export interface UpdateHoleStepInputDto {
