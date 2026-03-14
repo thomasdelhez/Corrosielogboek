@@ -4,7 +4,9 @@
           <app-page-header
             eyebrow="Corrosie workflow"
             title="Aircraft en panels"
-            subtitle="Selecteer het juiste aircraft en panel, filter de holes en spring direct naar inspection of repair."
+            [subtitle]="workspace() === 'inspection'
+              ? 'Kies een aircraft en panel om direct naar hole inspection te gaan.'
+              : 'Kies een aircraft en panel om direct naar hole repair te gaan.'"
           />
 
           <section class="selector-grid">
@@ -33,48 +35,14 @@
             </article>
           </section>
 
-          <section class="ui-section">
-            <div class="ui-section-inner ui-stack-md">
-              <div class="filter-bar">
-                <label class="ui-field search-box">
-                  <span>Zoeken</span>
-                  <input
-                    [(ngModel)]="searchTerm"
-                    name="search"
-                    placeholder="Zoek op hole, status of MDR-code"
-                  />
-                </label>
-
-                <div class="filter-meta">
-                  <span class="ui-chip brand">{{ workspace() === 'inspection' ? 'Inspection mode' : 'Repair mode' }}</span>
-                  <span class="ui-chip brand">{{ filteredHoles().length }} van {{ holes().length }}</span>
-                  @if (selectedAircraft()) {
-                    <span class="ui-chip">{{ selectedAircraft()!.an }}</span>
-                  }
-                  @if (selectedPanel()) {
-                    <span class="ui-chip">Panel {{ selectedPanel()!.panelNumber }}</span>
-                  }
-                </div>
-              </div>
-
-              @if (loading()) {
-                <div class="ui-banner info"><span>Gegevens laden...</span></div>
-              } @else if (loadError()) {
-                <div class="ui-banner error">
-                  <span>{{ loadError() }}</span>
-                  <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
-                </div>
-              } @else if (holes().length === 0) {
-                <app-empty-state
-                  eyebrow="Geen holes"
-                  title="Nog geen holes beschikbaar voor dit panel"
-                  description="Kies een ander panel of laad de brondata opnieuw als je hier wel records verwacht."
-                />
-              } @else {
-                <app-hole-list [holes]="filteredHoles()" (open)="openHole($event)" />
-              }
+          @if (loading()) {
+            <div class="ui-banner info"><span>Panels laden...</span></div>
+          } @else if (loadError()) {
+            <div class="ui-banner error">
+              <span>{{ loadError() }}</span>
+              <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
             </div>
-          </section>
+          }
         </div>
       </section>
     </main>

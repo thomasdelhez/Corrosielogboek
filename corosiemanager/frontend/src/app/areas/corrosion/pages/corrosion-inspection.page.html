@@ -1,0 +1,273 @@
+<main class="ui-page">
+  <section class="ui-surface">
+    <div class="ui-surface-inner ui-stack-md">
+      <app-page-header
+        eyebrow="Corrosie workspace"
+        title="Hole inspection"
+        subtitle="Werk inspectionstatussen en cleaning direct bij."
+        backLink="/corrosion"
+        backLabel="Terug naar overzicht"
+      />
+
+      @if (hole()) {
+        @if (hole(); as h) {
+          <section class="ui-section">
+            <div class="ui-section-inner ui-stack-md">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Phase 1</p>
+                  <h3>Hole inspection</h3>
+                </div>
+                <div class="ui-inline-list">
+                  <span class="ui-chip">Panel {{ h.panelId }}</span>
+                  <span class="ui-chip">Hole {{ h.holeNumber }}</span>
+                  @if (canEditHole()) {
+                    <button class="ui-btn-danger inspection-delete-chip" type="button" [disabled]="deletingHole()" (click)="deleteCurrentHole()">
+                      {{ deletingHole() ? 'Verwijderen...' : 'Delete HoleID' }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (!canEditHole()) {
+                <div class="ui-banner warning"><span>Alleen engineer/admin kan hole-data wijzigen.</span></div>
+              }
+
+              <section class="inspection-workspace">
+                <aside class="inspection-sidebar">
+                  <div class="inspection-card inspection-card-info">
+                    <h4>HoleID inspection</h4>
+                    <div class="inspection-meta">
+                      <div><span>AN</span><strong>{{ aircraft()?.an || '-' }}</strong></div>
+                      <div><span>Serial Nr</span><strong>{{ aircraft()?.serialNumber || '-' }}</strong></div>
+                      <div><span>Panel Number</span><strong>{{ panel()?.panelNumber || h.panelId }}</strong></div>
+                    </div>
+                  </div>
+
+                  <div class="inspection-card inspection-card-selection">
+                    <label class="ui-field">
+                      <span>HoleID selection</span>
+                      <select [ngModel]="selectedHoleId()" (ngModelChange)="onSelectedHoleChange($event)" name="selectedHoleId">
+                        @for (option of panelHoles(); track option.id) {
+                          <option [ngValue]="option.id">Hole {{ option.holeNumber }}</option>
+                        }
+                      </select>
+                    </label>
+
+                    <div class="inspection-nav inspection-nav-row">
+                      <button class="ui-btn-secondary" type="button" [disabled]="!canGoPrevious()" (click)="goToPreviousHole()">Previous HoleID</button>
+                      <button class="ui-btn-secondary" type="button" [disabled]="!canGoNext()" (click)="goToNextHole()">Next HoleID</button>
+                    </div>
+                  </div>
+                </aside>
+
+                <form class="inspection-form inspection-form-card">
+                  <fieldset [disabled]="!canEditHole()">
+                    <div class="inspection-form-grid">
+                      <label class="ui-field compact-field inspection-hole-field">
+                        <span>HoleID</span>
+                        <input [ngModel]="h.holeNumber" name="displayHoleNumber" type="text" readonly />
+                      </label>
+
+                      <label class="toggle-card inspection-clean-toggle">
+                        <input [(ngModel)]="form.clean" name="clean" type="checkbox" (ngModelChange)="onInspectionFieldChange()" />
+                        <span>Cleaned with Brush and Alcohol</span>
+                      </label>
+
+                      <label class="ui-field inspection-status-field">
+                        <span>Hole Status (After Cleaning)</span>
+                        <select [(ngModel)]="form.inspectionStatus" name="inspectionStatus" (ngModelChange)="onInspectionFieldChange()">
+                          <option [ngValue]="null">-- Selecteer status --</option>
+                          @for (opt of inspectionStatusOptions; track opt) {
+                            <option [value]="opt">{{ opt }}</option>
+                          }
+                        </select>
+                      </label>
+                    </div>
+                  </fieldset>
+                </form>
+
+                <section class="inspection-queues-grid" cdkDropListGroup>
+                  <article class="inspection-queue lane-neutral">
+                    <header>{{ queueColumnTitle('to_be_inspected') }}</header>
+                    <div
+                      class="inspection-queue-list"
+                      cdkDropList
+                      [id]="inspectionQueueListIds.to_be_inspected"
+                      [cdkDropListData]="queueColumns().toBeInspected"
+                      [cdkDropListConnectedTo]="connectedInspectionQueues('to_be_inspected')"
+                      (cdkDropListDropped)="onInspectionQueueDrop($event, 'to_be_inspected')"
+                    >
+                      @for (row of queueColumns().toBeInspected; track row.holeId) {
+                        <div
+                          class="inspection-queue-item"
+                          role="button"
+                          tabindex="0"
+                          cdkDrag
+                          [cdkDragData]="row"
+                          [cdkDragStartDelay]="{ touch: 180, mouse: 0 }"
+                          [cdkDragDisabled]="!canEditHole() || savingDraggedHoleId() === row.holeId"
+                          [class.active]="row.holeId === h.id"
+                          [class.dragging]="draggingHoleId() === row.holeId"
+                          [class.pending]="savingDraggedHoleId() === row.holeId"
+                          (cdkDragStarted)="onQueueDragStarted(row.holeId)"
+                          (cdkDragEnded)="onQueueDragEnded()"
+                          (click)="onSelectedHoleChange(row.holeId)"
+                          (keydown.enter)="onSelectedHoleChange(row.holeId)"
+                          (keydown.space)="onSelectedHoleChange(row.holeId)"
+                        >
+                          <span class="inspection-queue-label">{{ row.holeNumber }}</span>
+                          @if (canEditHole()) {
+                            <span class="inspection-drag-handle" cdkDragHandle aria-label="Sleep hole naar andere kolom" title="Sleep naar andere kolom">⋮⋮</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </article>
+
+                  <article class="inspection-queue lane-rifled">
+                    <header>{{ queueColumnTitle('marked_as_rifled') }}</header>
+                    <div
+                      class="inspection-queue-list"
+                      cdkDropList
+                      [id]="inspectionQueueListIds.marked_as_rifled"
+                      [cdkDropListData]="queueColumns().markedAsRifled"
+                      [cdkDropListConnectedTo]="connectedInspectionQueues('marked_as_rifled')"
+                      (cdkDropListDropped)="onInspectionQueueDrop($event, 'marked_as_rifled')"
+                    >
+                      @for (row of queueColumns().markedAsRifled; track row.holeId) {
+                        <div
+                          class="inspection-queue-item"
+                          role="button"
+                          tabindex="0"
+                          cdkDrag
+                          [cdkDragData]="row"
+                          [cdkDragStartDelay]="{ touch: 180, mouse: 0 }"
+                          [cdkDragDisabled]="!canEditHole() || savingDraggedHoleId() === row.holeId"
+                          [class.active]="row.holeId === h.id"
+                          [class.dragging]="draggingHoleId() === row.holeId"
+                          [class.pending]="savingDraggedHoleId() === row.holeId"
+                          (cdkDragStarted)="onQueueDragStarted(row.holeId)"
+                          (cdkDragEnded)="onQueueDragEnded()"
+                          (click)="onSelectedHoleChange(row.holeId)"
+                          (keydown.enter)="onSelectedHoleChange(row.holeId)"
+                          (keydown.space)="onSelectedHoleChange(row.holeId)"
+                        >
+                          <span class="inspection-queue-label">{{ row.holeNumber }}</span>
+                          @if (canEditHole()) {
+                            <span class="inspection-drag-handle" cdkDragHandle aria-label="Sleep hole naar andere kolom" title="Sleep naar andere kolom">⋮⋮</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </article>
+
+                  <article class="inspection-queue lane-corroded">
+                    <header>{{ queueColumnTitle('marked_as_corroded') }}</header>
+                    <div
+                      class="inspection-queue-list"
+                      cdkDropList
+                      [id]="inspectionQueueListIds.marked_as_corroded"
+                      [cdkDropListData]="queueColumns().markedAsCorroded"
+                      [cdkDropListConnectedTo]="connectedInspectionQueues('marked_as_corroded')"
+                      (cdkDropListDropped)="onInspectionQueueDrop($event, 'marked_as_corroded')"
+                    >
+                      @for (row of queueColumns().markedAsCorroded; track row.holeId) {
+                        <div
+                          class="inspection-queue-item"
+                          role="button"
+                          tabindex="0"
+                          cdkDrag
+                          [cdkDragData]="row"
+                          [cdkDragStartDelay]="{ touch: 180, mouse: 0 }"
+                          [cdkDragDisabled]="!canEditHole() || savingDraggedHoleId() === row.holeId"
+                          [class.active]="row.holeId === h.id"
+                          [class.dragging]="draggingHoleId() === row.holeId"
+                          [class.pending]="savingDraggedHoleId() === row.holeId"
+                          (cdkDragStarted)="onQueueDragStarted(row.holeId)"
+                          (cdkDragEnded)="onQueueDragEnded()"
+                          (click)="onSelectedHoleChange(row.holeId)"
+                          (keydown.enter)="onSelectedHoleChange(row.holeId)"
+                          (keydown.space)="onSelectedHoleChange(row.holeId)"
+                        >
+                          <span class="inspection-queue-label">{{ row.holeNumber }}</span>
+                          @if (canEditHole()) {
+                            <span class="inspection-drag-handle" cdkDragHandle aria-label="Sleep hole naar andere kolom" title="Sleep naar andere kolom">⋮⋮</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </article>
+
+                  <article class="inspection-queue lane-clean">
+                    <header>{{ queueColumnTitle('marked_as_clean') }}</header>
+                    <div
+                      class="inspection-queue-list"
+                      cdkDropList
+                      [id]="inspectionQueueListIds.marked_as_clean"
+                      [cdkDropListData]="queueColumns().markedAsClean"
+                      [cdkDropListConnectedTo]="connectedInspectionQueues('marked_as_clean')"
+                      (cdkDropListDropped)="onInspectionQueueDrop($event, 'marked_as_clean')"
+                    >
+                      @for (row of queueColumns().markedAsClean; track row.holeId) {
+                        <div
+                          class="inspection-queue-item"
+                          role="button"
+                          tabindex="0"
+                          cdkDrag
+                          [cdkDragData]="row"
+                          [cdkDragStartDelay]="{ touch: 180, mouse: 0 }"
+                          [cdkDragDisabled]="!canEditHole() || savingDraggedHoleId() === row.holeId"
+                          [class.active]="row.holeId === h.id"
+                          [class.dragging]="draggingHoleId() === row.holeId"
+                          [class.pending]="savingDraggedHoleId() === row.holeId"
+                          (cdkDragStarted)="onQueueDragStarted(row.holeId)"
+                          (cdkDragEnded)="onQueueDragEnded()"
+                          (click)="onSelectedHoleChange(row.holeId)"
+                          (keydown.enter)="onSelectedHoleChange(row.holeId)"
+                          (keydown.space)="onSelectedHoleChange(row.holeId)"
+                        >
+                          <span class="inspection-queue-label">{{ row.holeNumber }}</span>
+                          @if (canEditHole()) {
+                            <span class="inspection-drag-handle" cdkDragHandle aria-label="Sleep hole naar andere kolom" title="Sleep naar andere kolom">⋮⋮</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </article>
+                </section>
+              </section>
+
+              @if (pendingInspectionMove(); as pendingMove) {
+                <div class="inspection-modal-backdrop" (click)="cancelPendingInspectionMove()">
+                  <section class="inspection-modal" role="dialog" aria-modal="true" aria-labelledby="inspection-clean-modal-title" (click)="$event.stopPropagation()">
+                    <p class="inspection-modal-kicker">Inspection update</p>
+                    <h4 id="inspection-clean-modal-title">Cleaned with Brush and Alcohol?</h4>
+                    <p>
+                      Hole <strong>{{ pendingMove.row.holeNumber }}</strong> wordt verplaatst naar
+                      <strong>{{ pendingMove.targetStatus }}</strong>.
+                    </p>
+                    <div class="inspection-modal-actions">
+                      <button class="ui-btn-secondary" type="button" [disabled]="savingDraggedHoleId() === pendingMove.row.holeId" (click)="cancelPendingInspectionMove()">Annuleren</button>
+                      <button class="ui-btn-secondary" type="button" [disabled]="savingDraggedHoleId() === pendingMove.row.holeId" (click)="confirmPendingInspectionMove(false)">Nee</button>
+                      <button class="ui-btn" type="button" [disabled]="savingDraggedHoleId() === pendingMove.row.holeId" (click)="confirmPendingInspectionMove(true)">Ja</button>
+                    </div>
+                  </section>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      } @else {
+        @if (loadError()) {
+          <div class="ui-banner error">
+            <span>{{ loadError() }}</span>
+            <button class="ui-btn-secondary" type="button" (click)="reload()">Opnieuw proberen</button>
+          </div>
+        } @else {
+          <app-empty-state eyebrow="Laden" title="Hole inspection wordt geladen" description="De inspectiedata wordt opgehaald. Dit duurt meestal maar kort." />
+        }
+      }
+    </div>
+  </section>
+</main>

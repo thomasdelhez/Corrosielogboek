@@ -3,6 +3,7 @@ import { requireAdminGuard, requireLoginGuard, requireReviewerGuard } from '../.
 import { AdminMasterDataPage } from './pages/admin-master-data.page';
 import { AdminUsersPage } from './pages/admin-users.page';
 import { CorrosionDetailPage } from './pages/corrosion-detail.page';
+import { CorrosionInspectionPage } from './pages/corrosion-inspection.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
 import { CorrosionReportPage } from './pages/corrosion-report.page';
 import { HoleTrackersPage } from './pages/hole-trackers.page';
@@ -14,6 +15,7 @@ import { OrderingTrackerPage } from './pages/ordering-tracker.page';
 
 export const CORROSION_ROUTES: Routes = [
   { path: 'corrosion', component: CorrosionListPage, canActivate: [requireLoginGuard] },
+  { path: 'corrosion/:id/inspection', component: CorrosionInspectionPage, canActivate: [requireLoginGuard] },
   { path: 'corrosion/:id', component: CorrosionDetailPage, canActivate: [requireLoginGuard] },
   { path: 'mdr', component: MdrManagementPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ndi', component: NdiReportsPage, canActivate: [requireLoginGuard, requireReviewerGuard] },

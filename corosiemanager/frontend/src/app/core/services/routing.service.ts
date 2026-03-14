@@ -5,11 +5,17 @@ import { Router } from '@angular/router';
 export class RoutingService {
   constructor(private readonly router: Router) {}
 
-  goToCorrosionList(): Promise<boolean> {
-    return this.router.navigate(['/corrosion']);
+  goToCorrosionList(workspace?: 'inspection' | 'repair'): Promise<boolean> {
+    return this.router.navigate(['/corrosion'], {
+      queryParams: workspace ? { workspace } : undefined,
+    });
   }
 
-  goToCorrosionDetail(holeId: number, workspace?: 'inspection' | 'repair'): Promise<boolean> {
+  goToCorrosionInspection(holeId: number): Promise<boolean> {
+    return this.router.navigate(['/corrosion', holeId, 'inspection']);
+  }
+
+  goToCorrosionDetail(holeId: number, workspace?: 'repair' | 'parts'): Promise<boolean> {
     return this.router.navigate(['/corrosion', holeId], {
       queryParams: workspace ? { workspace } : undefined,
     });
