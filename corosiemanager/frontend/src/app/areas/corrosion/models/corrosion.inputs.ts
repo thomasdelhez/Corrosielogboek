@@ -1,16 +1,16 @@
 export interface UpdateHoleInput {
-  maxBpDiameter: number | null;
+  maxBpDiameter?: number | null;
   bpDamageClean?: string | null;
-  finalHoleSize: number | null;
-  fit: string | null;
+  finalHoleSize?: number | null;
+  fit?: string | null;
   reamMaxBp?: boolean;
-  mdrCode: string | null;
+  mdrCode?: string | null;
   mdrNeeded?: boolean;
-  mdrVersion: string | null;
-  ndiNameInitials: string | null;
-  ndiInspectionDate: Date | null;
-  ndiFinished: boolean;
-  inspectionStatus: string | null;
+  mdrVersion?: string | null;
+  ndiNameInitials?: string | null;
+  ndiInspectionDate?: Date | null;
+  ndiFinished?: boolean;
+  inspectionStatus?: string | null;
   mdrResubmit?: boolean;
   totalStackupLength?: string | null;
   stackUp?: number | null;

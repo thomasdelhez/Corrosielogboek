@@ -60,36 +60,36 @@ export interface HoleDto {
 }
 
 export interface UpdateHoleInputDto {
-  max_bp_diameter: number | null;
-  bp_damage_clean: string | null;
-  final_hole_size: number | null;
-  fit: string | null;
-  ream_max_bp: boolean;
-  mdr_code: string | null;
-  mdr_needed: boolean;
-  mdr_version: string | null;
-  ndi_name_initials: string | null;
-  ndi_inspection_date: string | null;
-  ndi_finished: boolean;
-  inspection_status: string | null;
-  mdr_resubmit: boolean;
-  total_stackup_length: string | null;
-  stack_up: number | null;
-  sleeve_bushings: string | null;
-  countersinked: boolean;
-  clean: boolean;
-  cut_sleeve_bushing: boolean;
-  installed: boolean;
-  primer: boolean;
-  surface_corrosion: boolean;
-  nutplate_inspection: string | null;
-  nutplate_surface_corrosion: string | null;
-  nutplate_test: string | null;
-  total_structure_thickness: string | null;
-  flexhone: string | null;
-  flexndi: boolean;
-  example_part: string | null;
-  clean_alcohol_alodine: boolean;
+  max_bp_diameter?: number | null;
+  bp_damage_clean?: string | null;
+  final_hole_size?: number | null;
+  fit?: string | null;
+  ream_max_bp?: boolean;
+  mdr_code?: string | null;
+  mdr_needed?: boolean;
+  mdr_version?: string | null;
+  ndi_name_initials?: string | null;
+  ndi_inspection_date?: string | null;
+  ndi_finished?: boolean;
+  inspection_status?: string | null;
+  mdr_resubmit?: boolean;
+  total_stackup_length?: string | null;
+  stack_up?: number | null;
+  sleeve_bushings?: string | null;
+  countersinked?: boolean;
+  clean?: boolean;
+  cut_sleeve_bushing?: boolean;
+  installed?: boolean;
+  primer?: boolean;
+  surface_corrosion?: boolean;
+  nutplate_inspection?: string | null;
+  nutplate_surface_corrosion?: string | null;
+  nutplate_test?: string | null;
+  total_structure_thickness?: string | null;
+  flexhone?: string | null;
+  flexndi?: boolean;
+  example_part?: string | null;
+  clean_alcohol_alodine?: boolean;
 }
 
 export interface UpdateHoleStepInputDto {

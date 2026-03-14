@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -13,9 +14,17 @@ import { UpdateHoleInput, UpdateHolePartInput, UpdateHoleStepInput } from '../mo
 import { Aircraft, Hole, InspectionQueueRow, PanelSummary } from '../models/corrosion.models';
 import { CorrosionService } from '../services/corrosion.service';
 
+type InspectionQueueKey = 'to_be_inspected' | 'marked_as_rifled' | 'marked_as_corroded' | 'marked_as_clean';
+type InspectionStatusValue = 'To be inspected' | 'Rifled' | 'Corroded' | 'Clean';
+type PendingInspectionMove = {
+  row: InspectionQueueRow;
+  targetQueue: InspectionQueueKey;
+  targetStatus: InspectionStatusValue;
+};
+
 @Component({
   selector: 'app-corrosion-detail-page',
-  imports: [FormsModule, PageHeaderComponent, EmptyStateComponent],
+  imports: [FormsModule, PageHeaderComponent, EmptyStateComponent, CdkDropList, CdkDrag, CdkDragHandle],
   templateUrl: './corrosion-detail.page.html',
   styleUrl: './corrosion-detail.page.scss',
 })
@@ -27,6 +36,8 @@ export class CorrosionDetailPage implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthenticationService);
   private readonly permissions = inject(PermissionService);
+  private inspectionAutosaveTimer: number | null = null;
+  private suppressInspectionAutosave = false;
 
   protected readonly hole = signal<Hole | null>(null);
   protected readonly aircraft = signal<Aircraft | null>(null);
@@ -41,10 +52,19 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly savingCore = signal(false);
   protected readonly savingParts = signal(false);
   protected readonly deletingHole = signal(false);
+  protected readonly draggingHoleId = signal<number | null>(null);
+  protected readonly savingDraggedHoleId = signal<number | null>(null);
+  protected readonly pendingInspectionMove = signal<PendingInspectionMove | null>(null);
   protected readonly loadError = signal<string | null>(null);
   protected readonly activeWorkspace = signal<'inspection' | 'repair' | 'parts'>('inspection');
 
-  protected readonly inspectionStatusOptions = ['To be inspected', 'Rifled', 'Corroded', 'Clean'];
+  protected readonly inspectionStatusOptions: InspectionStatusValue[] = ['To be inspected', 'Rifled', 'Corroded', 'Clean'];
+  protected readonly inspectionQueueListIds: Record<InspectionQueueKey, string> = {
+    to_be_inspected: 'inspection-queue-to-be-inspected',
+    marked_as_rifled: 'inspection-queue-rifled',
+    marked_as_corroded: 'inspection-queue-corroded',
+    marked_as_clean: 'inspection-queue-clean',
+  };
   protected readonly partStatusOptions = ['Open', 'In Progress @EST', 'Ordered @981', 'Received @LSE', 'Delivered @Floor', 'Closed'];
   protected readonly dmgCleanOptions = ['CLEAN', 'DMG'];
   protected readonly bushingTypeOptions = ['SB', 'CS'];
@@ -146,6 +166,17 @@ export class CorrosionDetailPage implements OnInit {
     }
   }
 
+  protected onInspectionFieldChange(): void {
+    if (this.suppressInspectionAutosave || !this.canEditHole()) return;
+    if (this.inspectionAutosaveTimer !== null) {
+      window.clearTimeout(this.inspectionAutosaveTimer);
+    }
+    this.inspectionAutosaveTimer = window.setTimeout(() => {
+      this.inspectionAutosaveTimer = null;
+      void this.saveInspectionFields();
+    }, 150);
+  }
+
   async saveParts(): Promise<void> {
     if (!this.canEditHole()) return;
     const h = this.hole();
@@ -229,8 +260,121 @@ export class CorrosionDetailPage implements OnInit {
     }
   }
 
+  protected onQueueDragStarted(holeId: number): void {
+    this.draggingHoleId.set(holeId);
+  }
+
+  protected onQueueDragEnded(): void {
+    this.draggingHoleId.set(null);
+  }
+
+  protected async onInspectionQueueDrop(event: CdkDragDrop<InspectionQueueRow[]>, targetQueue: InspectionQueueKey): Promise<void> {
+    const row = event.item.data as InspectionQueueRow | undefined;
+    if (!row || !this.canEditHole()) return;
+    if (row.queueStatus === targetQueue) return;
+
+    this.draggingHoleId.set(null);
+    this.pendingInspectionMove.set({
+      row,
+      targetQueue,
+      targetStatus: this.statusForQueue(targetQueue),
+    });
+  }
+
+  protected cancelPendingInspectionMove(): void {
+    if (this.savingDraggedHoleId()) return;
+    this.pendingInspectionMove.set(null);
+  }
+
+  protected async confirmPendingInspectionMove(cleanedWithBrushAndAlcohol: boolean): Promise<void> {
+    const pendingMove = this.pendingInspectionMove();
+    if (!pendingMove) return;
+
+    const { row, targetQueue, targetStatus } = pendingMove;
+    const previousRows = this.inspectionRows();
+    const previousHole = this.hole();
+    const previousStatus = previousHole?.id === row.holeId ? previousHole.inspectionStatus : null;
+    const previousClean = previousHole?.id === row.holeId ? previousHole.clean : null;
+
+    this.pendingInspectionMove.set(null);
+    this.savingDraggedHoleId.set(row.holeId);
+    this.inspectionRows.set(this.patchInspectionRows(row.holeId, targetQueue));
+
+    if (previousHole?.id === row.holeId) {
+      this.hole.set({ ...previousHole, inspectionStatus: targetStatus, clean: cleanedWithBrushAndAlcohol });
+      this.form.inspectionStatus = targetStatus;
+      this.form.clean = cleanedWithBrushAndAlcohol;
+    }
+
+    try {
+      const updated = await firstValueFrom(
+        this.corrosionService.updateHole(row.holeId, {
+          inspectionStatus: targetStatus,
+          clean: cleanedWithBrushAndAlcohol,
+        })
+      );
+      if (previousHole?.id === row.holeId) {
+        this.hole.set(updated);
+        this.form.inspectionStatus = this.normalizeInspectionStatus(updated.inspectionStatus);
+        this.form.clean = updated.clean;
+      }
+      this.inspectionRows.set(this.patchInspectionRows(row.holeId, this.queueForStatus(updated.inspectionStatus)));
+      this.toast.success(`Hole ${row.holeNumber} verplaatst naar ${targetStatus.toLowerCase()}`);
+    } catch (error) {
+      this.inspectionRows.set(previousRows);
+      if (previousHole?.id === row.holeId && previousHole) {
+        this.hole.set({ ...previousHole, inspectionStatus: previousStatus, clean: previousClean ?? previousHole.clean });
+        this.form.inspectionStatus = this.normalizeInspectionStatus(previousStatus);
+        this.form.clean = previousClean ?? previousHole.clean;
+      }
+      this.toast.error(this.apiErrors.toUserMessage(error, 'Sleepactie opslaan mislukt'));
+    } finally {
+      this.savingDraggedHoleId.set(null);
+    }
+  }
+
+  private async saveInspectionFields(): Promise<void> {
+    const h = this.hole();
+    if (!h || !this.canEditHole()) return;
+
+    const nextStatus = this.normalizeInspectionStatus(this.form.inspectionStatus ?? null);
+    const nextClean = !!this.form.clean;
+    const previousStatus = h.inspectionStatus;
+    const previousClean = h.clean;
+    const previousRows = this.inspectionRows();
+
+    this.savingCore.set(true);
+    this.hole.set({ ...h, inspectionStatus: nextStatus, clean: nextClean });
+    this.inspectionRows.set(this.patchInspectionRows(h.id, this.queueForStatus(nextStatus)));
+
+    try {
+      const updated = await firstValueFrom(
+        this.corrosionService.updateHole(h.id, {
+          inspectionStatus: nextStatus,
+          clean: nextClean,
+        })
+      );
+      this.suppressInspectionAutosave = true;
+      this.hole.set(updated);
+      this.form.inspectionStatus = this.normalizeInspectionStatus(updated.inspectionStatus);
+      this.form.clean = updated.clean;
+      this.inspectionRows.set(this.patchInspectionRows(h.id, this.queueForStatus(updated.inspectionStatus)));
+      this.suppressInspectionAutosave = false;
+      this.toast.success('Inspection opgeslagen');
+    } catch (error) {
+      this.hole.set({ ...h, inspectionStatus: previousStatus, clean: previousClean });
+      this.form.inspectionStatus = this.normalizeInspectionStatus(previousStatus);
+      this.form.clean = previousClean;
+      this.inspectionRows.set(previousRows);
+      this.toast.error(this.apiErrors.toUserMessage(error, 'Inspection automatisch opslaan mislukt'));
+    } finally {
+      this.savingCore.set(false);
+    }
+  }
+
   private async applyHole(hole: Hole): Promise<void> {
     this.hole.set(hole);
+    this.suppressInspectionAutosave = true;
     this.form = {
       maxBpDiameter: hole.maxBpDiameter,
       bpDamageClean: hole.bpDamageClean,
@@ -263,6 +407,7 @@ export class CorrosionDetailPage implements OnInit {
       examplePart: hole.examplePart,
       cleanAlcoholAlodine: hole.cleanAlcoholAlodine,
     };
+    this.suppressInspectionAutosave = false;
     this.ndiInspectionDateInput = this.toDateInput(hole.ndiInspectionDate);
     this.stepInputs = hole.steps.map((s) => ({ stepNo: s.stepNo, sizeValue: s.sizeValue, visualDamageCheck: s.visualDamageCheck, reamFlag: s.reamFlag, mdrFlag: s.mdrFlag, ndiFlag: s.ndiFlag }));
     this.partInputs = hole.parts.map((p) => ({ slotNo: p.slotNo, partNumber: p.partNumber, partLength: p.partLength, bushingType: p.bushingType, standardCustom: p.standardCustom, orderedFlag: p.orderedFlag, deliveredFlag: p.deliveredFlag, status: p.status }));
@@ -319,14 +464,47 @@ export class CorrosionDetailPage implements OnInit {
     ];
   }
 
-  protected queueColumnTitle(queue: 'to_be_inspected' | 'marked_as_rifled' | 'marked_as_corroded' | 'marked_as_clean'): string {
+  protected queueColumnTitle(queue: InspectionQueueKey): string {
     if (queue === 'to_be_inspected') return 'To be inspected';
     if (queue === 'marked_as_rifled') return 'Marked as rifled';
     if (queue === 'marked_as_corroded') return 'Marked as corroded';
     return 'Marked as clean';
   }
 
-  private normalizeInspectionStatus(status: string | null): string | null {
+  protected connectedInspectionQueues(queue: InspectionQueueKey): string[] {
+    return Object.entries(this.inspectionQueueListIds)
+      .filter(([key]) => key !== queue)
+      .map(([, id]) => id);
+  }
+
+  private patchInspectionRows(holeId: number, queueStatus: InspectionQueueKey): InspectionQueueRow[] {
+    return this.inspectionRows().map((row) => (
+      row.holeId === holeId
+        ? {
+            ...row,
+            queueStatus,
+            inspectionStatus: this.statusForQueue(queueStatus),
+          }
+        : row
+    ));
+  }
+
+  private statusForQueue(queue: InspectionQueueKey): InspectionStatusValue {
+    if (queue === 'marked_as_rifled') return 'Rifled';
+    if (queue === 'marked_as_corroded') return 'Corroded';
+    if (queue === 'marked_as_clean') return 'Clean';
+    return 'To be inspected';
+  }
+
+  private queueForStatus(status: string | null): InspectionQueueKey {
+    const normalized = this.normalizeInspectionStatus(status);
+    if (normalized === 'Rifled') return 'marked_as_rifled';
+    if (normalized === 'Corroded') return 'marked_as_corroded';
+    if (normalized === 'Clean') return 'marked_as_clean';
+    return 'to_be_inspected';
+  }
+
+  private normalizeInspectionStatus(status: string | null): InspectionStatusValue {
     const value = (status ?? '').trim().toLowerCase();
     if (!value || value === 'open' || value === 'in progress' || value === 'closed') {
       return 'To be inspected';
@@ -344,7 +522,7 @@ export class CorrosionDetailPage implements OnInit {
     if (value === 'corroded') return 'Corroded';
     if (value === 'clean') return 'Clean';
     if (value === 'to be inspected') return 'To be inspected';
-    return status;
+    return 'To be inspected';
   }
 
   private routeWorkspace(): 'inspection' | 'repair' {
