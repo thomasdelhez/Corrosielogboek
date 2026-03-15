@@ -30,13 +30,15 @@ type RepairQueueItem = {
   holeNumber: number;
 };
 
+type RepairTabKey = 'sleeves' | 'machining' | 'status' | 'steps' | 'review' | 'queues';
+
 @Component({
-  selector: 'app-corrosion-detail-page',
+  selector: 'app-corrosion-repair-page',
   imports: [FormsModule, PageHeaderComponent, EmptyStateComponent],
-  templateUrl: './corrosion-detail.page.html',
-  styleUrl: './corrosion-detail.page.scss',
+  templateUrl: './corrosion-repair.page.html',
+  styleUrl: './corrosion-repair.page.scss',
 })
-export class CorrosionDetailPage implements OnInit {
+export class CorrosionRepairPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly routing = inject(RoutingService);
   private readonly corrosionService = inject(CorrosionService);
@@ -56,6 +58,7 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly savingRepair = signal(false);
   protected readonly deletingHole = signal(false);
   protected readonly loadError = signal<string | null>(null);
+  protected readonly activeTab = signal<RepairTabKey>('machining');
 
   protected readonly dmgCleanOptions = ['CLEAN', 'DMG'];
   protected readonly fitOptions = ['STD', 'CST'];
@@ -64,6 +67,14 @@ export class CorrosionDetailPage implements OnInit {
   protected readonly sleeveBushingOptions = ['SB', 'CS'];
   protected readonly nutplateConditionOptions = ['CLEAN', 'DMG'];
   protected readonly nutplateTestOptions = ['PASS', 'FAIL'];
+  protected readonly repairTabs: Array<{ key: RepairTabKey; label: string }> = [
+    { key: 'machining', label: 'Machining' },
+    { key: 'steps', label: 'Steps' },
+    { key: 'sleeves', label: 'Sleeves / Bushings' },
+    { key: 'review', label: 'MDR / NDI' },
+    { key: 'status', label: 'Status' },
+    { key: 'queues', label: 'Queues' },
+  ];
   protected readonly repairLaneDefs: Array<{ key: RepairLaneKey; label: string; className: string }> = [
     { key: 'flexhone', label: 'FlexHone phase', className: 'lane-orange' },
     { key: 'maxBp', label: 'To Max B/P size', className: 'lane-cream' },
@@ -137,6 +148,7 @@ export class CorrosionDetailPage implements OnInit {
   }));
 
   async ngOnInit(): Promise<void> {
+    this.activeTab.set((this.route.snapshot.queryParamMap.get('tab') as RepairTabKey) || 'machining');
     await this.reload();
   }
 
@@ -155,6 +167,10 @@ export class CorrosionDetailPage implements OnInit {
 
   canEditHole(): boolean {
     return this.permissions.canEditHole(this.auth.currentUser());
+  }
+
+  setActiveTab(tab: RepairTabKey): void {
+    this.activeTab.set(tab);
   }
 
   async saveRepairWorkspace(): Promise<void> {
@@ -198,21 +214,21 @@ export class CorrosionDetailPage implements OnInit {
 
   async onSelectedHoleChange(value: string | number | null): Promise<void> {
     if (!value) return;
-    await this.routing.goToCorrosionDetail(Number(value), 'repair');
+    await this.routing.goToCorrosionRepair(Number(value));
     await this.reload();
   }
 
   async goToPreviousHole(): Promise<void> {
     const index = this.currentHoleIndex();
     if (index <= 0) return;
-    await this.routing.goToCorrosionDetail(this.panelHoles()[index - 1].id, 'repair');
+    await this.routing.goToCorrosionRepair(this.panelHoles()[index - 1].id);
     await this.reload();
   }
 
   async goToNextHole(): Promise<void> {
     const index = this.currentHoleIndex();
     if (index < 0 || index >= this.panelHoles().length - 1) return;
-    await this.routing.goToCorrosionDetail(this.panelHoles()[index + 1].id, 'repair');
+    await this.routing.goToCorrosionRepair(this.panelHoles()[index + 1].id);
     await this.reload();
   }
 
@@ -283,24 +299,28 @@ export class CorrosionDetailPage implements OnInit {
       cleanAlcoholAlodine: hole.cleanAlcoholAlodine,
     };
     this.ndiInspectionDateInput = this.toDateInput(hole.ndiInspectionDate);
-    this.stepInputs = this.normalizedLoadedSteps(hole.steps.map((step) => ({
-      stepNo: step.stepNo,
-      sizeValue: step.sizeValue,
-      visualDamageCheck: step.visualDamageCheck,
-      reamFlag: step.reamFlag,
-      mdrFlag: step.mdrFlag,
-      ndiFlag: step.ndiFlag,
-    })));
-    this.partInputs = this.normalizedLoadedParts(hole.parts.map((part) => ({
-      slotNo: part.slotNo,
-      partNumber: part.partNumber,
-      partLength: part.partLength,
-      bushingType: part.bushingType,
-      standardCustom: part.standardCustom,
-      orderedFlag: part.orderedFlag,
-      deliveredFlag: part.deliveredFlag,
-      status: part.status,
-    })));
+    this.stepInputs = this.normalizedLoadedSteps(
+      hole.steps.map((step) => ({
+        stepNo: step.stepNo,
+        sizeValue: step.sizeValue,
+        visualDamageCheck: step.visualDamageCheck,
+        reamFlag: step.reamFlag,
+        mdrFlag: step.mdrFlag,
+        ndiFlag: step.ndiFlag,
+      })),
+    );
+    this.partInputs = this.normalizedLoadedParts(
+      hole.parts.map((part) => ({
+        slotNo: part.slotNo,
+        partNumber: part.partNumber,
+        partLength: part.partLength,
+        bushingType: part.bushingType,
+        standardCustom: part.standardCustom,
+        orderedFlag: part.orderedFlag,
+        deliveredFlag: part.deliveredFlag,
+        status: part.status,
+      })),
+    );
     await this.loadContext(hole);
   }
 

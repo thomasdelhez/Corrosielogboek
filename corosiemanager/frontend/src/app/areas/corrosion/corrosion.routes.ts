@@ -2,9 +2,9 @@ import { Routes } from '@angular/router';
 import { requireAdminGuard, requireLoginGuard, requireReviewerGuard } from '../../core/security/guards/auth.guards';
 import { AdminMasterDataPage } from './pages/admin-master-data.page';
 import { AdminUsersPage } from './pages/admin-users.page';
-import { CorrosionDetailPage } from './pages/corrosion-detail.page';
 import { CorrosionInspectionPage } from './pages/corrosion-inspection.page';
 import { CorrosionListPage } from './pages/corrosion-list.page';
+import { CorrosionRepairPage } from './pages/corrosion-repair.page';
 import { CorrosionReportPage } from './pages/corrosion-report.page';
 import { HoleTrackersPage } from './pages/hole-trackers.page';
 import { InspectionQueuesPage } from './pages/inspection-queues.page';
@@ -16,7 +16,8 @@ import { OrderingTrackerPage } from './pages/ordering-tracker.page';
 export const CORROSION_ROUTES: Routes = [
   { path: 'corrosion', component: CorrosionListPage, canActivate: [requireLoginGuard] },
   { path: 'corrosion/:id/inspection', component: CorrosionInspectionPage, canActivate: [requireLoginGuard] },
-  { path: 'corrosion/:id', component: CorrosionDetailPage, canActivate: [requireLoginGuard] },
+  { path: 'corrosion/:id/repair', component: CorrosionRepairPage, canActivate: [requireLoginGuard] },
+  { path: 'corrosion/:id', component: CorrosionRepairPage, canActivate: [requireLoginGuard] },
   { path: 'mdr', component: MdrManagementPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ndi', component: NdiReportsPage, canActivate: [requireLoginGuard, requireReviewerGuard] },
   { path: 'ordering', component: OrderingTrackerPage, canActivate: [requireLoginGuard] },

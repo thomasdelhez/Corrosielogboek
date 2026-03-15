@@ -141,13 +141,55 @@
   min-width: 0;
 }
 
-.repair-main fieldset {
+.repair-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.repair-tab {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.repair-tab.is-active {
+  border-color: rgba(21, 94, 239, 0.2);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+.repair-tab-content fieldset {
   margin: 0;
   padding: 0;
   border: 0;
   min-width: 0;
   display: grid;
   gap: 14px;
+}
+
+.hole-status-card {
+  display: grid;
+  gap: 16px;
+}
+
+.hole-status-section {
+  display: grid;
+  gap: 12px;
+}
+
+.hole-status-section + .hole-status-section {
+  padding-top: 14px;
+  border-top: 1px solid rgba(38, 68, 96, 0.08);
+}
+
+.hole-status-subhead {
+  color: var(--color-ink-strong);
+  font-weight: 700;
 }
 
 .panel-head {
@@ -172,6 +214,51 @@
 .repair-grid-structure,
 .status-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.status-grid-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.repair-ndi-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.ndi-toggle {
+  min-height: 44px;
+}
+
+.repair-structure-top,
+.repair-structure-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.parts-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.part-row-card {
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.part-row-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.6fr) repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.compact-toggle {
+  min-height: 42px;
 }
 
 .compact-field input[readonly] {
@@ -261,26 +348,27 @@
 .repair-lanes {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(160px, 1fr);
-  gap: 10px;
+  grid-auto-columns: minmax(108px, 1fr);
+  gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .repair-lane {
   border: 1px solid rgba(38, 68, 96, 0.1);
-  border-radius: 18px;
+  border-radius: 14px;
   overflow: hidden;
   background: #fff;
-  min-height: 260px;
+  min-height: 220px;
   display: grid;
   grid-template-rows: auto 1fr;
 }
 
 .repair-lane header {
-  padding: 10px 12px;
-  font: 700 0.9rem/1.2 var(--font-heading);
+  padding: 8px 8px;
+  font: 700 0.8rem/1.15 var(--font-heading);
   color: var(--color-ink-strong);
+  text-align: center;
 }
 
 .lane-orange header { background: #ffad42; }
@@ -297,19 +385,20 @@
 .repair-lane-list {
   display: grid;
   align-content: start;
-  gap: 6px;
-  padding: 10px;
-  max-height: 340px;
+  gap: 5px;
+  padding: 8px;
+  max-height: 300px;
   overflow: auto;
 }
 
 .repair-lane-item {
-  min-height: 34px;
+  min-height: 30px;
   border: 1px solid var(--color-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
   color: var(--color-ink);
   font-weight: 700;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 
@@ -328,18 +417,41 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .repair-sidebar .repair-card:last-child {
+    display: none;
+  }
+
   .repair-grid-core {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .repair-ndi-card,
+  .repair-structure-top,
+  .repair-structure-totals,
+  .part-row-grid,
+  .status-grid-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .repair-lanes {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-columns: unset;
+    overflow-x: hidden;
   }
 }
 
 @media (max-width: 900px) {
-  .repair-sidebar,
   .repair-grid-core,
   .repair-grid-review,
   .repair-grid-structure,
   .status-grid,
-  .repair-nav {
+  .repair-nav,
+  .repair-ndi-card,
+  .repair-structure-top,
+  .repair-structure-totals,
+  .part-row-grid,
+  .status-grid-compact {
     grid-template-columns: 1fr;
   }
 
@@ -349,5 +461,26 @@
 
   .repair-savebar .ui-btn {
     width: 100%;
+  }
+
+  .repair-lanes {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 640px) {
+  .repair-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .repair-lanes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .repair-lanes {
+    grid-template-columns: 1fr;
   }
 }

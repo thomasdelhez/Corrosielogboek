@@ -85,7 +85,7 @@ export class CorrosionListPage implements OnInit {
         if (this.workspace() === 'inspection') {
           await this.routing.goToCorrosionInspection(firstHole.id);
         } else {
-          await this.routing.goToCorrosionDetail(firstHole.id, 'repair');
+          await this.routing.goToCorrosionRepair(firstHole.id);
         }
       } else {
         this.toast.info('Voor dit panel zijn nog geen holes beschikbaar.');
