@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import { Params } from '@angular/router';
 import { RouterLink } from '@angular/router';
 
 @Component({
@@ -12,5 +13,7 @@ export class PageHeaderComponent {
   readonly title = input.required<string>();
   readonly subtitle = input<string | null>(null);
   readonly backLink = input<string | null>(null);
+  readonly backQueryParams = input<Params | null>(null);
   readonly backLabel = input<string>('Terug');
+  readonly backPlacement = input<'left' | 'right'>('left');
 }

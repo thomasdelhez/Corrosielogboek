@@ -28,46 +28,6 @@
               </app-empty-state>
             </div>
           }
-
-          <section class="search-strip">
-            <div class="search-head">
-              <div>
-                <p class="card-label">Direct zoeken</p>
-                <h2>Aircraft, panel, hole of MDR</h2>
-              </div>
-              <p class="ui-meta">Gebruik één zoekveld om direct naar de juiste case of workflow te springen.</p>
-            </div>
-            <form class="search-form" (ngSubmit)="runGlobalSearch()">
-              <input
-                class="ui-input"
-                [(ngModel)]="globalSearchQuery"
-                name="globalSearchQuery"
-                placeholder="Bijv. AN 10, panel 190, hole 123, MDR-001"
-              />
-              <button class="ui-btn-secondary" type="submit" [disabled]="searchLoading()">
-                {{ searchLoading() ? 'Zoeken...' : 'Zoeken' }}
-              </button>
-            </form>
-            @if (searchResults().length > 0) {
-              <div class="search-results">
-                @for (result of searchResults(); track result.route + result.title) {
-                  <button class="result-item" type="button" (click)="openSearchResult(result)">
-                    <app-status-pill [label]="result.kind" state="brand" />
-                    <strong>{{ result.title }}</strong>
-                    @if (result.subtitle) {
-                      <span class="ui-meta">{{ result.subtitle }}</span>
-                    }
-                  </button>
-                }
-              </div>
-            } @else if (searchTried() && !searchLoading()) {
-              <app-empty-state
-                eyebrow="Zoekresultaten"
-                title="Geen resultaten gevonden"
-                description="Probeer een andere aircraftcode, hole, panelnummer of MDR-referentie."
-              />
-            }
-          </section>
         </div>
       </section>
 
@@ -78,7 +38,7 @@
             <h3>Hole workspace</h3>
             <p>Kies direct de juiste fase en open holes vanuit een inspection- of repair-ingang.</p>
             <div class="ui-actions">
-              <a class="ui-btn" [routerLink]="['/corrosion']" [queryParams]="{ workspace: 'inspection' }">Hole inspection</a>
+              <a class="ui-btn-secondary" [routerLink]="['/corrosion']" [queryParams]="{ workspace: 'inspection' }">Hole inspection</a>
               <a class="ui-btn-secondary" [routerLink]="['/corrosion']" [queryParams]="{ workspace: 'repair' }">Hole repair</a>
               <a class="ui-btn-secondary" routerLink="/admin/aircraft-beheer">Aircraft beheer</a>
             </div>

@@ -4,8 +4,8 @@
           <p class="eyebrow">{{ eyebrow() }}</p>
         }
         <div class="heading-row">
-          @if (backLink()) {
-            <a class="back-link" [routerLink]="backLink()!">{{ backLabel() }}</a>
+          @if (backLink() && backPlacement() === 'left') {
+            <a class="back-link" [routerLink]="backLink()!" [queryParams]="backQueryParams()">{{ backLabel() }}</a>
           }
           <div>
             <h1>{{ title() }}</h1>
@@ -16,6 +16,9 @@
         </div>
       </div>
       <div class="actions">
+        @if (backLink() && backPlacement() === 'right') {
+          <a class="back-link" [routerLink]="backLink()!" [queryParams]="backQueryParams()">{{ backLabel() }}</a>
+        }
         <ng-content />
       </div>
     </header>
